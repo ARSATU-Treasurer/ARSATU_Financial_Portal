@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bankVal = document.getElementById('req-bank')?.value || '';
 
         if (!isDraft && purposeVal.trim() === '') {
-            if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณากรอกหัวข้อของการเบิกครับ'; }
+            if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณากรอกหัวข้อการเบิก'; }
             if (saveBtn) saveBtn.disabled = false; if (subBtn) subBtn.disabled = false; return;
         }
 
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('req-type').disabled = false;
             document.getElementById('req-purpose').disabled = false;
             document.getElementById('req-amount').disabled = false;
-            document.getElementById('submit-req-btn').innerHTML = '🚀 ส่งคำขอให้ Admin';
+            document.getElementById('submit-req-btn').innerHTML = '🚀 ส่งคำขอ';
             window.isClearingAdvance = false;
 
             const tbody = document.getElementById('items-tbody');
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             window.calculateTotal();
-            if (msg) { msg.style.color = 'var(--success)'; msg.textContent = 'กรุณาแก้ไขราคาสินค้าตามจริง และแนบใบเสร็จครับ'; }
+            if (msg) { msg.style.color = 'var(--success)'; msg.textContent = 'กรุณาแก้ไขราคาสินค้าตามจริง และแนบใบกำกับภาษี'; }
             setTimeout(() => { if(msg) msg.textContent = ''; }, 4000);
         } catch (err) {
             console.error(err); 
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     created_by: currentUser.id 
                 }]);
                 
-                if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งรายการเรียบร้อย รอ Admin ตรวจสอบครับ!'; }
+                if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งรายการเพื่อตรวจสอบเรียบร้อย'; }
                 form.reset(); 
                 if (document.getElementById(`${prefix}-date`)) document.getElementById(`${prefix}-date`).valueAsDate = new Date();
                 setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
@@ -433,7 +433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอโอนตั้งต้น</span>'; 
                 }
                 else if (req.status === 'pending_clearance') { 
-                    stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอแอดมินตรวจบิล</span>'; 
+                    stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจบิล</span>'; 
                 }
                 else if (req.status === 'advance_transferred') {
                     // 🌟 เพิ่มปุ่มเคลียร์บิลให้ Member

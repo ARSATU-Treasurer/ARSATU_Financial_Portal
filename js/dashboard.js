@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) throw error;
             
             if (!data || data.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">🎉 ไม่มีรายการค้างตรวจสอบครับ</td></tr>`; 
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">🎉 ไม่มีรายการค้างตรวจสอบ</td></tr>`; 
                 return; 
             }
 
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) throw error;
             
             if (!data || data.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">🎉 ไม่มีรายการค้างตรวจสอบครับ</td></tr>`; 
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">🎉 ไม่มีรายการค้างตรวจสอบ</td></tr>`; 
                 return; 
             }
 
@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const slipFile = document.getElementById('admin-slip')?.files[0];
 
             if (actionDir === 'pay' && processAmt > 0 && !slipFile) {
-                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณาแนบสลิปโอนเงินจ่ายด้วยครับ'; }
+                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณาแนบสลิปโอนเงินจ่าย'; }
                 if(btn) btn.disabled = false; return;
             }
 
@@ -514,7 +514,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const { data, error } = await supabaseClient.from('clearances').select(`*, profiles (full_name)`).not('status', 'in', '("draft","pending_advance","pending_clearance")').order('created_at', { ascending: false });
             if (error) throw error;
-            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">ไม่มีประวัติการอนุมัติครับ</td></tr>`; return; }
+            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">ไม่มีประวัติการอนุมัติ</td></tr>`; return; }
 
             tbody.innerHTML = data.map(req => {
                 const date = new Date(req.created_at).toLocaleDateString('th-TH');
@@ -684,7 +684,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             csvContent += rowData.join(",") + "\r\n";
         });
 
-        if (!hasData) { alert("ไม่มีข้อมูลในสมุดบัญชีสำหรับ Export ครับ"); return; }
+        if (!hasData) { alert("ไม่มีข้อมูลในสมุดบัญชีสำหรับ Export"); return; }
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
