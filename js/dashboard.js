@@ -740,44 +740,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     // ตัวรวบรวมคำสั่งโหลดข้อมูลทั้งหมด (เรียกใช้ตอนเริ่ม)
     // ==========================================
-    window.loadAllAdminData = function() {
+    window.loadAllAdminData = async function() {
         if (!currentUser) return;
-        window.loadDashboardWidgets();
-        window.loadPendingDonations();
-        window.loadPendingRequests();
-        window.loadLedger();
-        window.loadClearanceHistory();
-        window.loadSettingsData(); // V.3.1 โหลดการตั้งค่า
-    };
 
-    window.loadAllAdminData();
-
-    // ==========================================
-    // V.3.2: โหลดชื่อผู้ใช้ และ กระดิ่งแจ้งเตือน (Admin)
-    // ==========================================
-    window.loadUserProfileAndNoti = async function() {
-        if (!currentUser) return;
+        // 🌟 V.3.2: โหลดชื่อผู้ใช้ และ กระดิ่งแจ้งเตือน
         try {
-            // ดึงชื่อ
+            // ดึงชื่อมาแสดง
             const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', currentUser.id).single();
-            if (profile) document.getElementById('current-user-name').textContent = profile.full_name || 'Admin';
+            if (profile && document.getElementById('current-user-name')) {
+                document.getElementById('current-user-name').textContent = profile.full_name || 'Admin';
+            }
 
-            // นับจำนวนรอตรวจสอบ (ขอเบิก + แจ้งบริจาค)
+            // คำนวณตัวเลขแจ้งเตือนบนกระดิ่ง
             const { count: c1 } = await supabaseClient.from('clearances').select('*', { count: 'exact', head: true }).in('status', ['pending_advance', 'pending_clearance']);
             const { count: c2 } = await supabaseClient.from('transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending');
             const totalPending = (c1 || 0) + (c2 || 0);
 
             const badge = document.getElementById('noti-badge');
-            if (totalPending > 0 && badge) {
-                badge.textContent = totalPending;
-                badge.style.display = 'inline-block';
-                document.getElementById('noti-bell').onclick = () => alert(`🚨 มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการครับ!`);
-            } else if (badge) {
-                badge.style.display = 'none';
-                document.getElementById('noti-bell').onclick = () => alert(`✅ ไม่มีรายการค้างตรวจสอบครับ`);
+            if (badge) {
+                if (totalPending > 0) {
+                    badge.textContent = totalPending;
+                    badge.style.display = 'inline-block';
+                    document.getElementById('noti-bell').onclick = () => alert(`🚨 มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการครับ!`);
+                } else {
+                    badge.style.display = 'none';
+                    document.getElementById('noti-bell').onclick = () => alert(`✅ ไม่มีรายการค้างตรวจสอบครับ`);
+                }
             }
-        } catch(e) { console.error("Noti Error:", e); }
+        } catch(e) { console.error("Profile/Noti Error:", e); }
+
+        // โหลดข้อมูลตารางอื่นๆ ตามปกติ
+        window.loadDashboardWidgets();
+        window.loadPendingDonations();
+        window.loadPendingRequests();
+        window.loadLedger();
+        window.loadClearanceHistory();
+        window.loadSettingsData(); 
     };
-    // เรียกใช้ฟังก์ชันนี้ทันที
-    window.loadUserProfileAndNoti();
+
+    // สั่งรันตอนเปิดหน้าเว็บ
+    window.loadAllAdminData();
 });
