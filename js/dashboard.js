@@ -551,19 +551,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(fTbody) fTbody.innerHTML = funds.map(f => `<tr><td>${f.fund_name}</td><td>฿${f.remaining_budget.toLocaleString()}</td><td style="text-align:center;"><button onclick="deleteFund('${f.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
     };
 
-    window.addBank = async function() {
+   window.addBank = async function() {
         const name = document.getElementById('add-bank-name').value;
         const bal = parseFloat(document.getElementById('add-bank-bal').value);
         if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
-        await supabaseClient.from('bank_accounts').insert([{ bank_name: name, balance: bal }]);
-        document.getElementById('add-bank-name').value = ''; document.getElementById('add-bank-bal').value = '';
-        window.loadAllAdminData(); 
+
+        const subBtn = event.target;
+        subBtn.disabled = true;
+        subBtn.textContent = "กำลังเพิ่ม...";
+
+        try {
+            const { error } = await supabaseClient.from('bank_accounts').insert([{ bank_name: name, balance: bal }]);
+            if (error) throw error;
+            
+            document.getElementById('add-bank-name').value = ''; 
+            document.getElementById('add-bank-bal').value = '';
+            alert("✅ เพิ่มบัญชีสำเร็จ!");
+            window.loadAllAdminData(); 
+        } catch (err) {
+            alert("❌ ไม่สามารถเพิ่มบัญชีได้: " + err.message);
+        } finally {
+            subBtn.disabled = false;
+            subBtn.textContent = "+ เพิ่มบัญชี";
+        }
     };
 
     window.deleteBank = async function(id) {
         if(confirm("ยืนยันการลบบัญชีนี้? (ยอดเงินจะถูกลบไปด้วย แต่ประวัติสมุดบัญชียังอยู่)")) {
-            await supabaseClient.from('bank_accounts').delete().eq('id', id);
-            window.loadAllAdminData(); 
+            try {
+                const { error } = await supabaseClient.from('bank_accounts').delete().eq('id', id);
+                if (error) throw error;
+                window.loadAllAdminData(); 
+            } catch (err) {
+                alert("❌ ไม่สามารถลบได้: " + err.message);
+            }
         }
     };
 
@@ -571,15 +592,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         const name = document.getElementById('add-fund-name').value;
         const bal = parseFloat(document.getElementById('add-fund-bal').value);
         if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
-        await supabaseClient.from('funds').insert([{ fund_name: name, remaining_budget: bal }]);
-        document.getElementById('add-fund-name').value = ''; document.getElementById('add-fund-bal').value = '';
-        window.loadAllAdminData(); 
+
+        const subBtn = event.target;
+        subBtn.disabled = true;
+        subBtn.textContent = "กำลังเพิ่ม...";
+
+        try {
+            const { error } = await supabaseClient.from('funds').insert([{ fund_name: name, remaining_budget: bal }]);
+            if (error) throw error;
+
+            document.getElementById('add-fund-name').value = ''; 
+            document.getElementById('add-fund-bal').value = '';
+            alert("✅ เพิ่มกองทุนสำเร็จ!");
+            window.loadAllAdminData(); 
+        } catch (err) {
+            alert("❌ ไม่สามารถเพิ่มกองทุนได้: " + err.message);
+        } finally {
+            subBtn.disabled = false;
+            subBtn.textContent = "+ เพิ่มกองทุน";
+        }
     };
 
     window.deleteFund = async function(id) {
         if(confirm("ยืนยันการลบกองทุนนี้?")) {
-            await supabaseClient.from('funds').delete().eq('id', id);
-            window.loadAllAdminData(); 
+            try {
+                const { error } = await supabaseClient.from('funds').delete().eq('id', id);
+                if (error) throw error;
+                window.loadAllAdminData(); 
+            } catch (err) {
+                alert("❌ ไม่สามารถลบได้: " + err.message);
+            }
         }
     };
 
@@ -709,4 +751,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.loadAllAdminData();
+
+    // ==========================================
+    // V.3.2: โหลดชื่อผู้ใช้ และ กระดิ่งแจ้งเตือน (Admin)
+    // ==========================================
+    window.loadUserProfileAndNoti = async function() {
+        if (!currentUser) return;
+        try {
+            // ดึงชื่อ
+            const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', currentUser.id).single();
+            if (profile) document.getElementById('current-user-name').textContent = profile.full_name || 'Admin';
+
+            // นับจำนวนรอตรวจสอบ (ขอเบิก + แจ้งบริจาค)
+            const { count: c1 } = await supabaseClient.from('clearances').select('*', { count: 'exact', head: true }).in('status', ['pending_advance', 'pending_clearance']);
+            const { count: c2 } = await supabaseClient.from('transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+            const totalPending = (c1 || 0) + (c2 || 0);
+
+            const badge = document.getElementById('noti-badge');
+            if (totalPending > 0 && badge) {
+                badge.textContent = totalPending;
+                badge.style.display = 'inline-block';
+                document.getElementById('noti-bell').onclick = () => alert(`🚨 มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการครับ!`);
+            } else if (badge) {
+                badge.style.display = 'none';
+                document.getElementById('noti-bell').onclick = () => alert(`✅ ไม่มีรายการค้างตรวจสอบครับ`);
+            }
+        } catch(e) { console.error("Noti Error:", e); }
+    };
+    // เรียกใช้ฟังก์ชันนี้ทันที
+    window.loadUserProfileAndNoti();
 });

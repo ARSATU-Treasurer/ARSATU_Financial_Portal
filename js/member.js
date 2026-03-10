@@ -459,4 +459,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.loadData();
+
+    // ==========================================
+    // V.3.2: โหลดชื่อผู้ใช้, สลับหน้า Admin, และกระดิ่งแจ้งเตือน
+    // ==========================================
+    window.loadUserProfileAndNoti = async function() {
+        if (!currentUser) return;
+        try {
+            // ดึงชื่อและตำแหน่ง
+            const { data: profile } = await supabaseClient.from('profiles').select('full_name, role').eq('id', currentUser.id).single();
+            if (profile) {
+                document.getElementById('current-user-name').textContent = profile.full_name || 'Member';
+                // ถ้าเป็น Admin ให้โชว์ปุ่มสลับกลับไปหน้า Dashboard
+                if (profile.role === 'admin') {
+                    document.getElementById('switch-role-btn').style.display = 'block';
+                    document.getElementById('current-user-role').textContent = 'ผู้ดูแลระบบ (โหมดจำลอง)';
+                    document.getElementById('current-user-role').style.color = 'var(--success)';
+                }
+            }
+
+            // นับจำนวนบิลที่รอเคลียร์ (Advance Transferred)
+            const { count } = await supabaseClient.from('clearances').select('*', { count: 'exact', head: true }).eq('member_id', currentUser.id).eq('status', 'advance_transferred');
+            const badge = document.getElementById('noti-badge');
+            if (count > 0 && badge) {
+                badge.textContent = count;
+                badge.style.display = 'inline-block';
+                document.getElementById('noti-bell').onclick = () => alert(`🚨 คุณมีเงินเบิกล่วงหน้าที่ต้อง "เคลียร์บิล" จำนวน ${count} รายการครับ!`);
+            } else if (badge) {
+                badge.style.display = 'none';
+                document.getElementById('noti-bell').onclick = () => alert(`✅ คุณไม่มีบิลค้างเคลียร์ครับ เยี่ยมมาก!`);
+            }
+        } catch(e) { console.error("Noti Error:", e); }
+    };
+    // เรียกใช้ฟังก์ชันนี้ทันที
+    window.loadUserProfileAndNoti();
 });
