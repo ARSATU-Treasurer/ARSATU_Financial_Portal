@@ -465,7 +465,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.loadPendingRequests();
         window.loadLedger();
         window.loadClearanceHistory();
+        window.loadSettingsData()
     };
 
     window.loadAllAdminData();
+
+    // --- ฟังก์ชันจัดการบัญชี/กองทุน สำหรับ Admin ---
+window.loadSettingsData = async function() {
+    // ดึงข้อมูลบัญชี
+    const { data: banks } = await supabaseClient.from('bank_accounts').select('*');
+    const bTbody = document.querySelector('#manage-bank-table tbody');
+    if(bTbody) bTbody.innerHTML = banks.map(b => `<tr><td>${b.bank_name}</td><td>฿${b.balance.toLocaleString()}</td><td><button onclick="deleteBank('${b.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
+
+    // ดึงข้อมูลกองทุน
+    const { data: funds } = await supabaseClient.from('funds').select('*');
+    const fTbody = document.querySelector('#manage-fund-table tbody');
+    if(fTbody) fTbody.innerHTML = funds.map(f => `<tr><td>${f.fund_name}</td><td>฿${f.remaining_budget.toLocaleString()}</td><td><button onclick="deleteFund('${f.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
+};
+
+window.addBank = async function() {
+    const name = document.getElementById('add-bank-name').value;
+    const bal = parseFloat(document.getElementById('add-bank-bal').value);
+    if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
+    await supabaseClient.from('bank_accounts').insert([{ bank_name: name, balance: bal }]);
+    document.getElementById('add-bank-name').value = ''; document.getElementById('add-bank-bal').value = '';
+    window.loadAllAdminData(); window.loadSettingsData();
+};
+
+window.deleteBank = async function(id) {
+    if(confirm("ยืนยันการลบตัวเลือกบัญชีนี้? (ยอดเงินจะหายไปด้วย)")) {
+        await supabaseClient.from('bank_accounts').delete().eq('id', id);
+        window.loadAllAdminData(); window.loadSettingsData();
+    }
+};
+
+window.addFund = async function() {
+    const name = document.getElementById('add-fund-name').value;
+    const bal = parseFloat(document.getElementById('add-fund-bal').value);
+    if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
+    await supabaseClient.from('funds').insert([{ fund_name: name, remaining_budget: bal }]);
+    document.getElementById('add-fund-name').value = ''; document.getElementById('add-fund-bal').value = '';
+    window.loadAllAdminData(); window.loadSettingsData();
+};
+
+window.deleteFund = async function(id) {
+    if(confirm("ยืนยันการลบตัวเลือกกองทุนนี้?")) {
+        await supabaseClient.from('funds').delete().eq('id', id);
+        window.loadAllAdminData(); window.loadSettingsData();
+    }
+};
+
+// อย่าลืมเพิ่ม window.loadSettingsData() เข้าไปในฟังก์ชัน loadAllAdminData() ของเดิมด้วยนะครับ
 });

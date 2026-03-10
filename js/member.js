@@ -586,3 +586,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadData();
 
 });
+
+// โหลดเลขบัญชีเดิมมาแสดง
+async function loadMyProfile() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data: profile } = await supabaseClient.from('profiles').select('bank_details').eq('id', user.id).single();
+    if (profile && profile.bank_details) {
+        document.getElementById('my-bank-info').value = profile.bank_details;
+        // ถ้ามีข้อมูล ให้ใส่ในช่องเลขบัญชีของฟอร์มเบิกเงินรอไว้เลย
+        if(document.getElementById('member-bank-details')) {
+            document.getElementById('member-bank-details').value = profile.bank_details;
+        }
+    }
+}
+
+// บันทึกเลขบัญชีใหม่
+async function saveProfileBank() {
+    const btn = document.getElementById('save-bank-btn');
+    const info = document.getElementById('my-bank-info').value;
+    btn.disabled = true;
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { error } = await supabaseClient.from('profiles').update({ bank_details: info }).eq('id', user.id);
+    
+    if (error) alert("เกิดข้อผิดพลาด: " + error.message);
+    else {
+        alert("บันทึกเลขบัญชีเรียบร้อย!");
+        if(document.getElementById('member-bank-details')) {
+            document.getElementById('member-bank-details').value = info;
+        }
+    }
+    btn.disabled = false;
+}
+
+// เรียกใช้ตอนโหลดหน้า
+loadMyProfile();

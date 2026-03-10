@@ -56,6 +56,7 @@
             <button class="tab-btn active" onclick="switchTab(event, 'tab-overview')">📊 ภาพรวม & รออนุมัติ</button>
             <button class="tab-btn" onclick="switchTab(event, 'tab-ledger')">📖 สมุดบัญชีรายรับ-รายจ่าย</button>
             <button class="tab-btn" onclick="switchTab(event, 'tab-history')">🕒 ประวัติคำขอเบิก</button>
+            <button class="tab-btn" onclick="switchTab(event, 'tab-settings')">⚙️ ตั้งค่าระบบ</button>
         </div>
 
         <div id="tab-overview" class="tab-content active">
@@ -166,6 +167,35 @@
                 </div>
             </div>
         </div>
+
+        <div id="tab-settings" class="tab-content">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div class="card">
+            <h3>🏦 จัดการบัญชีธนาคาร</h3>
+            <table id="manage-bank-table" style="width:100%; font-size:13px;">
+                <thead><tr><th>ชื่อบัญชี</th><th>ยอดคงเหลือ</th><th>ลบ</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                <input type="text" id="add-bank-name" placeholder="ชื่อบัญชีใหม่" style="margin-bottom:5px;">
+                <input type="number" id="add-bank-bal" placeholder="ยอดเงินเริ่มต้น">
+                <button onclick="addBank()" class="btn btn-success" style="width:100%; margin-top:5px;">+ เพิ่มบัญชี</button>
+            </div>
+        </div>
+        <div class="card">
+            <h3>💼 จัดการกองทุน</h3>
+            <table id="manage-fund-table" style="width:100%; font-size:13px;">
+                <thead><tr><th>ชื่อกองทุน</th><th>งบที่เหลือ</th><th>ลบ</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                <input type="text" id="add-fund-name" placeholder="ชื่อกองทุนใหม่" style="margin-bottom:5px;">
+                <input type="number" id="add-fund-bal" placeholder="งบเริ่มต้น">
+                <button onclick="addFund()" class="btn btn-success" style="width:100%; margin-top:5px;">+ เพิ่มกองทุน</button>
+            </div>
+        </div>
+    </div>
+</div>
 
     </main>
 

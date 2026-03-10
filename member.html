@@ -12,166 +12,40 @@
             --success: #10b981; 
             --warning: #f59e0b; 
             --danger: #ef4444; 
+            --info: #0ea5e9;
             --bg-color: #f1f5f9; 
             --text-main: #334155; 
             --text-muted: #64748b; 
             --border: #e2e8f0; 
             --card-bg: #ffffff; 
         }
-        body { 
-            font-family: 'Prompt', sans-serif; 
-            background-color: var(--bg-color); 
-            color: var(--text-main); 
-            margin: 0; 
-            padding: 0; 
-        }
-        header { 
-            background-color: var(--card-bg); 
-            padding: 15px 30px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
-            position: sticky; 
-            top: 0; 
-            z-index: 100; 
-        }
-        h2, h3 { 
-            color: #0f172a; 
-            margin-top: 0; 
-        }
-        .container { 
-            max-width: 1000px; 
-            margin: 30px auto; 
-            padding: 0 20px; 
-        }
-        .card { 
-            background: var(--card-bg); 
-            border-radius: 12px; 
-            padding: 25px; 
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
-            margin-bottom: 20px; 
-            border: 1px solid var(--border); 
-        }
-        .tab-container { 
-            display: flex; 
-            gap: 5px; 
-            margin-bottom: 25px; 
-            background: #e2e8f0; 
-            padding: 5px; 
-            border-radius: 10px; 
-            overflow-x: auto; 
-        }
-        .tab-btn { 
-            flex: 1; 
-            padding: 12px 20px; 
-            border: none; 
-            background: transparent; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: 500; 
-            font-family: 'Prompt', sans-serif; 
-            font-size: 15px; 
-            color: var(--text-muted); 
-            transition: 0.3s; 
-            white-space: nowrap; 
-            text-align: center; 
-        }
-        .tab-btn:hover { 
-            color: var(--primary); 
-        }
-        .tab-btn.active { 
-            background: var(--card-bg); 
-            color: var(--primary); 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-            font-weight: 600; 
-        }
-        .tab-content { 
-            display: none; 
-            animation: fadeIn 0.4s ease; 
-        }
-        .tab-content.active { 
-            display: block; 
-        }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(10px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-        .form-group { 
-            margin-bottom: 18px; 
-        }
-        label { 
-            display: block; 
-            font-weight: 500; 
-            margin-bottom: 8px; 
-            font-size: 14px; 
-        }
-        input[type="text"], input[type="number"], input[type="date"], select { 
-            width: 100%; 
-            padding: 10px 15px; 
-            border: 1px solid var(--border); 
-            border-radius: 8px; 
-            font-family: 'Prompt', sans-serif; 
-            font-size: 14px; 
-            box-sizing: border-box; 
-            background-color: #f8fafc; 
-        }
-        input:focus, select:focus { 
-            outline: none; 
-            border-color: var(--primary); 
-            background-color: #fff; 
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); 
-        }
-        input[type="file"] { 
-            padding: 8px; 
-            background: #f8fafc; 
-            border: 1px dashed #cbd5e1; 
-            width: 100%; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            box-sizing: border-box; 
-        }
-        button { 
-            font-family: 'Prompt', sans-serif; 
-            transition: 0.2s; 
-        }
-        .btn { 
-            padding: 10px 20px; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: 500; 
-            font-size: 15px; 
-        }
+        body { font-family: 'Prompt', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; }
+        header { background-color: var(--card-bg); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        h2, h3 { color: #0f172a; margin-top: 0; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid var(--border); }
+        .tab-container { display: flex; gap: 5px; margin-bottom: 25px; background: #e2e8f0; padding: 5px; border-radius: 10px; overflow-x: auto; }
+        .tab-btn { flex: 1; padding: 12px 20px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-weight: 500; font-family: 'Prompt', sans-serif; font-size: 15px; color: var(--text-muted); transition: 0.3s; white-space: nowrap; text-align: center; }
+        .tab-btn:hover { color: var(--primary); }
+        .tab-btn.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: 600; }
+        .tab-content { display: none; animation: fadeIn 0.4s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 14px; }
+        input[type="text"], input[type="number"], input[type="date"], select { width: 100%; padding: 10px 15px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Prompt', sans-serif; font-size: 14px; box-sizing: border-box; background-color: #f8fafc; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); background-color: #fff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        input[type="file"] { padding: 8px; background: #f8fafc; border: 1px dashed #cbd5e1; width: 100%; border-radius: 8px; cursor: pointer; box-sizing: border-box; }
+        button { font-family: 'Prompt', sans-serif; transition: 0.2s; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 15px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-outline { background: white; color: var(--text-main); border: 1px solid var(--border); }
         .btn-danger { background: var(--danger); color: white; }
-        
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 14px; 
-        }
-        th { 
-            background-color: #f8fafc; 
-            padding: 12px; 
-            text-align: left; 
-            border-bottom: 2px solid var(--border); 
-            color: var(--text-muted); 
-            font-weight: 600; 
-        }
-        td { 
-            padding: 12px; 
-            border-bottom: 1px solid var(--border); 
-        }
-        .status-badge { 
-            padding: 4px 10px; 
-            border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: 600; 
-            display: inline-block; 
-        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background-color: #f8fafc; padding: 12px; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-muted); font-weight: 600; }
+        td { padding: 12px; border-bottom: 1px solid var(--border); }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
     </style>
 </head>
 <body>
@@ -195,23 +69,29 @@
                 <div class="card">
                     <h3 style="color: var(--text-muted); font-size: 16px;">💳 บัญชีธนาคาร (คงเหลือ)</h3>
                     <table id="member-bank-table">
-                        <tbody>
-                            <tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr>
-                        </tbody>
+                        <tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody>
                     </table>
                 </div>
                 <div class="card">
                     <h3 style="color: var(--text-muted); font-size: 16px;">💰 งบประมาณกองทุน (คงเหลือ)</h3>
                     <table id="member-fund-table">
-                        <tbody>
-                            <tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr>
-                        </tbody>
+                        <tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
         <div id="tab-clearance" class="tab-content">
+            
+            <div class="card" style="border-left: 5px solid var(--info); background: #f0f9ff; border-color: #bae6fd;">
+                <h3 style="margin-top:0; font-size:16px; color: #0284c7;">🏦 บันทึกบัญชีรับเงินประจำตัว</h3>
+                <p style="font-size:13px; color:var(--text-muted); margin-top:-5px;">กรอกครั้งเดียว ระบบจะดึงข้อมูลไปใส่ในช่อง 'ข้อมูลบัญชีรับเงิน' ด้านล่างให้อัตโนมัติครับ</p>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="my-bank-info" placeholder="เช่น กสิกร 123-4-56789-0 นายสมชาย" style="flex: 1;">
+                    <button type="button" onclick="saveProfileBank()" class="btn btn-primary" id="save-bank-btn" style="background:var(--info); white-space: nowrap;">💾 บันทึก</button>
+                </div>
+            </div>
+
             <div class="card">
                 <h3>สร้างใบขอเบิกเงิน / เคลียร์เงินทดรองจ่าย</h3>
                 <form id="complex-clearance-form">
@@ -252,8 +132,7 @@
                                         <th style="width: 10%; text-align: center;">ลบ</th>
                                     </tr>
                                 </thead>
-                                <tbody id="items-tbody">
-                                    </tbody>
+                                <tbody id="items-tbody"></tbody>
                             </table>
                         </div>
                         
@@ -283,7 +162,6 @@
                         <button type="button" id="save-draft-btn" class="btn btn-outline" style="flex: 1;">💾 บันทึกแบบร่าง</button>
                         <button type="button" id="submit-req-btn" class="btn btn-primary" style="flex: 2;">🚀 ส่งคำขอให้ Admin</button>
                     </div>
-                    
                     <div id="req-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
                 </form>
             </div>
@@ -302,9 +180,7 @@
                                 <th>จัดการ</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">กำลังโหลดประวัติ...</td></tr>
-                        </tbody>
+                        <tbody><tr><td colspan="6" style="text-align: center; color: var(--text-muted);">กำลังโหลดประวัติ...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -382,7 +258,6 @@
                 </div>
             </div>
         </div>
-
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -390,16 +265,92 @@
     <script src="js/member.js"></script>
     
     <script>
+        // ==========================================
+        // โค้ดสำหรับ V.3.1 (เวอร์ชันจำเลขอัตโนมัติถาวร)
+        // ==========================================
+        let savedBankDetails = ""; // ตัวแปรจำเลขบัญชีไว้ในระบบ
+
+        // ควบคุม Tabs และเติมเลขบัญชีทุกครั้งที่สลับหน้า
         function switchTab(evt, tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             evt.currentTarget.classList.add('active');
+
+            // ถ้าเปิดมาหน้าขอเบิกเงิน ให้เติมเลขบัญชีทันที
+            if (tabId === 'tab-clearance') {
+                applyBankDetails();
+            }
         }
         
-        // ตั้งค่าวันที่ปัจจุบันให้ฟอร์ม
-        document.getElementById('don-date').valueAsDate = new Date();
-        document.getElementById('other-date').valueAsDate = new Date();
+        // ตั้งค่าวันที่ปัจจุบัน
+        if(document.getElementById('don-date')) document.getElementById('don-date').valueAsDate = new Date();
+        if(document.getElementById('other-date')) document.getElementById('other-date').valueAsDate = new Date();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // หน่วงเวลาเล็กน้อยเพื่อให้ Supabase พร้อมทำงาน
+            setTimeout(async () => {
+                try {
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    if (!user) return;
+                    
+                    const { data: profile } = await supabaseClient.from('profiles').select('bank_details').eq('id', user.id).single();
+                    
+                    if (profile && profile.bank_details) {
+                        savedBankDetails = profile.bank_details; // จำใส่สมองของเว็บไว้
+                        applyBankDetails(); // สั่งให้เติมลงช่อง
+                    }
+                } catch(e) { console.error("โหลดข้อมูลบัญชีส่วนตัวไม่สำเร็จ:", e); }
+            }, 800); 
+        });
+
+        // ฟังก์ชันสำหรับ "เติมข้อมูลลงช่อง" 
+        function applyBankDetails() {
+            if (!savedBankDetails) return;
+            const myBankInfo = document.getElementById('my-bank-info');
+            const reqBank = document.getElementById('req-bank');
+            if(myBankInfo && !myBankInfo.value) myBankInfo.value = savedBankDetails;
+            
+            // สำคัญ: เติมลงในช่องขอเบิกเงิน (เฉพาะตอนที่ช่องว่าง เพื่อไม่ทับกรณี Member อยากแก้เลขชั่วคราว)
+            if(reqBank && !reqBank.value) reqBank.value = savedBankDetails;
+        }
+
+        // 🌟 จุดแก้ปัญหา: ดักจับเหตุการณ์ตอนที่ฟอร์ม "โดนล้างค่า" (หลังส่งข้อมูลสำเร็จ)
+        const clearanceForm = document.getElementById('complex-clearance-form');
+        if (clearanceForm) {
+            clearanceForm.addEventListener('reset', () => {
+                // รอให้ฟอร์มเคลียร์ตัวเองเสร็จ 0.05 วินาที แล้วเอาเลขบัญชีที่จำไว้กลับมาใส่
+                setTimeout(applyBankDetails, 50);
+            });
+        }
+
+        // ฟังก์ชันเมื่อกดปุ่มบันทึกบัญชี (กล่องสีฟ้า)
+        window.saveProfileBank = async function() {
+            const btn = document.getElementById('save-bank-btn');
+            const info = document.getElementById('my-bank-info').value;
+            
+            if(!info) return alert("กรุณากรอกข้อมูลบัญชีก่อนกดบันทึกครับ");
+            
+            btn.disabled = true;
+            btn.textContent = "กำลังบันทึก...";
+            
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                const { error } = await supabaseClient.from('profiles').update({ bank_details: info }).eq('id', user.id);
+                
+                if(error) throw error;
+                
+                alert("✅ บันทึกเลขบัญชีประจำตัวเรียบร้อยแล้ว!");
+                savedBankDetails = info; // อัปเดตความจำใหม่
+                document.getElementById('req-bank').value = info; // ยัดใส่ช่องให้เลยทันที
+                
+            } catch (err) {
+                alert("เกิดข้อผิดพลาด: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "💾 บันทึก";
+            }
+        };
     </script>
 </body>
 </html>
