@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.calculateTotal();
             
             if (msg) { 
-                msg.textContent = '✏️ โหลดแบบร่างเรียบร้อย แก้ไขต่อได้เลยครับ'; 
+                msg.textContent = '✏️ โหลดแบบร่างสำเร็จ'; 
                 setTimeout(() => { msg.textContent = ''; }, 3000); 
             }
         } catch (err) {
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!isDraft && purposeVal.trim() === '') {
             if (msg) { 
                 msg.style.color = 'var(--danger)'; 
-                msg.textContent = 'กรุณากรอกหัวข้อของการเบิกครับ'; 
+                msg.textContent = 'กรุณากรอกหัวข้อของการเบิก'; 
             }
             if (saveBtn) saveBtn.disabled = false; 
             if (subBtn) subBtn.disabled = false;
@@ -460,7 +460,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 created_by: currentUser.id 
             }]);
 
-            if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งรายการเรียบร้อย รอ Admin ตรวจสอบครับ!'; }
+            if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งรายการเพื่อรอการตรวจสอบเรียบร้อย'; }
             form.reset(); 
             if (document.getElementById(`${prefix}-date`)) document.getElementById(`${prefix}-date`).valueAsDate = new Date();
             setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);

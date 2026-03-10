@@ -85,7 +85,7 @@
             
             <div class="card" style="border-left: 5px solid var(--info); background: #f0f9ff; border-color: #bae6fd;">
                 <h3 style="margin-top:0; font-size:16px; color: #0284c7;">🏦 บันทึกบัญชีรับเงินประจำตัว</h3>
-                <p style="font-size:13px; color:var(--text-muted); margin-top:-5px;">กรอกครั้งเดียว ระบบจะดึงข้อมูลไปใส่ในช่อง 'ข้อมูลบัญชีรับเงิน' ด้านล่างให้อัตโนมัติครับ</p>
+                <p style="font-size:13px; color:var(--text-muted); margin-top:-5px;">กรอกครั้งเดียว ระบบจะดึงข้อมูลไปใส่ในช่อง 'ข้อมูลบัญชีรับเงิน' ด้านล่างอัตโนมัติ</p>
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="my-bank-info" placeholder="เช่น กสิกร 123-4-56789-0 นายสมชาย" style="flex: 1;">
                     <button type="button" onclick="saveProfileBank()" class="btn btn-primary" id="save-bank-btn" style="background:var(--info); white-space: nowrap;">💾 บันทึก</button>
@@ -190,7 +190,7 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
                 
                 <div class="card" style="border-top: 4px solid var(--success);">
-                    <h3>💝 แจ้งยอดบริจาค</h3>
+                    <h3>💝 แจ้งยอดรับบริจาค</h3>
                     <p style="color: var(--text-muted); font-size: 13px; margin-top: -10px;">สำหรับบันทึกเงินบริจาคเข้าชุมนุม</p>
                     <form id="donation-form">
                         <div class="form-group">
@@ -220,7 +220,7 @@
                             <label>สลิป / หลักฐานการโอน</label>
                             <input type="file" id="don-slip" accept="image/png, image/jpeg, image/jpg" required>
                         </div>
-                        <button type="submit" class="btn btn-success" style="width: 100%;">ส่งยอดบริจาคให้ Admin</button>
+                        <button type="submit" class="btn btn-success" style="width: 100%;">ส่งยอดบริจาค</button>
                         <div id="don-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
                     </form>
                 </div>
@@ -252,7 +252,7 @@
                             <label>หลักฐาน (ถ้ามี)</label>
                             <input type="file" id="other-slip" accept="image/png, image/jpeg, image/jpg">
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">ส่งบันทึกให้ Admin</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">ส่งรายการ</button>
                         <div id="other-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
                     </form>
                 </div>
@@ -329,7 +329,7 @@
             const btn = document.getElementById('save-bank-btn');
             const info = document.getElementById('my-bank-info').value;
             
-            if(!info) return alert("กรุณากรอกข้อมูลบัญชีก่อนกดบันทึกครับ");
+            if(!info) return alert("กรุณากรอกข้อมูลบัญชีก่อนกดบันทึก");
             
             btn.disabled = true;
             btn.textContent = "กำลังบันทึก...";
