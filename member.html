@@ -46,6 +46,66 @@
         th { background-color: #f8fafc; padding: 12px; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-muted); font-weight: 600; }
         td { padding: 12px; border-bottom: 1px solid var(--border); }
         .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+
+        /* ==========================================
+           V.5.2: Responsive UI (สำหรับหน้าจอมือถือ)
+           ========================================== */
+        
+        /* สร้างคลาสสำหรับครอบตาราง ให้เอานิ้วปัดเลื่อนซ้ายขวาได้ */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* ให้เลื่อนบน iOS ได้ลื่นๆ */
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        /* สำหรับหน้าจอที่เล็กกว่า 768px (มือถือทั่วไป) */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px; /* ลดขอบหน้าจอลงให้มีพื้นที่แสดงผลมากขึ้น */
+                font-size: 14px; /* ปรับฟอนต์พื้นฐานให้เล็กลงนิดหน่อย */
+            }
+            
+            /* ปรับ Header ให้ยืดหยุ่นขึ้น */
+            header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid var(--border);
+            }
+            
+            header > div {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            /* ปรับกล่องเนื้อหาและฟอร์ม */
+            .container, .card, .widget {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            /* ปรับฟอร์มที่เคยอยู่บรรทัดเดียวกันให้ตกลงมาเรียงเป็นแนวตั้ง */
+            .form-row, .flex-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            /* ปรับปุ่มให้กว้างเต็มจอ เพื่อให้นิ้วจิ้มง่ายๆ */
+            .btn {
+                width: 100%;
+                padding: 12px;
+                margin-bottom: 5px;
+            }
+            
+            /* ซ่อนปุ่มหรือข้อความที่ยาวเกินความจำเป็นในมือถือ (ถ้ามีคลาส .hide-mobile) */
+            .hide-mobile {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -78,15 +138,19 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
                 <div class="card">
                     <h3 style="color: var(--text-muted); font-size: 16px;">💳 บัญชีธนาคาร (คงเหลือ)</h3>
-                    <table id="member-bank-table">
-                        <tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table id="member-bank-table">
+                            <tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="card">
                     <h3 style="color: var(--text-muted); font-size: 16px;">💰 งบประมาณกองทุน (คงเหลือ)</h3>
-                    <table id="member-fund-table">
-                        <tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table id="member-fund-table">
+                            <tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -96,8 +160,8 @@
             <div class="card" style="border-left: 5px solid var(--info); background: #f0f9ff; border-color: #bae6fd;">
                 <h3 style="margin-top:0; font-size:16px; color: #0284c7;">🏦 บันทึกบัญชีรับเงินประจำตัว</h3>
                 <p style="font-size:13px; color:var(--text-muted); margin-top:-5px;">กรอกครั้งเดียว ระบบจะดึงข้อมูลไปใส่ในช่อง 'ข้อมูลบัญชีรับเงิน' ด้านล่างอัตโนมัติ</p>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="my-bank-info" placeholder="เช่น กสิกร 123-4-56789-0 นายสมชาย" style="flex: 1;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="text" id="my-bank-info" placeholder="เช่น กสิกร 123-4-56789-0 นายสมชาย" style="flex: 1; min-width: 200px;">
                     <button type="button" onclick="saveProfileBank()" class="btn btn-primary" id="save-bank-btn" style="background:var(--info); white-space: nowrap;">💾 บันทึก</button>
                 </div>
             </div>
@@ -107,7 +171,7 @@
                 <form id="complex-clearance-form">
                     <input type="hidden" id="current-draft-id" value="">
                     
-                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px;">
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px;">
                         <div class="form-group">
                             <label>ประเภทคำขอ</label>
                             <select id="req-type" required>
@@ -127,12 +191,12 @@
                     </div>
 
                     <div style="margin: 25px 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
                             <label style="margin: 0;">🛒 รายการสินค้า</label>
                             <button type="button" id="add-item-btn" class="btn" style="background: #e2e8f0; color: #475569; padding: 6px 12px; font-size: 13px;">+ เพิ่มรายการ</button>
                         </div>
                         
-                        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px; overflow-x: auto;">
+                        <div class="table-responsive" style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
                             <table id="items-table" style="min-width: 500px;">
                                 <thead>
                                     <tr>
@@ -152,7 +216,7 @@
                         <div id="diff-summary" style="text-align: right; margin-top: 5px; color: var(--warning); font-weight: 600; display: none;"></div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
                         <div class="form-group">
                             <label>แนบรูปใบเสร็จรวม / Statement</label>
                             <input type="file" id="req-statement" accept="image/png, image/jpeg, image/jpg">
@@ -168,9 +232,9 @@
                         <input type="file" id="req-return-slip" accept="image/png, image/jpeg, image/jpg">
                     </div>
 
-                    <div style="display: flex; gap: 10px; margin-top: 25px;">
-                        <button type="button" id="save-draft-btn" class="btn btn-outline" style="flex: 1;">💾 บันทึกแบบร่าง</button>
-                        <button type="button" id="submit-req-btn" class="btn btn-primary" style="flex: 2;">🚀 ส่งคำขอ</button>
+                    <div style="display: flex; gap: 10px; margin-top: 25px; flex-wrap: wrap;">
+                        <button type="button" id="save-draft-btn" class="btn btn-outline" style="flex: 1; min-width: 120px;">💾 บันทึกแบบร่าง</button>
+                        <button type="button" id="submit-req-btn" class="btn btn-primary" style="flex: 2; min-width: 200px;">🚀 ส่งคำขอ</button>
                     </div>
                     <div id="req-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
                 </form>
@@ -178,7 +242,7 @@
 
             <div class="card">
                 <h3>ประวัติคำขอเบิกเงินของฉัน</h3>
-                <div style="overflow-x: auto;">
+                <div class="table-responsive">
                     <table id="member-history-table">
                         <thead>
                             <tr>
@@ -197,7 +261,7 @@
         </div>
 
         <div id="tab-record" class="tab-content">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
                 
                 <div class="card" style="border-top: 4px solid var(--success);">
                     <h3>💝 แจ้งยอดรับบริจาค</h3>
@@ -278,27 +342,23 @@
         // ==========================================
         // โค้ดสำหรับ V.3.1 (เวอร์ชันจำเลขอัตโนมัติถาวร)
         // ==========================================
-        let savedBankDetails = ""; // ตัวแปรจำเลขบัญชีไว้ในระบบ
+        let savedBankDetails = ""; 
 
-        // ควบคุม Tabs และเติมเลขบัญชีทุกครั้งที่สลับหน้า
         function switchTab(evt, tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             evt.currentTarget.classList.add('active');
 
-            // ถ้าเปิดมาหน้าขอเบิกเงิน ให้เติมเลขบัญชีทันที
             if (tabId === 'tab-clearance') {
                 applyBankDetails();
             }
         }
         
-        // ตั้งค่าวันที่ปัจจุบัน
         if(document.getElementById('don-date')) document.getElementById('don-date').valueAsDate = new Date();
         if(document.getElementById('other-date')) document.getElementById('other-date').valueAsDate = new Date();
 
         document.addEventListener('DOMContentLoaded', () => {
-            // หน่วงเวลาเล็กน้อยเพื่อให้ Supabase พร้อมทำงาน
             setTimeout(async () => {
                 try {
                     const { data: { user } } = await supabaseClient.auth.getUser();
@@ -307,34 +367,28 @@
                     const { data: profile } = await supabaseClient.from('profiles').select('bank_details').eq('id', user.id).single();
                     
                     if (profile && profile.bank_details) {
-                        savedBankDetails = profile.bank_details; // จำใส่สมองของเว็บไว้
-                        applyBankDetails(); // สั่งให้เติมลงช่อง
+                        savedBankDetails = profile.bank_details; 
+                        applyBankDetails(); 
                     }
                 } catch(e) { console.error("โหลดข้อมูลบัญชีส่วนตัวไม่สำเร็จ:", e); }
             }, 800); 
         });
 
-        // ฟังก์ชันสำหรับ "เติมข้อมูลลงช่อง" 
         function applyBankDetails() {
             if (!savedBankDetails) return;
             const myBankInfo = document.getElementById('my-bank-info');
             const reqBank = document.getElementById('req-bank');
             if(myBankInfo && !myBankInfo.value) myBankInfo.value = savedBankDetails;
-            
-            // สำคัญ: เติมลงในช่องขอเบิกเงิน (เฉพาะตอนที่ช่องว่าง เพื่อไม่ทับกรณี Member อยากแก้เลขชั่วคราว)
             if(reqBank && !reqBank.value) reqBank.value = savedBankDetails;
         }
 
-        // 🌟 จุดแก้ปัญหา: ดักจับเหตุการณ์ตอนที่ฟอร์ม "โดนล้างค่า" (หลังส่งข้อมูลสำเร็จ)
         const clearanceForm = document.getElementById('complex-clearance-form');
         if (clearanceForm) {
             clearanceForm.addEventListener('reset', () => {
-                // รอให้ฟอร์มเคลียร์ตัวเองเสร็จ 0.05 วินาที แล้วเอาเลขบัญชีที่จำไว้กลับมาใส่
                 setTimeout(applyBankDetails, 50);
             });
         }
 
-        // ฟังก์ชันเมื่อกดปุ่มบันทึกบัญชี (กล่องสีฟ้า)
         window.saveProfileBank = async function() {
             const btn = document.getElementById('save-bank-btn');
             const info = document.getElementById('my-bank-info').value;
@@ -351,8 +405,8 @@
                 if(error) throw error;
                 
                 alert("✅ บันทึกเลขบัญชีประจำตัวเรียบร้อยแล้ว!");
-                savedBankDetails = info; // อัปเดตความจำใหม่
-                document.getElementById('req-bank').value = info; // ยัดใส่ช่องให้เลยทันที
+                savedBankDetails = info; 
+                document.getElementById('req-bank').value = info; 
                 
             } catch (err) {
                 alert("เกิดข้อผิดพลาด: " + err.message);

@@ -1,5 +1,47 @@
-<script>
-        const myLiffId = "2009420030-HR5GocKw"; // 🔴 อย่าลืมใส่ LIFF ID นะครับ
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARSATU LIFF - เชื่อมต่อระบบ</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="js/supabase-client.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background-color: #f4f6f9; }
+        .profile-box { background: white; padding: 30px 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
+        img { border-radius: 50%; width: 100px; height: 100px; object-fit: cover; margin-bottom: 15px; border: 3px solid #00B900; }
+        .btn { background: #00B900; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px;}
+        .form-control { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;}
+    </style>
+</head>
+<body>
+    <div class="profile-box">
+        <h2 style="color: #00B900; margin-top: 0;">ARSATU x LINE</h2>
+        <div id="loading">กำลังเชื่อมต่อกับแอป LINE... ⏳</div>
+        
+        <div id="profile-info" style="display: none;">
+            <img id="pictureUrl" src="" alt="Profile">
+            <h3 id="displayName" style="margin: 10px 0;"></h3>
+            <p style="color: gray; font-size: 12px; margin-top: 0;" id="userId"></p>
+            <p style="color: #d97706; font-size: 14px; background: #fef3c7; padding: 10px; border-radius: 8px;">พบข้อมูล LINE ของคุณแล้ว!</p>
+            <button class="btn" id="show-login-btn">ผูกบัญชีค่าย (ARSATU)</button>
+        </div>
+
+        <div id="login-section" style="display: none; margin-top: 20px; text-align: left;">
+            <p style="font-size: 14px; color: gray;">กรุณาล็อกอินด้วยบัญชี ARSATU เพื่อยืนยันตัวตน</p>
+            <input type="email" id="email" class="form-control" placeholder="อีเมล (Email)">
+            <input type="password" id="password" class="form-control" placeholder="รหัสผ่าน (Password)">
+            <button class="btn" id="link-account-btn" style="background: var(--primary);">🔗 ยืนยันการผูกบัญชี</button>
+            <p id="error-msg" style="color: red; font-size: 13px; text-align: center;"></p>
+        </div>
+    </div>
+
+    <script>
+        // 🔴 อย่าลืมใส่ LIFF ID นะครับ
+        const myLiffId = "2009420030-HR5GocKw"; 
         let currentLineId = "";
 
         // 1. เช็กการล็อกอินค้าง
@@ -7,17 +49,11 @@
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 document.getElementById('loading').textContent = "กำลังพาท่านเข้าสู่ระบบ... 🚀";
-                
-                // 🌟 ฝังเศษขนมปังบอกว่ามาจาก LIFF
-                localStorage.setItem('loginSource', 'liff'); 
-                
+                localStorage.setItem('loginSource', 'liff'); // ฝังเศษขนมปัง
                 try {
                     const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
-                    if (profile && profile.role === 'admin') {
-                        window.location.replace('dashboard.html');
-                    } else {
-                        window.location.replace('member.html');
-                    }
+                    if (profile && profile.role === 'admin') window.location.replace('dashboard.html');
+                    else window.location.replace('member.html');
                 } catch (e) { window.location.replace('member.html'); }
                 return true;
             }
@@ -72,9 +108,7 @@
                 if (updateError && updateError.code !== '23505') throw updateError;
 
                 alert("🎉 ผูกบัญชีสำเร็จ! ยินดีต้อนรับเข้าสู่ระบบครับ");
-                
-                // 🌟 ฝังเศษขนมปังบอกว่ามาจาก LIFF
-                localStorage.setItem('loginSource', 'liff'); 
+                localStorage.setItem('loginSource', 'liff'); // ฝังเศษขนมปัง
 
                 const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).single();
                 if (profile && profile.role === 'admin') window.location.replace('dashboard.html');
@@ -86,3 +120,5 @@
             }
         });
     </script>
+</body>
+</html>

@@ -40,6 +40,66 @@
         th { background-color: #f8fafc; padding: 12px; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-muted); }
         td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
         .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+
+        /* ==========================================
+           V.5.2: Responsive UI (สำหรับหน้าจอมือถือ)
+           ========================================== */
+        
+        /* สร้างคลาสสำหรับครอบตาราง ให้เอานิ้วปัดเลื่อนซ้ายขวาได้ */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* ให้เลื่อนบน iOS ได้ลื่นๆ */
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        /* สำหรับหน้าจอที่เล็กกว่า 768px (มือถือทั่วไป) */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px; /* ลดขอบหน้าจอลงให้มีพื้นที่แสดงผลมากขึ้น */
+                font-size: 14px; /* ปรับฟอนต์พื้นฐานให้เล็กลงนิดหน่อย */
+            }
+            
+            /* ปรับ Header ให้ยืดหยุ่นขึ้น */
+            header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 15px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid var(--border);
+            }
+            
+            header > div {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            /* ปรับกล่องเนื้อหาและฟอร์ม */
+            .container, .card, .widget {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            /* ปรับฟอร์มที่เคยอยู่บรรทัดเดียวกันให้ตกลงมาเรียงเป็นแนวตั้ง */
+            .form-row, .flex-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            /* ปรับปุ่มให้กว้างเต็มจอ เพื่อให้นิ้วจิ้มง่ายๆ */
+            .btn {
+                width: 100%;
+                padding: 12px;
+                margin-bottom: 5px;
+            }
+            
+            /* ซ่อนปุ่มหรือข้อความที่ยาวเกินความจำเป็นในมือถือ (ถ้ามีคลาส .hide-mobile) */
+            .hide-mobile {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -73,11 +133,15 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
                 <div class="card" style="padding: 15px;">
                     <h3 style="font-size: 15px; color: var(--text-muted);">💳 บัญชีธนาคาร</h3>
-                    <table id="bank-table"><tbody><tr><td style="text-align: center;">กำลังโหลด...</td></tr></tbody></table>
+                    <div class="table-responsive">
+                        <table id="bank-table"><tbody><tr><td style="text-align: center;">กำลังโหลด...</td></tr></tbody></table>
+                    </div>
                 </div>
                 <div class="card" style="padding: 15px;">
                     <h3 style="font-size: 15px; color: var(--text-muted);">💰 งบกองทุน</h3>
-                    <table id="fund-table"><tbody><tr><td style="text-align: center;">กำลังโหลด...</td></tr></tbody></table>
+                    <div class="table-responsive">
+                        <table id="fund-table"><tbody><tr><td style="text-align: center;">กำลังโหลด...</td></tr></tbody></table>
+                    </div>
                 </div>
                 <div class="card" style="padding: 15px;">
                     <h3 style="font-size: 15px; color: var(--text-muted);">💝 ยอดรับบริจาค (รวม)</h3>
@@ -99,7 +163,7 @@
 
             <div class="card" style="border-left: 4px solid var(--success);">
                 <h3>📥 รายการแจ้งรับเงิน / บริจาค (รออนุมัติเข้าบัญชี)</h3>
-                <div style="overflow-x: auto;">
+                <div class="table-responsive">
                     <table id="pending-donations-table">
                         <thead><tr><th>วันที่แจ้ง</th><th>ประเภท</th><th>รายละเอียด</th><th>ยอดเงิน</th><th>หลักฐาน</th><th>จัดการนำเข้าบัญชี</th></tr></thead>
                         <tbody><tr><td colspan="6" style="text-align: center; color: gray;">กำลังโหลดข้อมูล...</td></tr></tbody>
@@ -109,7 +173,7 @@
 
             <div class="card" style="border-left: 4px solid var(--danger);">
                 <h3>📤 รายการขอเบิก / เคลียร์เงิน (รอตรวจสอบบิล)</h3>
-                <div style="overflow-x: auto;">
+                <div class="table-responsive">
                     <table id="requests-table">
                         <thead><tr><th>วันที่ส่ง</th><th>ผู้เบิก</th><th>ประเภท</th><th>รายการ</th><th>ยอดขอเบิก</th><th>สถานะ</th><th>ตรวจสอบ</th></tr></thead>
                         <tbody><tr><td colspan="7" style="text-align: center; color: gray;">กำลังโหลดข้อมูล...</td></tr></tbody>
@@ -121,7 +185,7 @@
         <div id="tab-ledger" class="tab-content">
             <div class="card" style="background: #fdfefe; border-top: 4px solid var(--info);">
                 <h3 style="margin-bottom: 5px;">✍️ บันทึกรายรับ-รายจ่าย โดยตรง (เหรัญญิกบันทึก)</h3>
-                <form id="direct-transaction-form" style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; align-items: end;">
+                <form id="direct-transaction-form" class="form-row" style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; align-items: end;">
                     <div><label>ประเภท</label><select id="direct-type" required><option value="income">📈 รายรับ</option><option value="expense">📉 รายจ่าย</option></select></div>
                     <div><label>รายละเอียด</label><input type="text" id="direct-desc" placeholder="เช่น ดอกเบี้ยรับ, ค่าธรรมเนียม" required></div>
                     <div><label>จำนวนเงิน (บาท)</label><input type="number" id="direct-amount" min="0" step="0.01" required></div>
@@ -133,11 +197,11 @@
             </div>
 
             <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <h3 style="margin: 0;">📖 สมุดบัญชีรายรับ-รายจ่าย (General Ledger)</h3>
                     <button class="btn btn-outline" onclick="exportLedgerToCSV()" style="border-color: var(--success); color: var(--success);">📥 Export Excel</button>
                 </div>
-                <div style="overflow-x: auto;">
+                <div class="table-responsive">
                     <table id="ledger-table">
                         <thead>
                             <tr>
@@ -159,7 +223,7 @@
         <div id="tab-history" class="tab-content">
             <div class="card">
                 <h3>🕒 ประวัติคำขอเบิกเงินทั้งหมด</h3>
-                <div style="overflow-x: auto;">
+                <div class="table-responsive">
                     <table id="clearance-history-table">
                         <thead>
                             <tr>
@@ -179,33 +243,37 @@
         </div>
 
         <div id="tab-settings" class="tab-content">
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-        <div class="card">
-            <h3>🏦 จัดการบัญชีธนาคาร</h3>
-            <table id="manage-bank-table" style="width:100%; font-size:13px;">
-                <thead><tr><th>ชื่อบัญชี</th><th>ยอดคงเหลือ</th><th>ลบ</th></tr></thead>
-                <tbody></tbody>
-            </table>
-            <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                <input type="text" id="add-bank-name" placeholder="ชื่อบัญชีใหม่" style="margin-bottom:5px;">
-                <input type="number" id="add-bank-bal" placeholder="ยอดเงินเริ่มต้น">
-                <button onclick="addBank()" class="btn btn-success" style="width:100%; margin-top:5px;">+ เพิ่มบัญชี</button>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div class="card">
+                    <h3>🏦 จัดการบัญชีธนาคาร</h3>
+                    <div class="table-responsive">
+                        <table id="manage-bank-table" style="width:100%; font-size:13px;">
+                            <thead><tr><th>ชื่อบัญชี</th><th>ยอดคงเหลือ</th><th>ลบ</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                        <input type="text" id="add-bank-name" placeholder="ชื่อบัญชีใหม่" style="margin-bottom:5px;">
+                        <input type="number" id="add-bank-bal" placeholder="ยอดเงินเริ่มต้น">
+                        <button onclick="addBank()" class="btn btn-success" style="width:100%; margin-top:5px;">+ เพิ่มบัญชี</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>💼 จัดการกองทุน</h3>
+                    <div class="table-responsive">
+                        <table id="manage-fund-table" style="width:100%; font-size:13px;">
+                            <thead><tr><th>ชื่อกองทุน</th><th>งบที่เหลือ</th><th>ลบ</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                        <input type="text" id="add-fund-name" placeholder="ชื่อกองทุนใหม่" style="margin-bottom:5px;">
+                        <input type="number" id="add-fund-bal" placeholder="งบเริ่มต้น">
+                        <button onclick="addFund()" class="btn btn-success" style="width:100%; margin-top:5px;">+ เพิ่มกองทุน</button>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="card">
-            <h3>💼 จัดการกองทุน</h3>
-            <table id="manage-fund-table" style="width:100%; font-size:13px;">
-                <thead><tr><th>ชื่อกองทุน</th><th>งบที่เหลือ</th><th>ลบ</th></tr></thead>
-                <tbody></tbody>
-            </table>
-            <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                <input type="text" id="add-fund-name" placeholder="ชื่อกองทุนใหม่" style="margin-bottom:5px;">
-                <input type="number" id="add-fund-bal" placeholder="งบเริ่มต้น">
-                <button onclick="addFund()" class="btn btn-success" style="width:100%; margin-top:5px;">+ เพิ่มกองทุน</button>
-            </div>
-        </div>
-    </div>
-</div>
 
     </main>
 
@@ -226,10 +294,12 @@
                 <div style="flex: 1.5; min-width: 350px;">
                     <div id="modal-items-section" style="margin-bottom: 15px; display: none;">
                         <label style="color: var(--text-main);">🛒 ตรวจสอบรายการ (แก้ไขยอดอนุมัติได้)</label>
-                        <table style="width: 100%; margin-top: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">
-                            <thead><tr><th style="padding: 8px;">รายการ</th><th style="text-align: center;">จำนวน</th><th style="text-align: right;">เบิกมา (฿)</th><th style="text-align: right; width: 90px;">อนุมัติ (฿)</th></tr></thead>
-                            <tbody id="modal-items-tbody"></tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table style="width: 100%; margin-top: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">
+                                <thead><tr><th style="padding: 8px;">รายการ</th><th style="text-align: center;">จำนวน</th><th style="text-align: right;">เบิกมา (฿)</th><th style="text-align: right; width: 90px;">อนุมัติ (฿)</th></tr></thead>
+                                <tbody id="modal-items-tbody"></tbody>
+                            </table>
+                        </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
                             <div id="modal-diff-warning" style="color: var(--danger); font-size: 13px; font-weight: bold; display: none;">⚠️ แก้ไขยอด!</div>
                             <div style="font-weight: bold; font-size: 15px; text-align: right; flex-grow: 1;">ยอดรวมอนุมัติ: <span id="modal-recalc-total" style="color: var(--success); font-size: 18px;">0</span> ฿</div>
@@ -239,9 +309,9 @@
                     <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
                     <p id="modal-amount-display" style="font-size: 16px; margin-top: 0;"></p>
                     
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <div style="flex: 1;"><label>เลือกบัญชี</label><select id="admin-bank-select" required></select></div>
-                        <div style="flex: 1;"><label>เลือกกองทุน</label><select id="admin-fund-select" required></select></div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;"><label>เลือกบัญชี</label><select id="admin-bank-select" required></select></div>
+                        <div style="flex: 1; min-width: 150px;"><label>เลือกกองทุน</label><select id="admin-fund-select" required></select></div>
                     </div>
 
                     <div id="admin-slip-section" class="form-group" style="margin-bottom: 15px;">
