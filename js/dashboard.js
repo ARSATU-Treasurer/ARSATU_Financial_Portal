@@ -717,13 +717,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังดึงข้อมูล...'; }
 
         try {
-            // 1. ดึงสมุดบัญชีทั้งหมด
+            // 1. ดึงสมุดบัญชี
             const { data: txs } = await supabaseClient.from('transactions')
                 .select(`*, profiles!transactions_created_by_fkey(full_name), bank_accounts(bank_name), funds(fund_name)`)
                 .eq('status', 'approved')
                 .order('created_at', { ascending: false });
 
-            // 2. ดึงรายการย่อย (บิลย่อย) ทั้งหมดมาเตรียมไว้
+            // 2. ดึงรายการย่อย
             const { data: cItems } = await supabaseClient.from('clearance_items').select('*');
 
             if (!txs || txs.length === 0) {
@@ -731,9 +731,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // ใส่ BOM ให้ Excel อ่านภาษาไทยได้
             let csvContent = "\uFEFF"; 
-            // หัวตาราง
             csvContent += "วันที่,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n";
 
             txs.forEach(tx => {
@@ -746,29 +744,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (tx.transaction_type === 'expense') exp = amt; else inc = amt;
                 const user = tx.profiles?.full_name || 'แอดมิน';
 
-                // 1) เพิ่มบรรทัด "หัวข้อหลัก"
+                // เพิ่มบรรทัดหลัก
                 csvContent += `"${date}","${desc}","${bankFund}","${inc}","${exp}","${user}"\n`;
 
-                // 2) ค้นหาว่ามีรายการย่อยไหม (โดยดึงรหัส 6 ตัวในวงเล็บมาเทียบ)
-                const match = desc.match(/\(([a-zA-Z0-9]{6})\)/);
+                // 🌟 แก้ไข: ใช้ Regex แบบยืดหยุ่น รองรับทั้ง "รหัส 91cba6" (แบบเก่า) และ "(91cba6)" (แบบใหม่)
+                const match = desc.match(/(?:รหัส |\()([a-zA-Z0-9]{6})/);
+                
                 if (match) {
                     const shortId = match[1];
-                    // กรองหารายการที่ clearance_id ตรงกับรหัสนี้
                     const items = cItems.filter(i => i.clearance_id && i.clearance_id.startsWith(shortId));
                     
                     if (items.length > 0) {
                         items.forEach(it => {
-                            // จัดรูปแบบรายการย่อย (นำราคาไปรวมในชื่อรายการ เพื่อไม่ให้ช่องตัวเลขถูก Sum ซ้ำ)
+                            // จัดรูปแบบรายการย่อย
                             const itemName = `   ↳ ${it.item_name} (จำนวน: ${it.quantity}) = ฿${parseFloat(it.total_price).toLocaleString()}`;
-                            
-                            // ปล่อยช่องวันที่, บัญชี, รายรับ-จ่าย ให้ว่างไว้ จะได้ดูเป็น Hierarchy
                             csvContent += `"","${itemName}","","","",""\n`;
                         });
                     }
                 }
             });
 
-            // สร้างไฟล์ดาวน์โหลด
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
