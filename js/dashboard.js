@@ -412,8 +412,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 5. โหลดสมุดบัญชีรายรับ-รายจ่าย (Ledger)
     // ==========================================
     window.loadLedger = async function() {
+        // 🌟 แก้ไข: ย้ายการโหลด Dropdown มาไว้บนสุด ป้องกันกรณีไม่มีประวัติแล้วโค้ดหยุดทำงาน
+        try {
+            const { data: bList } = await supabaseClient.from('bank_accounts').select('*');
+            const { data: fList } = await supabaseClient.from('funds').select('*');
+            if(document.getElementById('direct-bank')) document.getElementById('direct-bank').innerHTML = '<option value="">-- เลือกบัญชี --</option>' + (bList||[]).map(b=>`<option value="${b.id}">${b.bank_name}</option>`).join('');
+            if(document.getElementById('direct-fund')) document.getElementById('direct-fund').innerHTML = '<option value="">-- เลือกกองทุน --</option>' + (fList||[]).map(f=>`<option value="${f.id}">${f.fund_name}</option>`).join('');
+        } catch(e) { console.error("โหลด Dropdown ไม่สำเร็จ:", e); }
+
         const tbody = document.querySelector('#ledger-table tbody');
         if (!tbody) return;
+        
         try {
             const { data, error } = await supabaseClient.from('transactions')
                 .select(`*, profiles!transactions_created_by_fkey(full_name), bank_accounts(bank_name), funds(fund_name)`)
@@ -448,12 +457,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style="text-align:center;"><button onclick="viewTransaction('${tx.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:12px;">🔍 ดูสลิป</button></td>
                     </tr>`;
             }).join('');
-
-            // โหลดตัวเลือกสำหรับฟอร์มบันทึกโดยตรง
-            const { data: bList } = await supabaseClient.from('bank_accounts').select('*');
-            const { data: fList } = await supabaseClient.from('funds').select('*');
-            if(document.getElementById('direct-bank')) document.getElementById('direct-bank').innerHTML = '<option value="">-- บัญชี --</option>' + (bList||[]).map(b=>`<option value="${b.id}">${b.bank_name}</option>`).join('');
-            if(document.getElementById('direct-fund')) document.getElementById('direct-fund').innerHTML = '<option value="">-- กองทุน --</option>' + (fList||[]).map(f=>`<option value="${f.id}">${f.fund_name}</option>`).join('');
         } catch (e) { console.error(e); }
     };
 
