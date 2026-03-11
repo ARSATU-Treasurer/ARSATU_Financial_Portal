@@ -376,7 +376,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
                     
                     // ลงสมุดบัญชี
-                    const logDesc = window.currentClearance.status === 'pending_advance' ? `[โอนตั้งต้น] เบิกล่วงหน้ารหัส ${reqId.substring(0,6)}` : `[เคลียร์บิล] เบิกจ่ายรหัส ${reqId.substring(0,6)}`;
+                    // ดึงหัวข้อรายการมาจัดรูปแบบใหม่: [ประเภท] หัวข้อ (รหัส)
+                    const reqPurpose = window.currentClearance.purpose || '-';
+                    const shortId = reqId.substring(0,6);
+                    const logDesc = window.currentClearance.status === 'pending_advance' ? `[โอนตั้งต้น] ${reqPurpose} (${shortId})` : `[เคลียร์บิล] ${reqPurpose} (${shortId})`;
                     await supabaseClient.from('transactions').insert([{ 
                         transaction_date: new Date().toISOString().split('T')[0], 
                         transaction_type: actionDir === 'pay' ? 'expense' : 'income', 
