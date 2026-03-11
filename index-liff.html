@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARSATU LIFF - เชื่อมต่อระบบ</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px 20px; background-color: #f4f6f9; }
+        .profile-box { background: white; padding: 40px 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
+        img { border-radius: 50%; width: 120px; height: 120px; object-fit: cover; margin-bottom: 15px; border: 3px solid #00B900; }
+        .btn { background: #00B900; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%;}
+    </style>
+</head>
+<body>
+    <div class="profile-box">
+        <h2 style="color: #00B900; margin-top: 0;">ARSATU x LINE</h2>
+        
+        <div id="loading">กำลังเชื่อมต่อกับแอป LINE... ⏳</div>
+        
+        <div id="profile-info" style="display: none;">
+            <img id="pictureUrl" src="" alt="Profile">
+            <h3 id="displayName" style="margin: 10px 0;"></h3>
+            <p style="color: gray; font-size: 12px; margin-top: 0;" id="userId"></p>
+            <p style="color: #d97706; font-size: 14px; background: #fef3c7; padding: 10px; border-radius: 8px;">พบข้อมูล LINE ของคุณแล้ว!<br>พร้อมสำหรับการผูกบัญชีค่าย</p>
+            <button class="btn" onclick="alert('สเต็ปต่อไป: โชว์ฟอร์มให้กรอก Email/Password แบบ V.4.0 เพื่อจับคู่ฐานข้อมูล!')">เริ่มผูกบัญชีเลย!</button>
+        </div>
+    </div>
+
+    <script>
+        // 🔴 เอา LIFF ID จากสเต็ป 2 มาใส่ในเครื่องหมายคำพูดด้านล่าง
+        const myLiffId = "2009420030-HR5GocKw";
+
+        async function initializeLiff() {
+            try {
+                // 1. สั่งเปิดเครื่องยนต์ LIFF
+                await liff.init({ liffId: myLiffId });
+                
+                // 2. เช็กว่าเปิดจากในแอป LINE หรือล็อกอินไว้หรือยัง
+                if (liff.isLoggedIn()) {
+                    // 3. ดึงข้อมูลโปรไฟล์ LINE ออกมา
+                    const profile = await liff.getProfile();
+                    
+                    // ซ่อนข้อความโหลด และโชว์ข้อมูลโปรไฟล์
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('profile-info').style.display = 'block';
+                    
+                    document.getElementById('pictureUrl').src = profile.pictureUrl || 'https://via.placeholder.com/150';
+                    document.getElementById('displayName').textContent = "สวัสดีคุณ " + profile.displayName;
+                    document.getElementById('userId').textContent = "LINE ID: " + profile.userId;
+                } else {
+                    // ถ้าเข้าผ่านเบราว์เซอร์ปกติ แล้วยังไม่ได้ล็อกอิน ให้เด้งไปหน้าล็อกอินของ LINE
+                    liff.login();
+                }
+            } catch (err) {
+                console.error('LIFF Init Error:', err);
+                document.getElementById('loading').textContent = "เกิดข้อผิดพลาด: " + err.message;
+            }
+        }
+
+        initializeLiff();
+    </script>
+</body>
+</html>
