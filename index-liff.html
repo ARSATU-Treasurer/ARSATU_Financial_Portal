@@ -1,16 +1,16 @@
 <script>
-        const myLiffId = "2009420030-HR5GocKw"; // 🔴 อย่าลืมใส่ LIFF ID ของคุณ
+        const myLiffId = "2009420030-HR5GocKw"; // 🔴 อย่าลืมใส่ LIFF ID นะครับ
         let currentLineId = "";
 
-        // ==========================================
-        // 1. ฟังก์ชันเช็กว่าล็อกอินค้างไว้หรือยัง (Auto-Login)
-        // ==========================================
+        // 1. เช็กการล็อกอินค้าง
         async function checkExistingSession() {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            
             if (session) {
-                // ถ้ามีบัตรผ่านอยู่แล้ว เช็กตำแหน่ง (Role) แล้ววาร์ปเลย!
                 document.getElementById('loading').textContent = "กำลังพาท่านเข้าสู่ระบบ... 🚀";
+                
+                // 🌟 ฝังเศษขนมปังบอกว่ามาจาก LIFF
+                localStorage.setItem('loginSource', 'liff'); 
+                
                 try {
                     const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
                     if (profile && profile.role === 'admin') {
@@ -18,24 +18,17 @@
                     } else {
                         window.location.replace('member.html');
                     }
-                } catch (e) {
-                    window.location.replace('member.html'); // สำรองไว้เผื่อดึงข้อมูลพลาด
-                }
-                return true; // จบการทำงาน (ไม่ต้องเปิด LIFF Login)
+                } catch (e) { window.location.replace('member.html'); }
+                return true;
             }
-            return false; // ถ้าไม่มีบัตรผ่าน ค่อยไปสเต็ปที่ 2
+            return false;
         }
 
-        // ==========================================
-        // 2. ฟังก์ชันเปิดเครื่องยนต์ LIFF (สำหรับคนเข้าครั้งแรก)
-        // ==========================================
         async function initializeLiff() {
             try {
-                // เช็ก Session ก่อน ถ้าล็อกอินแล้ว ให้ข้ามบรรทัดล่างๆ ไปเลย
                 const isLoggedInSupabase = await checkExistingSession();
                 if (isLoggedInSupabase) return; 
 
-                // ถ้ายังไม่เคยล็อกอิน ค่อยรัน LIFF ดึงข้อมูล LINE
                 await liff.init({ liffId: myLiffId });
                 if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
@@ -55,12 +48,8 @@
             }
         }
 
-        // เริ่มต้นทำงานทันทีที่โหลดเว็บเสร็จ
         initializeLiff();
 
-        // ==========================================
-        // 3. จัดการปุ่มกดต่างๆ ในหน้าเว็บ
-        // ==========================================
         document.getElementById('show-login-btn').addEventListener('click', () => {
             document.getElementById('show-login-btn').style.display = 'none';
             document.getElementById('login-section').style.display = 'block';
@@ -73,39 +62,27 @@
             const btn = document.getElementById('link-account-btn');
 
             if (!email || !password) { msg.textContent = "กรุณากรอกอีเมลและรหัสผ่านครับ"; return; }
-            
-            btn.disabled = true;
-            btn.textContent = "กำลังตรวจสอบ...";
-            msg.textContent = "";
+            btn.disabled = true; btn.textContent = "กำลังตรวจสอบ..."; msg.textContent = "";
 
             try {
-                // 3.1 ล็อกอินเข้า Supabase
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
 
-                // 3.2 อัปเดต LINE ID
-                const { error: updateError } = await supabaseClient.from('profiles')
-                    .update({ line_user_id: currentLineId })
-                    .eq('id', data.user.id);
-                
-                if (updateError) {
-                    if (updateError.code === '23505') throw new Error("LINE นี้ถูกผูกกับบัญชีอื่นไปแล้วครับ");
-                    throw updateError;
-                }
+                const { error: updateError } = await supabaseClient.from('profiles').update({ line_user_id: currentLineId }).eq('id', data.user.id);
+                if (updateError && updateError.code !== '23505') throw updateError;
 
-                // 3.3 เช็ก Role เพื่อพาไปหน้าที่ถูกต้อง
                 alert("🎉 ผูกบัญชีสำเร็จ! ยินดีต้อนรับเข้าสู่ระบบครับ");
+                
+                // 🌟 ฝังเศษขนมปังบอกว่ามาจาก LIFF
+                localStorage.setItem('loginSource', 'liff'); 
+
                 const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).single();
-                if (profile && profile.role === 'admin') {
-                    window.location.replace('dashboard.html');
-                } else {
-                    window.location.replace('member.html');
-                }
+                if (profile && profile.role === 'admin') window.location.replace('dashboard.html');
+                else window.location.replace('member.html');
 
             } catch (err) {
                 msg.textContent = err.message === 'Invalid login credentials' ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : err.message;
-                btn.disabled = false;
-                btn.textContent = "🔗 ยืนยันการผูกบัญชี";
+                btn.disabled = false; btn.textContent = "🔗 ยืนยันการผูกบัญชี";
             }
         });
     </script>

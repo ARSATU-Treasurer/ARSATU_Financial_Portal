@@ -16,10 +16,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        await supabaseClient.auth.signOut();
-        window.location.replace('index.html');
-    });
+    // ออกจากระบบ V.5.1 (เช็ก LIFF)
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+            const source = localStorage.getItem('loginSource'); // อ่านเศษขนมปัง
+            localStorage.removeItem('loginSource'); // เคลียร์ความจำทิ้ง
+            
+            if (source === 'liff') {
+                window.location.replace('index-liff.html'); // กลับไปหน้า LINE
+            } else {
+                window.location.replace('index.html'); // กลับไปหน้าเว็บปกติ
+            }
+        });
+    }
 
     // ==========================================
     // 1. UI ควบคุมฟอร์มเบิกเงิน
