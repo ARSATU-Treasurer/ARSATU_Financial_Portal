@@ -710,37 +710,80 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 9. ฟังก์ชัน Export Excel
+    // 9. ฟังก์ชัน Export Excel (แบบแจกแจงรายการย่อย V.4.0)
     // ==========================================
-    window.exportLedgerToCSV = function() {
-        const table = document.getElementById("ledger-table");
-        if (!table) return;
-        let csvContent = "\uFEFF"; 
-        const rows = table.querySelectorAll("tr");
-        let hasData = false;
+    window.exportLedgerToCSV = async function() {
+        const btn = document.querySelector('button[onclick="exportLedgerToCSV()"]');
+        if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังดึงข้อมูล...'; }
 
-        rows.forEach((row) => {
-            let rowData = [];
-            const cols = row.querySelectorAll("td, th");
-            if (cols.length === 1 && cols[0].innerText.includes('กำลังโหลด')) return;
-            if (cols.length > 1 && row.parentNode.tagName === 'TBODY') hasData = true;
+        try {
+            // 1. ดึงสมุดบัญชีทั้งหมด
+            const { data: txs } = await supabaseClient.from('transactions')
+                .select(`*, profiles!transactions_created_by_fkey(full_name), bank_accounts(bank_name), funds(fund_name)`)
+                .eq('status', 'approved')
+                .order('created_at', { ascending: false });
 
-            cols.forEach((col) => {
-                let data = col.innerText.replace(/🔍 ดูสลิป/g, '').replace(/฿/g, '').replace(/,/g, '').replace(/\n/g, ' ').trim();
-                rowData.push('"' + data + '"');
+            // 2. ดึงรายการย่อย (บิลย่อย) ทั้งหมดมาเตรียมไว้
+            const { data: cItems } = await supabaseClient.from('clearance_items').select('*');
+
+            if (!txs || txs.length === 0) {
+                alert("ไม่มีข้อมูลในสมุดบัญชีสำหรับ Export ครับ");
+                return;
+            }
+
+            // ใส่ BOM ให้ Excel อ่านภาษาไทยได้
+            let csvContent = "\uFEFF"; 
+            // หัวตาราง
+            csvContent += "วันที่,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n";
+
+            txs.forEach(tx => {
+                const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
+                const desc = (tx.description || '-') + (tx.location ? ` (ส: ${tx.location})` : '');
+                const bankFund = `[บ] ${tx.bank_accounts?.bank_name||'-'} / [ก] ${tx.funds?.fund_name||'-'}`;
+                const amt = parseFloat(tx.amount) || 0;
+                let inc = '', exp = '';
+                
+                if (tx.transaction_type === 'expense') exp = amt; else inc = amt;
+                const user = tx.profiles?.full_name || 'แอดมิน';
+
+                // 1) เพิ่มบรรทัด "หัวข้อหลัก"
+                csvContent += `"${date}","${desc}","${bankFund}","${inc}","${exp}","${user}"\n`;
+
+                // 2) ค้นหาว่ามีรายการย่อยไหม (โดยดึงรหัส 6 ตัวในวงเล็บมาเทียบ)
+                const match = desc.match(/\(([a-zA-Z0-9]{6})\)/);
+                if (match) {
+                    const shortId = match[1];
+                    // กรองหารายการที่ clearance_id ตรงกับรหัสนี้
+                    const items = cItems.filter(i => i.clearance_id && i.clearance_id.startsWith(shortId));
+                    
+                    if (items.length > 0) {
+                        items.forEach(it => {
+                            // จัดรูปแบบรายการย่อย (นำราคาไปรวมในชื่อรายการ เพื่อไม่ให้ช่องตัวเลขถูก Sum ซ้ำ)
+                            const itemName = `   ↳ ${it.item_name} (จำนวน: ${it.quantity}) = ฿${parseFloat(it.total_price).toLocaleString()}`;
+                            
+                            // ปล่อยช่องวันที่, บัญชี, รายรับ-จ่าย ให้ว่างไว้ จะได้ดูเป็น Hierarchy
+                            csvContent += `"","${itemName}","","","",""\n`;
+                        });
+                    }
+                }
             });
-            csvContent += rowData.join(",") + "\r\n";
-        });
 
-        if (!hasData) { alert("ไม่มีข้อมูลในสมุดบัญชีสำหรับ Export"); return; }
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Ledger_Report_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+            // สร้างไฟล์ดาวน์โหลด
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `ARSATU_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (e) {
+            console.error(e);
+            alert("เกิดข้อผิดพลาดในการ Export Excel: " + e.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '📥 Export Excel'; }
+        }
     };
 
     // ==========================================
