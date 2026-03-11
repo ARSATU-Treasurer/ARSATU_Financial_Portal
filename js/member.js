@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupClearanceUI();
 
     // ==========================================
-    // 2. ส่งข้อมูลเบิก / เคลียร์บิล
+    // 2. ส่งข้อมูลเบิก / เคลียร์บิล (V.5.2 อัปเดตเรื่องฝ่าย)
     // ==========================================
     async function processRequest(isDraft) {
         const msg = document.getElementById('req-msg');
@@ -130,10 +130,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const purposeVal = document.getElementById('req-purpose')?.value || '';
         const reqAmtVal = parseFloat(document.getElementById('req-amount')?.value) || 0;
         const bankVal = document.getElementById('req-bank')?.value || '';
+        
+        // 🌟 ดึงค่า ฝ่าย/แผนก จาก Dropdown
+        const deptVal = document.getElementById('req-dept')?.value || '';
 
-        if (!isDraft && purposeVal.trim() === '') {
-            if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณากรอกหัวข้อการเบิก'; }
-            if (saveBtn) saveBtn.disabled = false; if (subBtn) subBtn.disabled = false; return;
+        // เช็กข้อมูลก่อนส่ง (ถ้าไม่ใช่ Save Draft ต้องกรอกให้ครบ)
+        if (!isDraft) {
+            if (purposeVal.trim() === '') {
+                if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณากรอกหัวข้อการเบิก'; }
+                if (saveBtn) saveBtn.disabled = false; if (subBtn) subBtn.disabled = false; return;
+            }
+            // 🌟 เช็กว่าเลือกฝ่ายหรือยัง (ถ้ากำลังขอเบิกครั้งแรก)
+            if (!window.isClearingAdvance && deptVal === '') {
+                if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณาเลือกฝ่าย/แผนก ด้วยครับ'; }
+                if (saveBtn) saveBtn.disabled = false; if (subBtn) subBtn.disabled = false; return;
+            }
         }
 
         const items = [];
@@ -153,13 +164,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // 🌟 ตั้งสถานะตาม Flow ใหม่
+        // 🌟 ตั้งสถานะตาม Flow
         let finalStatus = 'draft';
         if (!isDraft) {
             if (window.isClearingAdvance) {
-                finalStatus = 'pending_clearance'; // เคลียร์บิล -> ส่งให้แอดมินตรวจใบเสร็จ
+                finalStatus = 'pending_clearance'; 
             } else {
-                // ขอครั้งแรก: ถ้าเป็น Advance ให้รอแอดมินโอนตั้งต้น ถ้าเป็น Reimbursement ให้รอตรวจบิลเลย
                 finalStatus = (typeVal === 'advance') ? 'pending_advance' : 'pending_clearance';
             }
         }
@@ -172,45 +182,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (sFile) {
                 if(msg) msg.textContent = 'กำลังอัปโหลดใบเสร็จ...';
                 const path = `statement-${Date.now()}.${sFile.name.split('.').pop()}`;
-                await supabaseClient.storage.from('receipts').upload(path, sFile);
+                const { error: uploadError } = await supabaseClient.storage.from('receipts').upload(path, sFile);
+                if (uploadError) throw uploadError;
                 sUrl = supabaseClient.storage.from('receipts').getPublicUrl(path).data.publicUrl;
             }
             if (rFile) {
                 if(msg) msg.textContent = 'กำลังอัปโหลดสลิปคืนเงินทอน...';
                 const path = `return-${Date.now()}.${rFile.name.split('.').pop()}`;
-                await supabaseClient.storage.from('slips').upload(path, rFile);
+                const { error: uploadError } = await supabaseClient.storage.from('slips').upload(path, rFile);
+                if (uploadError) throw uploadError;
                 rUrl = supabaseClient.storage.from('slips').getPublicUrl(path).data.publicUrl;
             }
 
             if(msg) msg.textContent = 'กำลังบันทึกข้อมูล...';
             let clearanceId = draftId;
 
+            // ข้อมูลที่จะส่งเข้า Supabase ตาราง clearances
+            const clearanceData = { 
+                member_id: currentUser.id, 
+                request_type: typeVal, 
+                purpose: purposeVal, 
+                requested_amount: reqAmtVal, 
+                total_actual_amount: totalActual, 
+                status: finalStatus, 
+                member_bank_details: bankVal
+            };
+            
+            // 🌟 ส่งค่า Department (ฝ่าย) ไปด้วยเฉพาะตอนที่ไม่ใช่การเคลียร์บิลซ้ำ (เพราะการเคลียร์บิลเราล็อกช่องฝ่ายไว้)
+            if (!window.isClearingAdvance) {
+                clearanceData.department = deptVal || '-'; 
+            }
+
+            if (sUrl) clearanceData.statement_url = sUrl; 
+            if (rUrl) clearanceData.member_return_slip = rUrl;
+
             if (draftId) {
-                const upData = { 
-                    request_type: typeVal, 
-                    purpose: purposeVal, 
-                    requested_amount: reqAmtVal, 
-                    total_actual_amount: totalActual, 
-                    status: finalStatus, 
-                    member_bank_details: bankVal 
-                };
-                if (sUrl) upData.statement_url = sUrl; 
-                if (rUrl) upData.member_return_slip = rUrl;
-                
-                await supabaseClient.from('clearances').update(upData).eq('id', draftId);
+                // อัปเดตของเดิม
+                const { error: updateError } = await supabaseClient.from('clearances').update(clearanceData).eq('id', draftId);
+                if (updateError) throw updateError;
                 await supabaseClient.from('clearance_items').delete().eq('clearance_id', draftId);
             } else {
-                const { data } = await supabaseClient.from('clearances').insert([{ 
-                    member_id: currentUser.id, 
-                    request_type: typeVal, 
-                    purpose: purposeVal, 
-                    requested_amount: reqAmtVal, 
-                    total_actual_amount: totalActual, 
-                    status: finalStatus, 
-                    member_bank_details: bankVal, 
-                    statement_url: sUrl, 
-                    member_return_slip: rUrl 
-                }]).select();
+                // สร้างใหม่
+                const { data, error: insertError } = await supabaseClient.from('clearances').insert([clearanceData]).select();
+                if (insertError) throw insertError;
                 clearanceId = data[0].id;
             }
 
@@ -221,7 +235,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     quantity: i.quantity, 
                     total_price: i.total_price 
                 }));
-                await supabaseClient.from('clearance_items').insert(itemsToInsert);
+                const { error: itemsError } = await supabaseClient.from('clearance_items').insert(itemsToInsert);
+                if (itemsError) throw itemsError;
             }
 
             if (msg) { 
@@ -240,6 +255,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('req-type').disabled = false;
             document.getElementById('req-purpose').disabled = false;
             document.getElementById('req-amount').disabled = false;
+            
+            // 🌟 ปลดล็อกช่องฝ่ายให้กลับมาเลือกได้
+            const deptSelect = document.getElementById('req-dept');
+            if(deptSelect) deptSelect.disabled = false;
+
             document.getElementById('submit-req-btn').innerHTML = '🚀 ส่งคำขอ';
             window.isClearingAdvance = false;
 
@@ -265,12 +285,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ==========================================
-    // 3. 🌟 ฟังก์ชันใหม่: ดึงยอดเบิกล่วงหน้ามาเคลียร์บิล
+    // 3. ฟังก์ชันดึงยอดเบิกล่วงหน้ามาเคลียร์บิล
     // ==========================================
     window.clearAdvance = async function(id) {
         window.isClearingAdvance = true;
         
-        // สลับไปแท็บเบิกเงิน
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById('tab-clearance').classList.add('active');
@@ -286,7 +305,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             document.getElementById('current-draft-id').value = c.id;
             
-            // ล็อกข้อมูลห้ามแก้ (บังคับให้เป็นเคลียร์ของบิลเดิม)
             const typeSelect = document.getElementById('req-type');
             typeSelect.value = 'advance'; 
             typeSelect.disabled = true;
@@ -299,6 +317,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const amtInput = document.getElementById('req-amount');
             amtInput.value = c.requested_amount; 
             amtInput.disabled = true;
+
+            // 🌟 ซ่อนหรือล็อก Dropdown ฝ่ายไว้ตอนกำลังเคลียร์บิล
+            const deptSelect = document.getElementById('req-dept');
+            if (deptSelect) {
+                // พยายามเลือกค่าเดิม (ถ้ามี) แล้วล็อกไว้
+                if (c.department) deptSelect.value = c.department;
+                deptSelect.disabled = true; 
+            }
 
             document.getElementById('submit-req-btn').innerHTML = '🚀 ส่งบิลเคลียร์เงิน';
 
@@ -333,7 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ==========================================
-    // 4. แจ้งยอดบริจาค & รายรับ
+    // 4. แจ้งยอดบริจาค & รายรับ (V.5.2 ล็อกฝ่ายเป็น 'ส่วนกลาง')
     // ==========================================
     async function handleTransactionForm(formId, prefix) {
         const form = document.getElementById(formId);
@@ -358,11 +384,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let slipUrl = null;
                 if (slipFile) {
                     const path = `trans-${Date.now()}.${slipFile.name.split('.').pop()}`;
-                    await supabaseClient.storage.from('slips').upload(path, slipFile);
+                    const { error: uploadError } = await supabaseClient.storage.from('slips').upload(path, slipFile);
+                    if (uploadError) throw uploadError;
                     slipUrl = supabaseClient.storage.from('slips').getPublicUrl(path).data.publicUrl;
                 }
                 
-                await supabaseClient.from('transactions').insert([{ 
+                const { error: insertError } = await supabaseClient.from('transactions').insert([{ 
                     transaction_date: date, 
                     transaction_type: type, 
                     description: desc, 
@@ -370,8 +397,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     amount: parseFloat(amount), 
                     slip_url: slipUrl, 
                     status: 'pending', 
+                    // 🌟 แจ้งบริจาค/รายรับอื่นๆ ให้เข้าฝ่าย "ส่วนกลาง" ไปก่อน
+                    department: 'ส่วนกลาง', 
                     created_by: currentUser.id 
                 }]);
+                if (insertError) throw insertError;
                 
                 if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งรายการเพื่อตรวจสอบเรียบร้อย'; }
                 form.reset(); 
@@ -394,7 +424,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadData = async function() {
         if (!currentUser) return; 
         
-        // โหลดธนาคาร
         try {
             const { data: banks } = await supabaseClient.from('bank_accounts').select('bank_name, balance');
             const bBody = document.querySelector('#member-bank-table tbody');
@@ -405,7 +434,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch(e) { console.error(e); }
 
-        // โหลดกองทุน
         try {
             const { data: funds } = await supabaseClient.from('funds').select('fund_name, remaining_budget');
             const fBody = document.querySelector('#member-fund-table tbody');
@@ -416,7 +444,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch(e) { console.error(e); }
 
-        // โหลดประวัติการเบิกเงิน
         try {
             const tbody = document.querySelector('#member-history-table tbody');
             if (!tbody) return;
@@ -440,20 +467,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">📝 ร่าง</span>'; 
                     btn = `<button type="button" onclick="clearAdvance('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:12px;">✏️ แก้ไข</button>`;
                 }
-                else if (req.status === 'pending_advance') { 
-                    stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอโอนตั้งต้น</span>'; 
-                }
-                else if (req.status === 'pending_clearance') { 
-                    stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจบิล</span>'; 
-                }
+                else if (req.status === 'pending_advance') { stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอโอนตั้งต้น</span>'; }
+                else if (req.status === 'pending_clearance') { stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจบิล</span>'; }
                 else if (req.status === 'advance_transferred') {
-                    // 🌟 เพิ่มปุ่มเคลียร์บิลให้ Member
                     stat = '<span class="status-badge" style="background:#dbeafe; color:#2563eb;">💸 ได้รับเงินแล้ว (รอเคลียร์)</span>';
                     btn = `<button type="button" onclick="clearAdvance('${req.id}')" class="btn btn-primary" style="padding:4px 8px; font-size:12px;">📝 เคลียร์บิล</button>`;
                 }
-                else if (req.status === 'cleared') { 
-                    stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>'; 
-                }
+                else if (req.status === 'cleared') { stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>'; }
                 
                 return `
                     <tr>
@@ -477,11 +497,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadUserProfileAndNoti = async function() {
         if (!currentUser) return;
         try {
-            // ดึงชื่อและตำแหน่ง
             const { data: profile } = await supabaseClient.from('profiles').select('full_name, role').eq('id', currentUser.id).single();
             if (profile) {
                 document.getElementById('current-user-name').textContent = profile.full_name || 'Member';
-                // ถ้าเป็น Admin ให้โชว์ปุ่มสลับกลับไปหน้า Dashboard
                 if (profile.role === 'admin') {
                     document.getElementById('switch-role-btn').style.display = 'block';
                     document.getElementById('current-user-role').textContent = 'ผู้ดูแลระบบ (โหมดจำลอง)';
@@ -489,7 +507,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            // นับจำนวนบิลที่รอเคลียร์ (Advance Transferred)
             const { count } = await supabaseClient.from('clearances').select('*', { count: 'exact', head: true }).eq('member_id', currentUser.id).eq('status', 'advance_transferred');
             const badge = document.getElementById('noti-badge');
             if (count > 0 && badge) {
@@ -502,6 +519,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch(e) { console.error("Noti Error:", e); }
     };
-    // เรียกใช้ฟังก์ชันนี้ทันที
+    
     window.loadUserProfileAndNoti();
 });
