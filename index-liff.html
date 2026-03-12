@@ -97,7 +97,7 @@
             const msg = document.getElementById('error-msg');
             const btn = document.getElementById('link-account-btn');
 
-            if (!email || !password) { msg.textContent = "กรุณากรอกอีเมลและรหัสผ่านครับ"; return; }
+            if (!email || !password) { msg.textContent = "กรุณากรอกอีเมลและรหัสผ่าน"; return; }
             btn.disabled = true; btn.textContent = "กำลังตรวจสอบ..."; msg.textContent = "";
 
             try {
@@ -107,7 +107,7 @@
                 const { error: updateError } = await supabaseClient.from('profiles').update({ line_user_id: currentLineId }).eq('id', data.user.id);
                 if (updateError && updateError.code !== '23505') throw updateError;
 
-                alert("🎉 ผูกบัญชีสำเร็จ! ยินดีต้อนรับเข้าสู่ระบบครับ");
+                alert("🎉 ผูกบัญชีสำเร็จ! ยินดีต้อนรับเข้าสู่ระบบ");
                 localStorage.setItem('loginSource', 'liff'); // ฝังเศษขนมปัง
 
                 const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).single();

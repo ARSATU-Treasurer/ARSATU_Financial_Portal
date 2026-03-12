@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { error: tErr } = await supabaseClient.from('transactions').update({ status: 'approved', bank_account_id: bankId, fund_id: fundId }).eq('id', id);
                 if (tErr) throw tErr;
                 
-                alert("✅ อนุมัติเรียบร้อย!"); 
+                alert("✅ อนุมัติเรียบร้อย"); 
                 window.loadAllAdminData();
             } catch (err) { alert("เกิดข้อผิดพลาด: " + err.message); }
         }
@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }]);
                 if (logErr) throw logErr;
 
-                msg.innerHTML = '<span style="color:var(--success);">✅ บันทึกสำเร็จ!</span>';
+                msg.innerHTML = '<span style="color:var(--success);">✅ บันทึกสำเร็จ</span>';
                 setTimeout(() => {
                     window.closeEditModal();
                     window.loadPendingRequests(); 
@@ -585,7 +585,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { error: clearUpErr } = await supabaseClient.from('clearances').update(upData).eq('id', reqId);
                 if (clearUpErr) throw clearUpErr;
 
-                if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ดำเนินการสำเร็จ!'; }
+                if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ดำเนินการสำเร็จ'; }
                 setTimeout(() => { window.closeModal(); window.loadAllAdminData(); }, 2000);
                 
             } catch (err) { 
@@ -697,7 +697,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }]);
                 if (tDirErr) throw tDirErr;
 
-                if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ บันทึกลงสมุดบัญชีเรียบร้อย!'; }
+                if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ บันทึกลงสมุดบัญชีแล้ว'; }
                 directForm.reset(); 
                 window.loadAllAdminData();
                 setTimeout(()=> { if(msg) msg.textContent = ''; }, 3000);
@@ -939,7 +939,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { data: cItems } = await supabaseClient.from('clearance_items').select('*');
 
             if (!txs || txs.length === 0) {
-                alert(`ไม่มีข้อมูลในสมุดบัญชี ${selectedDept ? 'สำหรับฝ่ายนี้ ' : ''}สำหรับ Export ครับ`);
+                alert(`ไม่มีข้อมูลในสมุดบัญชี ${selectedDept ? 'สำหรับฝ่ายนี้ ' : ''}สำหรับ Export`);
                 return;
             }
 
@@ -1011,10 +1011,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (totalPending > 0) {
                     badge.textContent = totalPending;
                     badge.style.display = 'inline-block';
-                    document.getElementById('noti-bell').onclick = () => alert(`🚨 มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการครับ!`);
+                    document.getElementById('noti-bell').onclick = () => alert(`🚨 มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการ`);
                 } else {
                     badge.style.display = 'none';
-                    document.getElementById('noti-bell').onclick = () => alert(`✅ ไม่มีรายการค้างตรวจสอบครับ`);
+                    document.getElementById('noti-bell').onclick = () => alert(`✅ ไม่มีรายการค้างตรวจสอบ`);
                 }
             }
         } catch(e) { console.error("Profile/Noti Error:", e); }

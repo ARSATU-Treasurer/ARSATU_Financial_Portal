@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // ตรวจสอบนามสกุลไฟล์
                 if (!file.name.endsWith('.csv')) {
-                    alert('กรุณาอัปโหลดไฟล์นามสกุล .csv เท่านั้นครับ');
+                    alert('กรุณาอัปโหลดไฟล์นามสกุล .csv เท่านั้น');
                     csvUpload.value = '';
                     return;
                 }
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             window.calculateTotal();
             if(addedCount > 0) {
-                alert(`✅ นำเข้ารายการสำเร็จ ${addedCount} รายการ!\nกรุณาตรวจสอบความถูกต้องและยอดเงินรวมอีกครั้งครับ`);
+                alert(`✅ นำเข้ารายการสำเร็จ ${addedCount} รายการ\nกรุณาตรวจสอบความถูกต้องและยอดเงินรวมอีกครั้ง`);
                 if (importSection) importSection.style.display = 'none'; // พับหน้าจอเก็บ
             } else {
                 alert('❌ ไม่พบข้อมูล หรือรูปแบบไฟล์ CSV ไม่ถูกต้อง');
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             // 🌟 เช็กว่าเลือกฝ่ายหรือยัง (ถ้ากำลังขอเบิกครั้งแรก)
             if (!window.isClearingAdvance && deptVal === '') {
-                if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณาเลือกฝ่าย/แผนก ด้วยครับ'; }
+                if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณาเลือกฝ่าย'; }
                 if (saveBtn) saveBtn.disabled = false; if (subBtn) subBtn.disabled = false; return;
             }
         }
@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (msg) { 
                 msg.style.color = 'var(--success)'; 
-                msg.textContent = isDraft ? '💾 บันทึกแบบร่างเรียบร้อย!' : '✅ ส่งคำขอเรียบร้อย!'; 
+                msg.textContent = isDraft ? '💾 บันทึกแบบร่างเรียบร้อย' : '✅ ส่งคำขอเรียบร้อย'; 
             }
             
             // ล้างฟอร์ม
@@ -630,10 +630,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (count > 0 && badge) {
                 badge.textContent = count;
                 badge.style.display = 'inline-block';
-                document.getElementById('noti-bell').onclick = () => alert(`🚨 คุณมีเงินเบิกล่วงหน้าที่ต้อง "เคลียร์บิล" จำนวน ${count} รายการครับ!`);
+                document.getElementById('noti-bell').onclick = () => alert(`🚨 คุณมีเงินเบิกล่วงหน้าที่ต้อง "เคลียร์บิล" จำนวน ${count} รายการ`);
             } else if (badge) {
                 badge.style.display = 'none';
-                document.getElementById('noti-bell').onclick = () => alert(`✅ คุณไม่มีบิลค้างเคลียร์ครับ เยี่ยมมาก!`);
+                document.getElementById('noti-bell').onclick = () => alert(`✅ คุณไม่มีบิลค้างเคลียร์`);
             }
         } catch(e) { console.error("Noti Error:", e); }
     };
