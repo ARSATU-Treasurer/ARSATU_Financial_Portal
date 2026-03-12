@@ -14,19 +14,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // ออกจากระบบ V.5.1 (เช็ก LIFF)
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             await supabaseClient.auth.signOut();
-            const source = localStorage.getItem('loginSource'); // อ่านเศษขนมปัง
-            localStorage.removeItem('loginSource'); // เคลียร์ความจำทิ้ง
-            
-            if (source === 'liff') {
-                window.location.replace('index-liff.html'); // กลับไปหน้า LINE
-            } else {
-                window.location.replace('index.html'); // กลับไปหน้าเว็บปกติ
-            }
+            const source = localStorage.getItem('loginSource');
+            localStorage.removeItem('loginSource');
+            if (source === 'liff') window.location.replace('index-liff.html');
+            else window.location.replace('index.html');
         });
     }
 
@@ -73,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 2. โหลดรายการรออนุมัติรับเงิน (บริจาค/รายรับ)
+    // 2. โหลดรายการรออนุมัติรับเงิน
     // ==========================================
     window.loadPendingDonations = async function() {
         const tbody = document.querySelector('#pending-donations-table tbody');
@@ -81,11 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const { data, error } = await supabaseClient.from('transactions').select(`*, profiles!transactions_created_by_fkey(full_name)`).eq('status', 'pending').order('created_at', { ascending: false });
             if (error) throw error;
-            
-            if (!data || data.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">🎉 ไม่มีรายการค้างตรวจสอบ</td></tr>`; 
-                return; 
-            }
+            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">🎉 ไม่มีรายการค้างตรวจสอบ</td></tr>`; return; }
 
             const { data: banks } = await supabaseClient.from('bank_accounts').select('*');
             const bankOpts = banks ? banks.map(b => `<option value="${b.id}">${b.bank_name}</option>`).join('') : '';
@@ -134,14 +125,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', bankId).single();
                 let nBal = parseFloat(bData.balance); 
                 nBal += (type === 'expense' ? -parseFloat(amount) : parseFloat(amount));
-                await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
+                const { error: bErr } = await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
+                if (bErr) throw bErr;
 
                 const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', fundId).single();
                 let nFun = parseFloat(fData.remaining_budget); 
                 nFun += (type === 'expense' ? -parseFloat(amount) : parseFloat(amount));
-                await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
+                const { error: fErr } = await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
+                if (fErr) throw fErr;
                 
-                await supabaseClient.from('transactions').update({ status: 'approved', bank_account_id: bankId, fund_id: fundId }).eq('id', id);
+                const { error: tErr } = await supabaseClient.from('transactions').update({ status: 'approved', bank_account_id: bankId, fund_id: fundId }).eq('id', id);
+                if (tErr) throw tErr;
+                
                 alert("✅ อนุมัติเรียบร้อย!"); 
                 window.loadAllAdminData();
             } catch (err) { alert("เกิดข้อผิดพลาด: " + err.message); }
@@ -149,7 +144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 3. โหลดคำขอรอตรวจสอบ (แยกโอนเงินล่วงหน้า / ตรวจบิล)
+    // 3. โหลดคำขอรอตรวจสอบ (เพิ่มปุ่มแก้ไข V.4.0)
     // ==========================================
     window.loadPendingRequests = async function() {
         const tbody = document.querySelector('#requests-table tbody');
@@ -168,20 +163,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const amt = req.status === 'pending_advance' ? req.requested_amount : req.total_actual_amount;
                 let typeL = '', statL = '', btnL = '';
                 
-                // ถ้ารอโอนตั้งต้น
                 if (req.status === 'pending_advance') { 
                     typeL = '<span style="color:var(--info); font-weight:bold;">ขอเบิกล่วงหน้า</span>'; 
                     statL = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">รอโอนตั้งต้น</span>'; 
-                    btnL = `<button onclick="openModal('${req.id}')" class="btn btn-warning" style="padding:6px 12px; font-size:12px;">💸 โอนเงิน</button>`;
+                    btnL = `<button onclick="openModal('${req.id}')" class="btn btn-warning" style="padding:6px 12px; font-size:12px; margin-bottom:5px;">💸 โอนเงิน</button>`;
                 } 
-                // ถ้ารอเคลียร์บิล (หรือสำรองจ่ายปกติ)
                 else { 
                     typeL = req.request_type === 'advance' ? '<span style="color:var(--info); font-weight:bold;">เคลียร์บิล (ล่วงหน้า)</span>' : '<span style="color:var(--primary); font-weight:bold;">สำรองจ่าย (เบิกคืน)</span>'; 
                     statL = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">รอตรวจบิล</span>'; 
-                    btnL = `<button onclick="openModal('${req.id}')" class="btn btn-info" style="padding:6px 12px; font-size:12px;">🔍 ตรวจบิล</button>`;
+                    btnL = `<button onclick="openModal('${req.id}')" class="btn btn-info" style="padding:6px 12px; font-size:12px; margin-bottom:5px;">🔍 ตรวจบิล</button>`;
                 }
                 
-                // 🌟 V.5.2: เพิ่มป้ายชื่อฝ่าย
+                const editBtn = `<button onclick="openEditModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--warning); color:var(--warning); width:100%;">✏️ แก้ไข</button>`;
                 const deptBadge = req.department && req.department !== '-' ? `<br><small style="color:var(--primary); background:#e0e7ff; padding:2px 6px; border-radius:4px; font-size:11px;">📂 ${req.department}</small>` : '';
 
                 return `
@@ -192,14 +185,176 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td>${req.purpose}</td>
                         <td style="font-weight:bold;">฿${amt.toLocaleString()}</td>
                         <td>${statL}</td>
-                        <td>${btnL}</td>
+                        <td>
+                            <div style="display:flex; flex-direction:column;">
+                                ${btnL}
+                                ${editBtn}
+                            </div>
+                        </td>
                     </tr>`;
             }).join('');
         } catch (e) { console.error(e); }
     };
 
     // ==========================================
-    // 4. ระบบ Modal อนุมัติแบบแยก 2 สเต็ป (Advance Flow)
+    // 🌟 V.4.0: ระบบแก้ไขข้อมูล (Edit Modal)
+    // ==========================================
+    window.openEditModal = async function(id) {
+        document.getElementById('edit-req-modal').style.display = 'flex';
+        document.getElementById('edit-msg').textContent = 'กำลังโหลดข้อมูล...';
+        document.getElementById('edit-items-tbody').innerHTML = '';
+        
+        try {
+            const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
+            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
+
+            document.getElementById('edit-req-id').value = c.id;
+            document.getElementById('edit-req-type').value = c.request_type;
+            
+            const deptSelect = document.getElementById('edit-req-dept');
+            if (c.department && c.department !== '-') deptSelect.value = c.department;
+            
+            document.getElementById('edit-req-purpose').value = c.purpose;
+            document.getElementById('edit-req-reason').value = ''; 
+            
+            const advSec = document.getElementById('edit-advance-section');
+            const amtInput = document.getElementById('edit-req-amount');
+            
+            if (c.request_type === 'advance' && c.status === 'pending_advance') {
+                advSec.style.display = 'block';
+                amtInput.value = c.requested_amount;
+                document.getElementById('edit-items-section').style.display = 'none';
+            } else {
+                advSec.style.display = 'none';
+                document.getElementById('edit-items-section').style.display = 'block';
+                
+                const tbody = document.getElementById('edit-items-tbody');
+                if (items && items.length > 0) {
+                    items.forEach(it => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><input type="hidden" class="edit-item-id" value="${it.id}"><input type="text" class="edit-item-name" value="${it.item_name}" style="width:100%; padding:5px;" required></td>
+                            <td><input type="number" class="edit-item-qty" min="1" value="${it.quantity}" style="width:100%; padding:5px; text-align:center;" required></td>
+                            <td><input type="number" class="edit-item-price" min="0" step="0.01" value="${it.total_price}" style="width:100%; padding:5px; text-align:right;" required></td>
+                            <td style="text-align: center;"><button type="button" class="btn btn-danger edit-del-btn" style="padding: 4px 8px; font-size: 11px;">ลบ</button></td>
+                        `;
+                        tbody.appendChild(tr);
+                        tr.querySelectorAll('input').forEach(i => i.addEventListener('input', window.calculateEditTotal));
+                        tr.querySelector('.edit-del-btn')?.addEventListener('click', () => { tr.remove(); window.calculateEditTotal(); });
+                    });
+                }
+            }
+            window.calculateEditTotal();
+            document.getElementById('edit-msg').textContent = '';
+        } catch (err) {
+            document.getElementById('edit-msg').innerHTML = `<span style="color:red;">โหลดข้อมูลไม่สำเร็จ: ${err.message}</span>`;
+        }
+    };
+
+    window.closeEditModal = function() {
+        document.getElementById('edit-req-modal').style.display = 'none';
+    };
+
+    window.calculateEditTotal = function() {
+        let total = 0;
+        document.querySelectorAll('.edit-item-price').forEach(inp => {
+            total += parseFloat(inp.value) || 0;
+        });
+        document.getElementById('edit-total-actual').textContent = total.toLocaleString();
+    };
+
+    document.getElementById('edit-add-item-btn')?.addEventListener('click', () => {
+        const tbody = document.getElementById('edit-items-tbody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="hidden" class="edit-item-id" value="new"><input type="text" class="edit-item-name" placeholder="ชื่อรายการ" style="width:100%; padding:5px;" required></td>
+            <td><input type="number" class="edit-item-qty" min="1" value="1" style="width:100%; padding:5px; text-align:center;" required></td>
+            <td><input type="number" class="edit-item-price" min="0" step="0.01" value="0" style="width:100%; padding:5px; text-align:right;" required></td>
+            <td style="text-align: center;"><button type="button" class="btn btn-danger edit-del-btn" style="padding: 4px 8px; font-size: 11px;">ลบ</button></td>
+        `;
+        tbody.appendChild(tr);
+        tr.querySelectorAll('input').forEach(i => i.addEventListener('input', window.calculateEditTotal));
+        tr.querySelector('.edit-del-btn')?.addEventListener('click', () => { tr.remove(); window.calculateEditTotal(); });
+    });
+
+    const editForm = document.getElementById('edit-req-form');
+    if (editForm) {
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('save-edit-btn');
+            const msg = document.getElementById('edit-msg');
+            btn.disabled = true;
+            msg.innerHTML = '<span style="color:var(--info);">กำลังบันทึกข้อมูลและประวัติ...</span>';
+
+            const reqId = document.getElementById('edit-req-id').value;
+            const reqType = document.getElementById('edit-req-type').value;
+            const dept = document.getElementById('edit-req-dept').value;
+            const purpose = document.getElementById('edit-req-purpose').value;
+            const reason = document.getElementById('edit-req-reason').value;
+
+            try {
+                const { data: oldData } = await supabaseClient.from('clearances').select('*').eq('id', reqId).single();
+
+                let updatePayload = { department: dept, purpose: purpose };
+                let logDetails = `แก้ไขฝ่ายเป็น ${dept}, หัวข้อเป็น ${purpose}`;
+
+                if (reqType === 'advance' && oldData.status === 'pending_advance') {
+                    const newAmt = parseFloat(document.getElementById('edit-req-amount').value);
+                    updatePayload.requested_amount = newAmt;
+                    logDetails += `, แก้ไขยอดเงินล่วงหน้าจาก ${oldData.requested_amount} เป็น ${newAmt}`;
+                } else {
+                    let newTotalActual = 0;
+                    const currentItems = [];
+                    document.querySelectorAll('#edit-items-tbody tr').forEach(tr => {
+                        const name = tr.querySelector('.edit-item-name').value;
+                        const qty = parseFloat(tr.querySelector('.edit-item-qty').value);
+                        const price = parseFloat(tr.querySelector('.edit-item-price').value);
+                        if (name) {
+                            newTotalActual += price;
+                            currentItems.push({ clearance_id: reqId, item_name: name, quantity: qty, total_price: price });
+                        }
+                    });
+
+                    updatePayload.total_actual_amount = newTotalActual;
+                    logDetails += `, แก้ไขยอดรวมบิลเป็น ${newTotalActual} บาท`;
+
+                    const { error: delErr } = await supabaseClient.from('clearance_items').delete().eq('clearance_id', reqId);
+                    if (delErr) throw delErr;
+                    
+                    if (currentItems.length > 0) {
+                        const { error: insErr } = await supabaseClient.from('clearance_items').insert(currentItems);
+                        if (insErr) throw insErr;
+                    }
+                }
+
+                const { error: upErr } = await supabaseClient.from('clearances').update(updatePayload).eq('id', reqId);
+                if (upErr) throw upErr;
+
+                const { error: logErr } = await supabaseClient.from('audit_logs').insert([{
+                    clearance_id: reqId,
+                    admin_id: currentUser.id,
+                    action_type: 'admin_edit',
+                    old_value: `ฝ่าย: ${oldData.department||'-'}, หัวข้อ: ${oldData.purpose}`,
+                    new_value: logDetails,
+                    edit_reason: reason
+                }]);
+                if (logErr) throw logErr;
+
+                msg.innerHTML = '<span style="color:var(--success);">✅ บันทึกสำเร็จ!</span>';
+                setTimeout(() => {
+                    window.closeEditModal();
+                    window.loadPendingRequests(); 
+                }, 1500);
+
+            } catch (err) {
+                msg.innerHTML = `<span style="color:red;">ผิดพลาด: ${err.message}</span>`;
+                btn.disabled = false;
+            }
+        });
+    }
+
+    // ==========================================
+    // 4. ระบบ Modal อนุมัติ (เพิ่ม Guardrail จับ Error 100%)
     // ==========================================
     const actionModal = document.getElementById('action-modal');
     window.openModal = async function(id) {
@@ -215,7 +370,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('modal-req-type').value = c.request_type;
             window.currentClearance = c;
 
-            // จัดการรูปภาพ (ตอนขอตั้งต้นยังไม่มีรูป ให้ซ่อนไว้ก่อน)
             const targetImg = c.statement_url || c.member_return_slip;
             if (targetImg && document.getElementById('modal-statement-img')) {
                 document.getElementById('modal-statement-img').src = targetImg;
@@ -227,7 +381,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const iTbody = document.getElementById('modal-items-tbody');
-            // 🌟 ถ้ารอโอนตั้งต้น ซ่อนรายการย่อย เพราะยังไม่ได้ซื้อของจริง
             if (c.status === 'pending_advance') {
                 document.getElementById('modal-items-section').style.display = 'none';
             } else {
@@ -246,7 +399,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            // โหลดบัญชี/กองทุนให้แอดมินเลือกตัดเงิน
             const { data: bList } = await supabaseClient.from('bank_accounts').select('*');
             const { data: fList } = await supabaseClient.from('funds').select('*');
             if(document.getElementById('admin-bank-select')) document.getElementById('admin-bank-select').innerHTML = '<option value="">-- เลือกบัญชี --</option>' + (bList||[]).map(b => `<option value="${b.id}">${b.bank_name}</option>`).join('');
@@ -264,13 +416,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('admin-action-form')?.reset();
     };
 
-    // คำนวณยอดเงินที่แอดมินต้องทำรายการ
     window.recalculateAdminTotal = function() {
         const c = window.currentClearance;
         if(!c) return;
         let totalAppr = 0, isEdited = false;
 
-        // 🌟 ถ้ารอโอนตั้งต้น ยอดคือสิ่งที่ขอมาเต็มๆ
         if (c.status === 'pending_advance') {
             totalAppr = c.requested_amount;
         } else {
@@ -290,21 +440,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let processAmt = 0, actionDir = 'none';
         
-        // 🌟 วิเคราะห์ทิศทางเงิน (จ่ายออก หรือ รับเข้า)
         if (c.status === 'pending_advance') {
             processAmt = totalAppr; 
-            actionDir = 'pay'; // แอดมินต้องจ่ายเงินตั้งต้น
+            actionDir = 'pay';
         } 
         else if (c.status === 'pending_clearance') {
             if (c.request_type === 'advance') {
                 const diff = c.requested_amount - totalAppr; 
                 processAmt = Math.abs(diff);
-                if (diff > 0) actionDir = 'receive'; // ซื้อของถูกกว่าที่ขอ (Member ต้องคืนเงินทอน)
-                else if (diff < 0) actionDir = 'pay'; // ซื้อของแพงกว่าที่ขอ (Admin ต้องจ่ายเพิ่ม)
-                else actionDir = 'none'; // พอดีเป๊ะ
+                if (diff > 0) actionDir = 'receive'; 
+                else if (diff < 0) actionDir = 'pay'; 
+                else actionDir = 'none';
             } else {
                 processAmt = totalAppr; 
-                actionDir = 'pay'; // Reimbursement ปกติ (จ่ายคืนเต็มจำนวนที่เบิก)
+                actionDir = 'pay'; 
             }
         }
 
@@ -315,12 +464,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (actionDir === 'pay') { 
             if(amtP) amtP.innerHTML = `💸 ชุมนุมต้องโอนจ่าย: <strong style="color:var(--danger); font-size:20px;">${processAmt.toLocaleString()}</strong> บาท`; 
             if(title) title.textContent = c.status === 'pending_advance' ? '💸 ยืนยันโอนเงินตั้งต้น (Advance)' : '💸 ยืนยันการโอนเงินออก'; 
-            if(slipSec) slipSec.style.display = 'block'; // บังคับให้แอดมินแนบสลิป
+            if(slipSec) slipSec.style.display = 'block'; 
         } 
         else if (actionDir === 'receive') { 
             if(amtP) amtP.innerHTML = `📥 ชุมนุมได้รับเงินทอน: <strong style="color:var(--success); font-size:20px;">${processAmt.toLocaleString()}</strong> บาท`; 
             if(title) title.textContent = '📥 ยืนยันรับเงินทอนเคลียร์บิล'; 
-            if(slipSec) slipSec.style.display = 'none';  // แอดมินแค่รับยอดเข้าสมุด ไม่ต้องแนบสลิป
+            if(slipSec) slipSec.style.display = 'none';  
         } 
         else { 
             if(amtP) amtP.innerHTML = `✅ <strong style="color:gray; font-size:20px;">บิลพอดี (ไม่ต้องโอนเงินเพิ่ม)</strong>`; 
@@ -357,7 +506,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             try {
-                // อัปเดตราคาในฐานข้อมูลถ้าแอดมินแก้ตัวเลขรายการย่อย
                 const inputs = document.querySelectorAll('.admin-edit-price');
                 if (inputs.length > 0) { 
                     for (let inp of inputs) { 
@@ -365,7 +513,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const val = parseFloat(inp.value)||0;
                         const orig = parseFloat(inp.dataset.original)||0; 
                         if (val !== orig) {
-                            await supabaseClient.from('clearance_items').update({ total_price: val }).eq('id', iId); 
+                            const { error: itemErr } = await supabaseClient.from('clearance_items').update({ total_price: val }).eq('id', iId); 
+                            if (itemErr) throw itemErr;
                         }
                     } 
                 }
@@ -373,11 +522,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let aSlipUrl = null;
                 if (slipFile) { 
                     const p = `admin-slip-${Date.now()}.${slipFile.name.split('.').pop()}`; 
-                    await supabaseClient.storage.from('slips').upload(p, slipFile); 
+                    const { error: slipErr } = await supabaseClient.storage.from('slips').upload(p, slipFile); 
+                    if (slipErr) throw slipErr;
                     aSlipUrl = supabaseClient.storage.from('slips').getPublicUrl(p).data.publicUrl; 
                 }
 
-                // 🌟 หัก/เพิ่ม ยอดเงินในธนาคาร และลงสมุดบัญชี
                 if (actionDir !== 'none' && processAmt > 0) {
                     const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', bankId).single();
                     const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', fundId).single();
@@ -386,16 +535,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (actionDir === 'pay') { nBal -= processAmt; nFun -= processAmt; } 
                     else { nBal += processAmt; nFun += processAmt; }
                     
-                    await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
-                    await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
+                    const { error: bUpErr } = await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
+                    if (bUpErr) throw bUpErr;
                     
-                    // ลงสมุดบัญชี
+                    const { error: fUpErr } = await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
+                    if (fUpErr) throw fUpErr;
+                    
                     const reqPurpose = window.currentClearance.purpose || '-';
                     const shortId = reqId.substring(0,6);
                     const logDesc = window.currentClearance.status === 'pending_advance' ? `[โอนตั้งต้น] ${reqPurpose} (${shortId})` : `[เคลียร์บิล] ${reqPurpose} (${shortId})`;
                     
-                    // 🌟 V.5.2: แทรกฝ่าย (Department) ลงสมุดบัญชี
-                    await supabaseClient.from('transactions').insert([{ 
+                    // 🌟 เพิ่ม Guardrail เช็ก Error ตรงจุดที่เคยมีปัญหา
+                    const { error: txInsErr } = await supabaseClient.from('transactions').insert([{ 
                         transaction_date: new Date().toISOString().split('T')[0], 
                         transaction_type: actionDir === 'pay' ? 'expense' : 'income', 
                         amount: processAmt, 
@@ -404,24 +555,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                         bank_account_id: bankId, 
                         slip_url: aSlipUrl, 
                         status: 'approved', 
-                        department: window.currentClearance.department || '-', // 🌟 ดึงชื่อฝ่ายมาจากคำขอเบิกเงิน
-                        clearance_id: reqId, // 🌟 V.5.2: แนบรหัสบิล เพื่อให้การ Filter ง่ายขึ้น
+                        department: window.currentClearance.department || '-',
+                        clearance_id: reqId,
                         created_by: currentUser.id 
                     }]);
+                    if (txInsErr) throw txInsErr; // โยน Error ทันทีถ้าไม่สำเร็จ
                 }
 
-                // สลับสถานะของคำขอ
                 let newStat = window.currentClearance.status === 'pending_advance' ? 'advance_transferred' : 'cleared';
                 const upData = { status: newStat, total_actual_amount: finalTotal };
                 if (aSlipUrl) upData.admin_transfer_slip = aSlipUrl;
                 
-                await supabaseClient.from('clearances').update(upData).eq('id', reqId);
+                const { error: clearUpErr } = await supabaseClient.from('clearances').update(upData).eq('id', reqId);
+                if (clearUpErr) throw clearUpErr;
 
                 if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ดำเนินการสำเร็จ!'; }
                 setTimeout(() => { window.closeModal(); window.loadAllAdminData(); }, 2000);
                 
             } catch (err) { 
-                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'ผิดพลาด: ' + err.message; } 
+                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ ผิดพลาด: ' + err.message; } 
             } finally { 
                 if(btn) btn.disabled = false; 
             }
@@ -429,7 +581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // 5. โหลดสมุดบัญชีรายรับ-รายจ่าย (Ledger) V.5.2 (เพิ่ม Filter ฝ่าย)
+    // 5. โหลดสมุดบัญชีรายรับ-รายจ่าย (Ledger)
     // ==========================================
     window.loadLedger = async function() {
         try {
@@ -443,14 +595,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
         
         try {
-            // 🌟 V.5.2: เช็กว่าแอดมินเลือกกรองฝ่ายไหม
             const selectedDept = document.getElementById('filter-dept')?.value;
             let query = supabaseClient.from('transactions')
                 .select(`*, profiles!transactions_created_by_fkey(full_name), bank_accounts(bank_name), funds(fund_name)`)
                 .eq('status', 'approved')
                 .order('created_at', { ascending: false });
             
-            // 🌟 ถ้าเลือกฝ่าย ให้เพิ่มคำสั่งกรอง
             if (selectedDept) {
                 query = query.eq('department', selectedDept);
             }
@@ -474,13 +624,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     inc = `<span style="color:var(--success); font-weight:bold;">฿${amt.toLocaleString()}</span>`;
                 }
                 
-                // 🌟 จัดรูปแบบการแสดงผลของฝ่าย
                 const deptLabel = tx.department && tx.department !== '-' ? `<span style="color:var(--primary); background:#e0e7ff; padding:2px 6px; border-radius:4px; font-size:11px;">📂 ${tx.department}</span>` : '<span style="color:gray; font-size:11px;">ส่วนกลาง</span>';
 
                 return `
                     <tr>
                         <td>${date}</td>
-                        <td style="text-align:center;">${deptLabel}</td> <td>${tx.description || '-'}${tx.location ? ` (ส: ${tx.location})` : ''}</td>
+                        <td style="text-align:center;">${deptLabel}</td>
+                        <td>${tx.description || '-'}${tx.location ? ` (ส: ${tx.location})` : ''}</td>
                         <td style="font-size:12px; color:gray;">🏦 ${tx.bank_accounts?.bank_name||'-'}<br>💼 ${tx.funds?.fund_name||'-'}</td>
                         <td style="text-align:right; background:#f0fdf4;">${inc}</td>
                         <td style="text-align:right; background:#fef2f2;">${exp}</td>
@@ -491,7 +641,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { console.error(e); }
     };
 
-    // ฟอร์มบันทึกโดยตรง
     const directForm = document.getElementById('direct-transaction-form');
     if (directForm) {
         directForm.addEventListener('submit', async (e) => {
@@ -514,9 +663,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (type === 'income') { nBal += amt; nFun += amt; } else { nBal -= amt; nFun -= amt; }
 
-                await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
-                await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
-                await supabaseClient.from('transactions').insert([{ 
+                const { error: bDirErr } = await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
+                if (bDirErr) throw bDirErr;
+                const { error: fDirErr } = await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
+                if (fDirErr) throw fDirErr;
+                
+                const { error: tDirErr } = await supabaseClient.from('transactions').insert([{ 
                     transaction_date: new Date().toISOString().split('T')[0], 
                     transaction_type: type, 
                     description: desc, 
@@ -524,9 +676,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bank_account_id: bankId, 
                     fund_id: fundId, 
                     status: 'approved', 
-                    department: 'ส่วนกลาง', // 🌟 V.5.2: บันทึกโดยตรงจากแอดมิน ให้เป็นของส่วนกลาง
+                    department: 'ส่วนกลาง', 
                     created_by: currentUser.id 
                 }]);
+                if (tDirErr) throw tDirErr;
 
                 if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ บันทึกลงสมุดบัญชีเรียบร้อย!'; }
                 directForm.reset(); 
@@ -575,12 +728,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 7. หน้าตั้งค่าระบบ (Settings)
     // ==========================================
     window.loadSettingsData = async function() {
-        // ดึงข้อมูลบัญชี
         const { data: banks } = await supabaseClient.from('bank_accounts').select('*');
         const bTbody = document.querySelector('#manage-bank-table tbody');
         if(bTbody) bTbody.innerHTML = banks.map(b => `<tr><td>${b.bank_name}</td><td>฿${b.balance.toLocaleString()}</td><td style="text-align:center;"><button onclick="deleteBank('${b.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
 
-        // ดึงข้อมูลกองทุน
         const { data: funds } = await supabaseClient.from('funds').select('*');
         const fTbody = document.querySelector('#manage-fund-table tbody');
         if(fTbody) fTbody.innerHTML = funds.map(f => `<tr><td>${f.fund_name}</td><td>฿${f.remaining_budget.toLocaleString()}</td><td style="text-align:center;"><button onclick="deleteFund('${f.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
@@ -741,26 +892,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 9. ฟังก์ชัน Export Excel (V.5.2: กรองตามฝ่ายได้ + นำคอลัมน์ฝ่ายออก Excel)
+    // 9. ฟังก์ชัน Export Excel
     // ==========================================
     window.exportLedgerToCSV = async function() {
         const btn = document.querySelector('button[onclick="exportLedgerToCSV()"]');
         if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังดึงข้อมูล...'; }
 
         try {
-            // 🌟 เช็กว่าแอดมินเลือกตัวกรองฝ่ายอยู่หรือเปล่า
             const selectedDept = document.getElementById('filter-dept')?.value;
             let query = supabaseClient.from('transactions')
                 .select(`*, profiles!transactions_created_by_fkey(full_name), bank_accounts(bank_name), funds(fund_name)`)
                 .eq('status', 'approved')
                 .order('created_at', { ascending: false });
 
-            // 🌟 ถ้าเลือกฝ่าย ให้เพิ่มเงื่อนไขตอนดึงข้อมูลทำ Excel
             if (selectedDept) {
                 query = query.eq('department', selectedDept);
             }
 
-            const { data: txs } = await query;
+            const { data: txs, error: exportErr } = await query;
+            if (exportErr) throw exportErr;
+            
             const { data: cItems } = await supabaseClient.from('clearance_items').select('*');
 
             if (!txs || txs.length === 0) {
@@ -769,11 +920,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             let csvContent = "\uFEFF"; 
-            csvContent += "วันที่,ฝ่าย,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n"; // 🌟 เพิ่มหัวคอลัมน์ ฝ่าย
+            csvContent += "วันที่,ฝ่าย,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n";
 
             txs.forEach(tx => {
                 const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
-                const dept = tx.department || 'ส่วนกลาง'; // 🌟 ดึงข้อมูลฝ่าย
+                const dept = tx.department || 'ส่วนกลาง'; 
                 const desc = (tx.description || '-') + (tx.location ? ` (ส: ${tx.location})` : '');
                 const bankFund = `[บ] ${tx.bank_accounts?.bank_name||'-'} / [ก] ${tx.funds?.fund_name||'-'}`;
                 const amt = parseFloat(tx.amount) || 0;
@@ -782,10 +933,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (tx.transaction_type === 'expense') exp = amt; else inc = amt;
                 const user = tx.profiles?.full_name || 'แอดมิน';
 
-                // เพิ่มบรรทัดหลัก
                 csvContent += `"${date}","${dept}","${desc}","${bankFund}","${inc}","${exp}","${user}"\n`;
 
-                // หารายการย่อย
                 const match = desc.match(/(?:รหัส |\()([a-zA-Z0-9]{6})/);
                 if (match) {
                     const shortId = match[1];
@@ -793,7 +942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (items.length > 0) {
                         items.forEach(it => {
                             const itemName = `   ↳ ${it.item_name} (จำนวน: ${it.quantity}) = ฿${parseFloat(it.total_price).toLocaleString()}`;
-                            csvContent += `"","","${itemName}","","","",""\n`; // 🌟 เว้นช่องคอลัมน์ฝ่ายให้ตรงกัน
+                            csvContent += `"","","${itemName}","","","",""\n`; 
                         });
                     }
                 }
@@ -803,7 +952,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            // 🌟 เปลี่ยนชื่อไฟล์ถ้ามีการกรอง
             const filenameLabel = selectedDept ? `_${selectedDept}` : '_All';
             link.setAttribute("download", `ARSATU_Ledger${filenameLabel}_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
