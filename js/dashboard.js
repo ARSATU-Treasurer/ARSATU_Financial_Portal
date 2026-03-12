@@ -181,10 +181,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     btnL = `<button onclick="openModal('${req.id}')" class="btn btn-info" style="padding:6px 12px; font-size:12px;">🔍 ตรวจบิล</button>`;
                 }
                 
+                // 🌟 V.5.2: เพิ่มป้ายชื่อฝ่าย
+                const deptBadge = req.department && req.department !== '-' ? `<br><small style="color:var(--primary); background:#e0e7ff; padding:2px 6px; border-radius:4px; font-size:11px;">📂 ${req.department}</small>` : '';
+
                 return `
                     <tr>
                         <td>${date}</td>
-                        <td>${req.profiles?.full_name||'-'}</td>
+                        <td>${req.profiles?.full_name||'-'} ${deptBadge}</td>
                         <td>${typeL}</td>
                         <td>${req.purpose}</td>
                         <td style="font-weight:bold;">฿${amt.toLocaleString()}</td>
@@ -387,10 +390,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
                     
                     // ลงสมุดบัญชี
-                    // ดึงหัวข้อรายการมาจัดรูปแบบใหม่: [ประเภท] หัวข้อ (รหัส)
                     const reqPurpose = window.currentClearance.purpose || '-';
                     const shortId = reqId.substring(0,6);
                     const logDesc = window.currentClearance.status === 'pending_advance' ? `[โอนตั้งต้น] ${reqPurpose} (${shortId})` : `[เคลียร์บิล] ${reqPurpose} (${shortId})`;
+                    
+                    // 🌟 V.5.2: แทรกฝ่าย (Department) ลงสมุดบัญชี
                     await supabaseClient.from('transactions').insert([{ 
                         transaction_date: new Date().toISOString().split('T')[0], 
                         transaction_type: actionDir === 'pay' ? 'expense' : 'income', 
@@ -400,11 +404,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         bank_account_id: bankId, 
                         slip_url: aSlipUrl, 
                         status: 'approved', 
+                        department: window.currentClearance.department || '-', // 🌟 ดึงชื่อฝ่ายมาจากคำขอเบิกเงิน
+                        clearance_id: reqId, // 🌟 V.5.2: แนบรหัสบิล เพื่อให้การ Filter ง่ายขึ้น
                         created_by: currentUser.id 
                     }]);
                 }
 
-                // 🌟 สลับสถานะของคำขอ
+                // สลับสถานะของคำขอ
                 let newStat = window.currentClearance.status === 'pending_advance' ? 'advance_transferred' : 'cleared';
                 const upData = { status: newStat, total_actual_amount: finalTotal };
                 if (aSlipUrl) upData.admin_transfer_slip = aSlipUrl;
@@ -423,10 +429,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // 5. โหลดสมุดบัญชีรายรับ-รายจ่าย (Ledger)
+    // 5. โหลดสมุดบัญชีรายรับ-รายจ่าย (Ledger) V.5.2 (เพิ่ม Filter ฝ่าย)
     // ==========================================
     window.loadLedger = async function() {
-        // 🌟 แก้ไข: ย้ายการโหลด Dropdown มาไว้บนสุด ป้องกันกรณีไม่มีประวัติแล้วโค้ดหยุดทำงาน
         try {
             const { data: bList } = await supabaseClient.from('bank_accounts').select('*');
             const { data: fList } = await supabaseClient.from('funds').select('*');
@@ -438,14 +443,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
         
         try {
-            const { data, error } = await supabaseClient.from('transactions')
+            // 🌟 V.5.2: เช็กว่าแอดมินเลือกกรองฝ่ายไหม
+            const selectedDept = document.getElementById('filter-dept')?.value;
+            let query = supabaseClient.from('transactions')
                 .select(`*, profiles!transactions_created_by_fkey(full_name), bank_accounts(bank_name), funds(fund_name)`)
                 .eq('status', 'approved')
                 .order('created_at', { ascending: false });
+            
+            // 🌟 ถ้าเลือกฝ่าย ให้เพิ่มคำสั่งกรอง
+            if (selectedDept) {
+                query = query.eq('department', selectedDept);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
             if (!data || data.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">ยังไม่มีประวัติในสมุดบัญชี</td></tr>`; 
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:gray;">ยังไม่มีประวัติในสมุดบัญชี ${selectedDept ? 'สำหรับฝ่ายนี้' : ''}</td></tr>`; 
                 return; 
             }
 
@@ -459,11 +473,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     inc = `<span style="color:var(--success); font-weight:bold;">฿${amt.toLocaleString()}</span>`;
                 }
+                
+                // 🌟 จัดรูปแบบการแสดงผลของฝ่าย
+                const deptLabel = tx.department && tx.department !== '-' ? `<span style="color:var(--primary); background:#e0e7ff; padding:2px 6px; border-radius:4px; font-size:11px;">📂 ${tx.department}</span>` : '<span style="color:gray; font-size:11px;">ส่วนกลาง</span>';
 
                 return `
                     <tr>
                         <td>${date}</td>
-                        <td>${tx.description || '-'}${tx.location ? ` (ส: ${tx.location})` : ''}</td>
+                        <td style="text-align:center;">${deptLabel}</td> <td>${tx.description || '-'}${tx.location ? ` (ส: ${tx.location})` : ''}</td>
                         <td style="font-size:12px; color:gray;">🏦 ${tx.bank_accounts?.bank_name||'-'}<br>💼 ${tx.funds?.fund_name||'-'}</td>
                         <td style="text-align:right; background:#f0fdf4;">${inc}</td>
                         <td style="text-align:right; background:#fef2f2;">${exp}</td>
@@ -507,6 +524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bank_account_id: bankId, 
                     fund_id: fundId, 
                     status: 'approved', 
+                    department: 'ส่วนกลาง', // 🌟 V.5.2: บันทึกโดยตรงจากแอดมิน ให้เป็นของส่วนกลาง
                     created_by: currentUser.id 
                 }]);
 
@@ -554,7 +572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 7. V.3.1: หน้าตั้งค่าระบบ (Settings)
+    // 7. หน้าตั้งค่าระบบ (Settings)
     // ==========================================
     window.loadSettingsData = async function() {
         // ดึงข้อมูลบัญชี
@@ -661,6 +679,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <table style="width:100%; font-size:14px;">
                     <tr><td style="padding:5px 0; color:gray; width:30%;">วันที่:</td><td style="font-weight:bold;">${date}</td></tr>
                     <tr><td style="padding:5px 0; color:gray;">รายละเอียด:</td><td>${tx.description || '-'}</td></tr>
+                    <tr><td style="padding:5px 0; color:gray;">ฝ่าย / แผนก:</td><td style="color:var(--primary);">${tx.department || 'ส่วนกลาง'}</td></tr>
                     <tr><td style="padding:5px 0; color:gray;">สถานที่:</td><td>${tx.location || '-'}</td></tr>
                     <tr><td style="padding:5px 0; color:gray;">ยอดเงิน:</td><td style="font-weight:bold; color:var(--primary);">฿${parseFloat(tx.amount).toLocaleString()}</td></tr>
                     <tr><td style="padding:5px 0; color:gray;">บัญชี / กองทุน:</td><td>🏦 ${tx.bank_accounts?.bank_name||'-'} <br> 💼 ${tx.funds?.fund_name||'-'}</td></tr>
@@ -704,6 +723,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="flex:1; min-width:300px;">
                         <table style="width:100%; font-size:14px;">
                             <tr><td style="padding:4px 0; color:gray; width:35%;">ผู้เบิก:</td><td style="font-weight:bold;">${c.profiles?.full_name||'-'}</td></tr>
+                            <tr><td style="padding:4px 0; color:gray;">ฝ่าย / แผนก:</td><td style="color:var(--primary);">${c.department || '-'}</td></tr>
                             <tr><td style="padding:4px 0; color:gray;">หัวข้อ:</td><td>${c.purpose}</td></tr>
                             <tr><td style="padding:4px 0; color:gray;">ยอดขอเบิกล่วงหน้า:</td><td>฿${parseFloat(c.requested_amount).toLocaleString()}</td></tr>
                             <tr><td style="padding:4px 0; color:gray;">ยอดใช้จ่ายจริง:</td><td style="font-weight:bold; color:var(--success);">฿${parseFloat(c.total_actual_amount).toLocaleString()}</td></tr>
@@ -721,32 +741,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 9. ฟังก์ชัน Export Excel (แบบแจกแจงรายการย่อย V.4.0)
+    // 9. ฟังก์ชัน Export Excel (V.5.2: กรองตามฝ่ายได้ + นำคอลัมน์ฝ่ายออก Excel)
     // ==========================================
     window.exportLedgerToCSV = async function() {
         const btn = document.querySelector('button[onclick="exportLedgerToCSV()"]');
         if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังดึงข้อมูล...'; }
 
         try {
-            // 1. ดึงสมุดบัญชี
-            const { data: txs } = await supabaseClient.from('transactions')
+            // 🌟 เช็กว่าแอดมินเลือกตัวกรองฝ่ายอยู่หรือเปล่า
+            const selectedDept = document.getElementById('filter-dept')?.value;
+            let query = supabaseClient.from('transactions')
                 .select(`*, profiles!transactions_created_by_fkey(full_name), bank_accounts(bank_name), funds(fund_name)`)
                 .eq('status', 'approved')
                 .order('created_at', { ascending: false });
 
-            // 2. ดึงรายการย่อย
+            // 🌟 ถ้าเลือกฝ่าย ให้เพิ่มเงื่อนไขตอนดึงข้อมูลทำ Excel
+            if (selectedDept) {
+                query = query.eq('department', selectedDept);
+            }
+
+            const { data: txs } = await query;
             const { data: cItems } = await supabaseClient.from('clearance_items').select('*');
 
             if (!txs || txs.length === 0) {
-                alert("ไม่มีข้อมูลในสมุดบัญชีสำหรับ Export ครับ");
+                alert(`ไม่มีข้อมูลในสมุดบัญชี ${selectedDept ? 'สำหรับฝ่ายนี้ ' : ''}สำหรับ Export ครับ`);
                 return;
             }
 
             let csvContent = "\uFEFF"; 
-            csvContent += "วันที่,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n";
+            csvContent += "วันที่,ฝ่าย,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n"; // 🌟 เพิ่มหัวคอลัมน์ ฝ่าย
 
             txs.forEach(tx => {
                 const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
+                const dept = tx.department || 'ส่วนกลาง'; // 🌟 ดึงข้อมูลฝ่าย
                 const desc = (tx.description || '-') + (tx.location ? ` (ส: ${tx.location})` : '');
                 const bankFund = `[บ] ${tx.bank_accounts?.bank_name||'-'} / [ก] ${tx.funds?.fund_name||'-'}`;
                 const amt = parseFloat(tx.amount) || 0;
@@ -756,20 +783,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const user = tx.profiles?.full_name || 'แอดมิน';
 
                 // เพิ่มบรรทัดหลัก
-                csvContent += `"${date}","${desc}","${bankFund}","${inc}","${exp}","${user}"\n`;
+                csvContent += `"${date}","${dept}","${desc}","${bankFund}","${inc}","${exp}","${user}"\n`;
 
-                // 🌟 แก้ไข: ใช้ Regex แบบยืดหยุ่น รองรับทั้ง "รหัส 91cba6" (แบบเก่า) และ "(91cba6)" (แบบใหม่)
+                // หารายการย่อย
                 const match = desc.match(/(?:รหัส |\()([a-zA-Z0-9]{6})/);
-                
                 if (match) {
                     const shortId = match[1];
                     const items = cItems.filter(i => i.clearance_id && i.clearance_id.startsWith(shortId));
-                    
                     if (items.length > 0) {
                         items.forEach(it => {
-                            // จัดรูปแบบรายการย่อย
                             const itemName = `   ↳ ${it.item_name} (จำนวน: ${it.quantity}) = ฿${parseFloat(it.total_price).toLocaleString()}`;
-                            csvContent += `"","${itemName}","","","",""\n`;
+                            csvContent += `"","","${itemName}","","","",""\n`; // 🌟 เว้นช่องคอลัมน์ฝ่ายให้ตรงกัน
                         });
                     }
                 }
@@ -779,7 +803,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            link.setAttribute("download", `ARSATU_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
+            // 🌟 เปลี่ยนชื่อไฟล์ถ้ามีการกรอง
+            const filenameLabel = selectedDept ? `_${selectedDept}` : '_All';
+            link.setAttribute("download", `ARSATU_Ledger${filenameLabel}_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -798,15 +824,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadAllAdminData = async function() {
         if (!currentUser) return;
 
-        // 🌟 V.3.2: โหลดชื่อผู้ใช้ และ กระดิ่งแจ้งเตือน
         try {
-            // ดึงชื่อมาแสดง
             const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', currentUser.id).single();
             if (profile && document.getElementById('current-user-name')) {
                 document.getElementById('current-user-name').textContent = profile.full_name || 'Admin';
             }
 
-            // คำนวณตัวเลขแจ้งเตือนบนกระดิ่ง
             const { count: c1 } = await supabaseClient.from('clearances').select('*', { count: 'exact', head: true }).in('status', ['pending_advance', 'pending_clearance']);
             const { count: c2 } = await supabaseClient.from('transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending');
             const totalPending = (c1 || 0) + (c2 || 0);
@@ -824,7 +847,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch(e) { console.error("Profile/Noti Error:", e); }
 
-        // โหลดข้อมูลตารางอื่นๆ ตามปกติ
         window.loadDashboardWidgets();
         window.loadPendingDonations();
         window.loadPendingRequests();
@@ -833,6 +855,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.loadSettingsData(); 
     };
 
-    // สั่งรันตอนเปิดหน้าเว็บ
     window.loadAllAdminData();
 });

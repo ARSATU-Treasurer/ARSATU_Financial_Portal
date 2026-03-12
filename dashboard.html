@@ -44,25 +44,17 @@
         /* ==========================================
            V.5.2: Responsive UI (สำหรับหน้าจอมือถือ)
            ========================================== */
-        
-        /* สร้างคลาสสำหรับครอบตาราง ให้เอานิ้วปัดเลื่อนซ้ายขวาได้ */
         .table-responsive {
             width: 100%;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch; /* ให้เลื่อนบน iOS ได้ลื่นๆ */
+            -webkit-overflow-scrolling: touch; 
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             margin-bottom: 20px;
         }
 
-        /* สำหรับหน้าจอที่เล็กกว่า 768px (มือถือทั่วไป) */
         @media (max-width: 768px) {
-            body {
-                padding: 10px; /* ลดขอบหน้าจอลงให้มีพื้นที่แสดงผลมากขึ้น */
-                font-size: 14px; /* ปรับฟอนต์พื้นฐานให้เล็กลงนิดหน่อย */
-            }
-            
-            /* ปรับ Header ให้ยืดหยุ่นขึ้น */
+            body { padding: 10px; font-size: 14px; }
             header {
                 flex-direction: column;
                 align-items: flex-start !important;
@@ -70,35 +62,11 @@
                 padding-bottom: 15px;
                 border-bottom: 1px solid var(--border);
             }
-            
-            header > div {
-                width: 100%;
-                justify-content: space-between;
-            }
-
-            /* ปรับกล่องเนื้อหาและฟอร์ม */
-            .container, .card, .widget {
-                padding: 15px;
-                margin-bottom: 15px;
-            }
-
-            /* ปรับฟอร์มที่เคยอยู่บรรทัดเดียวกันให้ตกลงมาเรียงเป็นแนวตั้ง */
-            .form-row, .flex-row {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            /* ปรับปุ่มให้กว้างเต็มจอ เพื่อให้นิ้วจิ้มง่ายๆ */
-            .btn {
-                width: 100%;
-                padding: 12px;
-                margin-bottom: 5px;
-            }
-            
-            /* ซ่อนปุ่มหรือข้อความที่ยาวเกินความจำเป็นในมือถือ (ถ้ามีคลาส .hide-mobile) */
-            .hide-mobile {
-                display: none !important;
-            }
+            header > div { width: 100%; justify-content: space-between; }
+            .container, .card, .widget { padding: 15px; margin-bottom: 15px; }
+            .form-row, .flex-row { flex-direction: column; gap: 10px; }
+            .btn { width: 100%; padding: 12px; margin-bottom: 5px; }
+            .hide-mobile { display: none !important; }
         }
     </style>
 </head>
@@ -199,14 +167,34 @@
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <h3 style="margin: 0;">📖 สมุดบัญชีรายรับ-รายจ่าย (General Ledger)</h3>
-                    <button class="btn btn-outline" onclick="exportLedgerToCSV()" style="border-color: var(--success); color: var(--success);">📥 Export Excel</button>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 13px; color: var(--text-muted);">กรองตามฝ่าย:</label>
+                        <select id="filter-dept" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Prompt'; font-size: 13px;" onchange="if(typeof loadLedger === 'function') loadLedger()">
+                            <option value="">-- ดูทุกฝ่าย --</option>
+                            <option value="อำนวยการ">อำนวยการ-ประธาน/รองประธาน/เลขานุการ</option>
+                            <option value="สวัสดิการ">สวัสดิการ</option>
+                            <option value="โครงงาน">โครงงาน</option>
+                            <option value="อุปกรณ์">อุปกรณ์</option>
+                            <option value="สถานที่">สถานที่</option>
+                            <option value="สันทนาการ">สันทนาการ</option>
+                            <option value="เหรัญญิก">เหรัญญิก</option>
+                            <option value="สปอนเซอร์">สปอนเซอร์</option>
+                            <option value="PR">PR</option>
+                            <option value="สัมพันธ์ชาวบ้าน">สัมพันธ์ชาวบ้าน</option>
+                            <option value="ส่วนกลาง">ส่วนกลาง (รายรับ/อื่นๆ)</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                        <button class="btn btn-outline" onclick="exportLedgerToCSV()" style="border-color: var(--success); color: var(--success); padding: 6px 12px; font-size: 13px;">📥 Export Excel</button>
+                    </div>
                 </div>
+                
                 <div class="table-responsive">
                     <table id="ledger-table">
                         <thead>
                             <tr>
                                 <th>วัน/เดือน/ปี</th>
-                                <th>รายการ</th>
+                                <th style="color: var(--primary);">ฝ่าย</th> <th>รายการ</th>
                                 <th>บัญชี/กองทุน</th>
                                 <th style="text-align: right; color: var(--success);">รายรับ (฿)</th>
                                 <th style="text-align: right; color: var(--danger);">รายจ่าย (฿)</th>
@@ -214,7 +202,7 @@
                                 <th style="text-align: center;">ข้อมูล</th>
                             </tr>
                         </thead>
-                        <tbody><tr><td colspan="7" style="text-align: center; color: gray;">กำลังโหลดสมุดบัญชี...</td></tr></tbody>
+                        <tbody><tr><td colspan="8" style="text-align: center; color: gray;">กำลังโหลดสมุดบัญชี...</td></tr></tbody>
                     </table>
                 </div>
             </div>
