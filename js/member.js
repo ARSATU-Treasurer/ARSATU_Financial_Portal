@@ -110,6 +110,115 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (reqAmt) reqAmt.addEventListener('input', window.calculateTotal);
         if (reqType) reqType.dispatchEvent(new Event('change'));
         if (addBtn) addBtn.click();
+
+        // 🌟 V.5.2: ระบบนำเข้าไฟล์ CSV อัตโนมัติ
+        const toggleImportBtn = document.getElementById('toggle-import-btn');
+        const importSection = document.getElementById('import-section');
+        const csvUpload = document.getElementById('csv-upload');
+
+        if (toggleImportBtn) {
+            toggleImportBtn.addEventListener('click', () => {
+                importSection.style.display = importSection.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+
+        if (csvUpload) {
+            csvUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // ตรวจสอบนามสกุลไฟล์
+                if (!file.name.endsWith('.csv')) {
+                    alert('กรุณาอัปโหลดไฟล์นามสกุล .csv เท่านั้นครับ');
+                    csvUpload.value = '';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const text = event.target.result;
+                    processCSV(text);
+                    csvUpload.value = ''; // ล้างค่าเผื่ออัปโหลดไฟล์เดิมซ้ำ
+                };
+                // อ่านไฟล์แบบ UTF-8 เพื่อรองรับภาษาไทย
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+
+        function processCSV(csvText) {
+            const rows = csvText.split('\n');
+            let addedCount = 0;
+            const tbody = document.getElementById('items-tbody');
+            
+            // ลบแถวว่างเริ่มต้นออกก่อน
+            if(tbody && tbody.children.length === 1) {
+                const firstRow = tbody.querySelector('tr');
+                const itemName = firstRow.querySelector('.item-name')?.value;
+                if(!itemName) tbody.innerHTML = ''; 
+            }
+
+            // อ่านข้อมูล เริ่มจากบรรทัดที่ 2 (i=1) เพื่อข้าม Header
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i].trim();
+                if (!row) continue;
+                
+                const cols = parseCSVRow(row);
+                // 💡 โครงสร้าง Google Sheet: 
+                // cols[0]: ลำดับ, cols[1]: รายการ, cols[2]: จำนวน, cols[3]: ราคา/หน่วย, cols[4]: ราคารวม
+                
+                if (cols.length >= 3) {
+                    const name = cols[1] ? cols[1].trim() : '';
+                    if (!name) continue; // ถ้ารายการว่างให้ข้ามบรรทัดนี้
+
+                    const qty = parseFloat(cols[2]) || 1;
+                    
+                    // เอาราคารวม (คอลัมน์ E) มาใช้ ถ้าไม่มีให้เอา ราคา/หน่วย (คอลัมน์ D) * จำนวน
+                    let totalStr = cols[4] ? cols[4].replace(/,/g, '') : '0';
+                    let total = parseFloat(totalStr);
+                    
+                    if (isNaN(total) || total === 0) {
+                        let priceUnitStr = cols[3] ? cols[3].replace(/,/g, '') : '0';
+                        total = (parseFloat(priceUnitStr) || 0) * qty;
+                    }
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="text" class="item-name" value="${name}" required></td>
+                        <td><input type="number" class="item-qty" min="1" value="${qty}" required></td>
+                        <td><input type="number" class="item-price" min="0" step="0.01" value="${total}" required></td>
+                        <td style="text-align: center;"><button type="button" class="btn btn-danger del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                    tr.querySelectorAll('input').forEach(input => input.addEventListener('input', window.calculateTotal));
+                    tr.querySelector('.del-btn')?.addEventListener('click', () => { tr.remove(); window.calculateTotal(); });
+                    addedCount++;
+                }
+            }
+            
+            window.calculateTotal();
+            if(addedCount > 0) {
+                alert(`✅ นำเข้ารายการสำเร็จ ${addedCount} รายการ!\nกรุณาตรวจสอบความถูกต้องและยอดเงินรวมอีกครั้งครับ`);
+                if (importSection) importSection.style.display = 'none'; // พับหน้าจอเก็บ
+            } else {
+                alert('❌ ไม่พบข้อมูล หรือรูปแบบไฟล์ CSV ไม่ถูกต้อง');
+            }
+        }
+
+        // ฟังก์ชันช่วยแยกคอลัมน์ CSV (กันปัญหาเครื่องหมายจุลภาคซ้อนในชื่อสินค้า)
+        function parseCSVRow(str) {
+            const arr = [];
+            let quote = false;
+            let col = '';
+            for (let i = 0; i < str.length; i++) {
+                let cc = str[i], nc = str[i+1];
+                if (cc === '"' && quote && nc === '"') { col += '"'; i++; continue; }
+                if (cc === '"') { quote = !quote; continue; }
+                if (cc === ',' && !quote) { arr.push(col); col = ''; continue; }
+                col += cc;
+            }
+            arr.push(col);
+            return arr;
+        }
     }
     setupClearanceUI();
 
