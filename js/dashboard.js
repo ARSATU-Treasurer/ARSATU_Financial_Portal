@@ -991,6 +991,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
+    // 🌟 V.5.3: โหลดรายชื่อผู้ใช้ที่รออนุมัติ
+    // ==========================================
+    window.loadPendingUsers = async function() {
+        const tbody = document.querySelector('#pending-users-table tbody');
+        if (!tbody) return;
+        try {
+            const { data, error } = await supabaseClient.from('profiles').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+            if (error) throw error;
+            
+            if (!data || data.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">✅ ไม่มีผู้ใช้งานรออนุมัติ</td></tr>`; 
+                return; 
+            }
+
+            tbody.innerHTML = data.map(user => {
+                const date = new Date(user.created_at).toLocaleDateString('th-TH');
+                return `
+                    <tr>
+                        <td>${date}</td>
+                        <td style="font-weight:bold; color:var(--text-main);">${user.full_name}</td>
+                        <td style="color:var(--primary);"><span style="background:#e0e7ff; padding:4px 8px; border-radius:6px; font-size:12px;">📂 ${user.department || '-'}</span></td>
+                        <td><span class="status-badge" style="background:#fef3c7; color:#d97706;">รออนุมัติ</span></td>
+                        <td>
+                            <button onclick="approveUser('${user.id}', '${user.full_name}')" class="btn btn-primary" style="padding:6px 12px; font-size:12px;">✅ อนุมัติผู้ใช้</button>
+                        </td>
+                    </tr>`;
+            }).join('');
+        } catch (e) { console.error(e); }
+    };
+
+    window.approveUser = async function(id, currentName) {
+        // 1. ให้แอดมินยืนยันและแก้ชื่อที่จะโชว์ในระบบได้
+        const finalName = prompt('ตรวจสอบ/แก้ไข ชื่อที่จะให้แสดงในระบบ:', currentName);
+        if (!finalName) return; // ถ้ากดยกเลิก ให้หยุดทำงาน
+
+        // 2. ให้เลือกว่าจะเป็น Member หรือ Admin
+        const isSetAsAdmin = confirm('ต้องการให้สิทธิ์เป็น 👑 Admin (ผู้ดูแลระบบ) หรือไม่?\n\n- กด [OK] = เป็น Admin\n- กด [Cancel] = เป็น Member ทั่วไป');
+        const finalRole = isSetAsAdmin ? 'admin' : 'member';
+
+        try {
+            const { error } = await supabaseClient.from('profiles').update({ 
+                status: 'approved', 
+                role: finalRole, 
+                full_name: finalName 
+            }).eq('id', id);
+
+            if (error) throw error;
+            alert(`🎉 อนุมัติคุณ ${finalName} (สิทธิ์: ${finalRole}) เรียบร้อยแล้ว!`);
+            window.loadPendingUsers(); // รีเฟรชตาราง
+        } catch (err) {
+            alert("❌ เกิดข้อผิดพลาด: " + err.message);
+        }
+    };
+
+    // ==========================================
     // ตัวรวบรวมคำสั่งโหลดข้อมูลทั้งหมด (เรียกใช้ตอนเริ่ม)
     // ==========================================
     window.loadAllAdminData = async function() {
@@ -1024,7 +1079,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.loadPendingRequests();
         window.loadLedger();
         window.loadClearanceHistory();
-        window.loadSettingsData(); 
+        window.loadSettingsData();
+        window.loadPendingUsers(); 
     };
 
     window.loadAllAdminData();
