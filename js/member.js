@@ -163,21 +163,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!row) continue;
                 
                 const cols = parseCSVRow(row);
-                // 💡 โครงสร้าง Google Sheet: 
-                // cols[0]: ลำดับ, cols[1]: รายการ, cols[2]: จำนวน, cols[3]: ราคา/หน่วย, cols[4]: ราคารวม
                 
                 if (cols.length >= 3) {
                     const name = cols[1] ? cols[1].trim() : '';
-                    if (!name) continue; // ถ้ารายการว่างให้ข้ามบรรทัดนี้
-
-                    const qty = parseFloat(cols[2]) || 1;
                     
-                    // เอาราคารวม (คอลัมน์ E) มาใช้ ถ้าไม่มีให้เอา ราคา/หน่วย (คอลัมน์ D) * จำนวน
+                    // 🌟 ดักไว้: ถ้ารายการว่าง หรือเป็นแถวสรุปคำว่า "รวม" ให้ข้ามบรรทัดนี้ไปเลย
+                    if (!name || name === 'รวม') continue; 
+
+                    // 🌟 แก้ไข Index ให้ตรงกับ Google Sheet (A=0, B=1, C=2, D=3, E=4)
+                    
+                    // ดึงจำนวน จากคอลัมน์ D (index 3)
+                    let qtyStr = cols[3] ? cols[3].replace(/,/g, '') : '1';
+                    const qty = parseFloat(qtyStr) || 1;
+                    
+                    // ดึงราคารวม จากคอลัมน์ E (index 4)
                     let totalStr = cols[4] ? cols[4].replace(/,/g, '') : '0';
                     let total = parseFloat(totalStr);
                     
+                    // ถ้าราคารวมเป็น 0 หรือว่าง ให้เอา คอลัมน์ C (ราคา/หน่วย) * จำนวน
                     if (isNaN(total) || total === 0) {
-                        let priceUnitStr = cols[3] ? cols[3].replace(/,/g, '') : '0';
+                        let priceUnitStr = cols[2] ? cols[2].replace(/,/g, '') : '0';
                         total = (parseFloat(priceUnitStr) || 0) * qty;
                     }
                     
