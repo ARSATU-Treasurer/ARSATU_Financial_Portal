@@ -997,7 +997,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#pending-users-table tbody');
         if (!tbody) return;
         try {
-            const { data, error } = await supabaseClient.from('profiles').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+            const { data, error } = await supabaseClient.from('profiles')
+                .select('*')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+                
             if (error) throw error;
             
             if (!data || data.length === 0) { 
@@ -1006,11 +1010,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             tbody.innerHTML = data.map(user => {
-                const date = new Date(user.created_at).toLocaleDateString('th-TH');
+                const date = user.created_at ? new Date(user.created_at).toLocaleDateString('th-TH') : '-';
                 return `
                     <tr>
                         <td>${date}</td>
-                        <td style="font-weight:bold; color:var(--text-main);">${user.full_name}</td>
+                        <td style="font-weight:bold; color:var(--text-main);">${user.full_name || 'ไม่มีชื่อ'}</td>
                         <td style="color:var(--primary);"><span style="background:#e0e7ff; padding:4px 8px; border-radius:6px; font-size:12px;">📂 ${user.department || '-'}</span></td>
                         <td><span class="status-badge" style="background:#fef3c7; color:#d97706;">รออนุมัติ</span></td>
                         <td>
@@ -1018,7 +1022,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </td>
                     </tr>`;
             }).join('');
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error("Load Pending Users Error:", e);
+            // 🌟 ให้มันโชว์ Error บนหน้าจอเลย จะได้รู้ว่าเกิดอะไรขึ้น
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล: ${e.message}</td></tr>`;
+        }
     };
 
     window.approveUser = async function(id, currentName) {

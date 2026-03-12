@@ -20,9 +20,9 @@
 </head>
 <body>
     <div class="box">
-        <h2 style="color: #00B900; margin-top: 0;">ARSATU Treasurer on LINE</h2>
+        <h2 style="color: #00B900; margin-top: 0;">ARSATU Treasury onLINE</h2>
         
-        <div id="loading">กำลังเชื่อมต่อกับแอป LINE... ⏳</div>
+        <div id="loading" style="padding: 20px 0;">กำลังเชื่อมต่อกับแอป LINE... ⏳</div>
 
         <div id="register-section" style="display: none;">
             <img id="line-pic" src="" alt="Profile">
@@ -30,7 +30,7 @@
             <p style="font-size: 13px; color: gray; margin-bottom: 20px;">กรุณากรอกข้อมูลเพื่อขอสิทธิ์จากแอดมิน</p>
             
             <form id="reg-form">
-                <label>ชื่อเล่น</label>
+                <label>ชื่อ (สำหรับแสดงในระบบ)</label>
                 <input type="text" id="reg-name" class="form-control" placeholder="เช่น น้องเอ สวัสดิการ" required>
                 
                 <label>ฝ่าย</label>
@@ -40,10 +40,11 @@
                     <option value="สวัสดิการ">สวัสดิการ</option>
                     <option value="สถานที่">สถานที่</option>
                     <option value="อุปกรณ์">อุปกรณ์</option>
-                    <option value="เหรัญญิก">เหรัญญิก</option>
                     <option value="โครงงาน">โครงงาน</option>
                     <option value="PR">PR</option>
-                    <option value="สัมพันธ์ชาวบ้าน">สัมพันธ์ชาวบ้าน</option>
+                    <option value="สัมพันธ์ชาวบ่้าน">สัมพันธ์ชาวบ้าน</option>
+                    <option value="สปอนเซอร์">สปอนเซอร์</option>
+                    <option value="เหรัญญิก">เหรัญญิก</option>
                     <option value="ส่วนกลาง">ส่วนกลาง / อื่นๆ</option>
                 </select>
                 
@@ -55,11 +56,12 @@
         <div id="pending-section" style="display: none; padding: 20px 0;">
             <div style="font-size: 50px; margin-bottom: 10px;">⏳</div>
             <h3 style="color: #d97706; margin: 0;">รอผู้ดูแลระบบอนุมัติ</h3>
-            <p style="font-size: 14px; color: gray;">บัญชีของคุณลงทะเบียนเรียบร้อยแล้ว<br>กรุณารอแอดมินอนุมัติสิทธิ์การเข้าถึง</p>
+            <p style="font-size: 14px; color: gray;">บัญชีของคุณลงทะเบียนเรียบร้อยแล้ว<br>รออนุมัติสิทธิ์</p>
         </div>
     </div>
 
     <script>
+        // 🔴 อย่าลืมใส่ LIFF ID ที่นี่!
         const myLiffId = "2009420030-HR5GocKw"; 
         let lineProfile = null;
         let dummyEmail = "";
@@ -67,46 +69,69 @@
 
         async function initLiff() {
             try {
+                // 1. เช็กว่ามีการล็อกอินค้างอยู่หรือไม่ (สำคัญมากสำหรับคนเก่าที่เคยเข้าแล้ว)
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) {
+                    const { data: profile } = await supabaseClient.from('profiles').select('status, role').eq('id', session.user.id).single();
+                    if (profile && profile.status === 'pending') {
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('pending-section').style.display = 'block';
+                        await supabaseClient.auth.signOut();
+                        return;
+                    } else if (profile) {
+                        document.getElementById('loading').textContent = "กำลังพาท่านเข้าสู่ระบบ... 🚀";
+                        localStorage.setItem('loginSource', 'liff');
+                        if (profile.role === 'admin') window.location.replace('dashboard.html');
+                        else window.location.replace('member.html');
+                        return;
+                    }
+                }
+
+                // 2. ถ้าไม่มี Session ให้เริ่มกระบวนการ LINE LIFF
                 await liff.init({ liffId: myLiffId });
-                if (!liff.isLoggedIn()) { liff.login(); return; }
+                if (!liff.isLoggedIn()) { 
+                    liff.login(); 
+                    return; 
+                }
                 
                 lineProfile = await liff.getProfile();
-                // 💡 ทริค V.5.3: สร้างอีเมลจำลองจาก LINE ID เพื่อใช้ล็อกอิน
                 dummyEmail = `${lineProfile.userId}@arsatu.line`;
                 dummyPwd = `LineAuth#${lineProfile.userId}`;
 
                 checkUserStatus();
 
             } catch (err) {
-                document.getElementById('loading').textContent = "เกิดข้อผิดพลาด LIFF: " + err.message;
+                document.getElementById('loading').innerHTML = `<span style="color:red;">เกิดข้อผิดพลาด: ${err.message}</span>`;
             }
         }
 
         async function checkUserStatus() {
-            // ลองล็อกอินด้วยบัญชี LINE (ถ้าล็อกอินผ่านแปลว่าเคยสมัครแล้ว)
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email: dummyEmail, password: dummyPwd });
-            
-            if (error) {
-                // ถ้าล็อกอินไม่ผ่าน แปลว่าเป็น "คนใหม่" ให้โชว์ฟอร์มสมัคร
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('register-section').style.display = 'block';
-                document.getElementById('line-pic').src = lineProfile.pictureUrl || 'https://via.placeholder.com/150';
-                document.getElementById('reg-name').value = lineProfile.displayName;
-            } else {
-                // ถ้าล็อกอินผ่าน เช็กสถานะจากตาราง Profiles
-                const { data: profile } = await supabaseClient.from('profiles').select('status, role').eq('id', data.user.id).single();
+            try {
+                // ลองล็อกอินด้วยบัญชี LINE Dummy
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email: dummyEmail, password: dummyPwd });
                 
-                document.getElementById('loading').style.display = 'none';
-                if (profile && profile.status === 'pending') {
-                    // ถ้ารออนุมัติ
-                    document.getElementById('pending-section').style.display = 'block';
-                    await supabaseClient.auth.signOut(); // เตะออกก่อนจนกว่าจะอนุมัติ
+                if (error) {
+                    // ❌ ถ้าล็อกอินไม่ผ่าน = คนใหม่ ให้โชว์ฟอร์มลงทะเบียน
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('register-section').style.display = 'block';
+                    document.getElementById('line-pic').src = lineProfile.pictureUrl || 'https://via.placeholder.com/150';
+                    document.getElementById('reg-name').value = lineProfile.displayName || '';
                 } else {
-                    // ถ้าอนุมัติแล้ว พาเข้าแอปเลย!
-                    localStorage.setItem('loginSource', 'liff');
-                    if (profile.role === 'admin') window.location.replace('dashboard.html');
-                    else window.location.replace('member.html');
+                    // ✅ ถ้าล็อกอินผ่าน = เคยสมัครด้วย LINE แล้ว เช็กสถานะต่อ
+                    const { data: profile } = await supabaseClient.from('profiles').select('status, role').eq('id', data.user.id).single();
+                    
+                    document.getElementById('loading').style.display = 'none';
+                    if (profile && profile.status === 'pending') {
+                        document.getElementById('pending-section').style.display = 'block';
+                        await supabaseClient.auth.signOut();
+                    } else {
+                        localStorage.setItem('loginSource', 'liff');
+                        if (profile.role === 'admin') window.location.replace('dashboard.html');
+                        else window.location.replace('member.html');
+                    }
                 }
+            } catch (err) {
+                document.getElementById('loading').innerHTML = `<span style="color:red;">ระบบขัดข้อง: ${err.message}</span>`;
             }
         }
 
@@ -125,25 +150,26 @@
                 const { data, error } = await supabaseClient.auth.signUp({ email: dummyEmail, password: dummyPwd });
                 if (error) throw error;
 
-                // 2. อัปเดตข้อมูลโปรไฟล์ให้เป็น รออนุมัติ (pending)
-                // รอให้ Supabase สร้างโปรไฟล์อัตโนมัติเสร็จก่อน (ใช้ setTimeout นิดนึง)
+                // 2. อัปเดตข้อมูลโปรไฟล์ (หน่วงเวลาให้ Supabase สร้างโปรไฟล์ 1.5 วินาที)
                 setTimeout(async () => {
-                    await supabaseClient.from('profiles').update({ 
+                    const { error: updateErr } = await supabaseClient.from('profiles').update({ 
                         full_name: name, 
                         department: dept, 
                         line_user_id: lineProfile.userId,
                         status: 'pending',
-                        role: 'member' // ค่าเริ่มต้น
+                        role: 'member'
                     }).eq('id', data.user.id);
                     
-                    await supabaseClient.auth.signOut(); // ลงทะเบียนเสร็จ เตะออกมารอหน้า Pending
+                    if (updateErr) throw updateErr;
+                    
+                    await supabaseClient.auth.signOut(); 
                     
                     document.getElementById('register-section').style.display = 'none';
                     document.getElementById('pending-section').style.display = 'block';
-                }, 1000);
+                }, 1500);
 
             } catch (err) {
-                msg.textContent = "ผิดพลาด: " + err.message;
+                msg.innerHTML = `ผิดพลาด: ${err.message} <br><small>หากเคยสมัครด้วยอีเมลแล้ว ให้ลบบัญชีเดิมในระบบทิ้งก่อนครับ</small>`;
                 btn.disabled = false; btn.textContent = "📝 ยืนยันการลงทะเบียน";
             }
         });
