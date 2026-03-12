@@ -306,6 +306,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(msg) msg.textContent = 'กำลังบันทึกข้อมูล...';
             let clearanceId = draftId;
 
+            // ดึงค่ารหัสผ่านไฟล์
+            const stmtPwd = document.getElementById('req-statement-password')?.value || null;
+
             // ข้อมูลที่จะส่งเข้า Supabase ตาราง clearances
             const clearanceData = { 
                 member_id: currentUser.id, 
@@ -314,7 +317,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 requested_amount: reqAmtVal, 
                 total_actual_amount: totalActual, 
                 status: finalStatus, 
-                member_bank_details: bankVal
+                member_bank_details: bankVal,
+                statement_password: stmtPwd  // 🌟 เพิ่มบรรทัดนี้ เพื่อส่งรหัสผ่านไปบันทึก
             };
             
             // 🌟 ส่งค่า Department (ฝ่าย) ไปด้วยเฉพาะตอนที่ไม่ใช่การเคลียร์บิลซ้ำ (เพราะการเคลียร์บิลเราล็อกช่องฝ่ายไว้)

@@ -370,13 +370,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('modal-req-type').value = c.request_type;
             window.currentClearance = c;
 
+            // จัดการแสดงรูปภาพ หรือ ปุ่มเปิด PDF
             const targetImg = c.statement_url || c.member_return_slip;
-            if (targetImg && document.getElementById('modal-statement-img')) {
-                document.getElementById('modal-statement-img').src = targetImg;
-                document.getElementById('modal-statement-preview').style.display = 'block';
+            const previewDiv = document.getElementById('modal-statement-preview');
+            
+            if (targetImg) {
+                previewDiv.style.display = 'block';
                 document.getElementById('modal-no-statement').style.display = 'none';
+                
+                // ตรวจสอบว่ามีรหัสผ่านไหม ถ้ามีให้แสดงตัวแดง
+                let pwdText = c.statement_password ? `<div style="color:var(--danger); font-size:13px; font-weight:bold; margin-top:8px; padding:6px; background:#fee2e2; border-radius:6px;">🔑 รหัสผ่านไฟล์: ${c.statement_password}</div>` : '';
+
+                // เช็กว่าเป็นไฟล์ PDF หรือไม่
+                if (targetImg.toLowerCase().includes('.pdf')) {
+                    previewDiv.innerHTML = `<label style="color: var(--text-muted); display: block; margin-bottom: 10px;">📎 ไฟล์หลักฐาน / Statement</label>
+                    <a href="${targetImg}" target="_blank" class="btn btn-info" style="display:block; width:100%; text-align:center; padding:10px; box-sizing:border-box; text-decoration:none;">📄 คลิกเพื่อเปิดดูไฟล์ PDF</a>
+                    ${pwdText}`;
+                } else {
+                    previewDiv.innerHTML = `<label style="color: var(--text-muted); display: block; margin-bottom: 10px;">📎 ภาพหลักฐาน / Statement</label>
+                    <img src="${targetImg}" style="max-width: 100%; max-height: 250px; border-radius: 6px; cursor: pointer; border: 1px solid #ccc;" onclick="window.open(this.src, '_blank')">
+                    ${pwdText}`;
+                }
             } else {
-                document.getElementById('modal-statement-preview').style.display = 'none';
+                previewDiv.style.display = 'none';
                 document.getElementById('modal-no-statement').style.display = 'block';
             }
 
@@ -863,7 +879,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const imgList = [];
-            if(c.statement_url) imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><img src="${c.statement_url}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
+            let pwdHtml = c.statement_password ? `<p style="margin:5px 0 0 0; color:var(--danger); font-size:12px; font-weight:bold; background:#fee2e2; padding:3px 6px; border-radius:4px; display:inline-block;">🔑 รหัส: ${c.statement_password}</p>` : '';
+            
+            if(c.statement_url) {
+                if (c.statement_url.toLowerCase().includes('.pdf')) {
+                    imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><a href="${c.statement_url}" target="_blank" class="btn btn-outline" style="display:inline-block; padding:10px 15px; text-decoration:none;">📄 ดู PDF</a><br>${pwdHtml}</div>`);
+                } else {
+                    imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><img src="${c.statement_url}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"><br>${pwdHtml}</div>`);
+                }
+            }
             if(c.member_return_slip) imgList.push(`<div><p style="margin:0 0 5px 0; color:var(--warning); font-size:12px;">สลิปเงินทอน (คืนค่าย):</p><img src="${c.member_return_slip}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
             if(c.admin_transfer_slip) imgList.push(`<div><p style="margin:0 0 5px 0; color:var(--danger); font-size:12px;">สลิปโอนเงิน (ออกค่าย):</p><img src="${c.admin_transfer_slip}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
             
