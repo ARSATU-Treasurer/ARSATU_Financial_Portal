@@ -272,8 +272,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        let finalStatus = 'draft';
-        if (!isDraft) {
+        // 🌟 ตั้งสถานะตาม Flow (แก้บั๊ก: บันทึกแบบร่างตอนเคลียร์บิล)
+        let finalStatus;
+        if (isDraft) {
+            if (window.isClearingAdvance) {
+                // ถ้ากดแบบร่างตอนกำลังเคลียร์บิล ให้จำสถานะเดิมไว้ (ห้ามกลับไปเป็นร่างปกติ)
+                finalStatus = 'advance_transferred';
+            } else {
+                // ถ้าเป็นรายการใหม่ที่เพิ่งสร้าง ให้เป็นร่างปกติ
+                finalStatus = 'draft';
+            }
+        } else {
+            // ถ้ากดปุ่ม "🚀 ส่งคำขอ / ส่งบิลเคลียร์"
             if (window.isClearingAdvance) {
                 finalStatus = 'pending_clearance'; 
             } else {
