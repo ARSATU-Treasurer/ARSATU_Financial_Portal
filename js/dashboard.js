@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 3. โหลดคำขอรอตรวจสอบ (เพิ่มปุ่มแก้ไข V.4.0)
+    // 3. โหลดคำขอรอตรวจสอบ
     // ==========================================
     window.loadPendingRequests = async function() {
         const tbody = document.querySelector('#requests-table tbody');
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 🌟 V.4.0: ระบบแก้ไขข้อมูล (Edit Modal)
+    // 🌟 V.4.0 & V.5.4: ระบบแก้ไขข้อมูล & แอดมินเคลียร์แทน (Edit Modal)
     // ==========================================
     window.openEditModal = async function(id) {
         document.getElementById('edit-req-modal').style.display = 'flex';
@@ -252,6 +252,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.closeEditModal = function() {
+        const isSub = document.getElementById('edit-is-substitute');
+        if (isSub) isSub.value = 'false';
+        
+        const fileSec = document.getElementById('substitute-file-section');
+        if (fileSec) fileSec.style.display = 'none';
+        
+        const reasonCont = document.getElementById('edit-reason-container');
+        if (reasonCont) reasonCont.style.display = 'block';
+        
+        const title = document.querySelector('#edit-req-modal h3');
+        if (title) title.innerHTML = '✏️ แก้ไขข้อมูลคำขอเบิกเงิน';
+        
+        const btn = document.getElementById('save-edit-btn');
+        if (btn) {
+            btn.innerHTML = '💾 บันทึกการแก้ไข';
+            btn.className = 'btn btn-warning';
+        }
+        
+        const stmt = document.getElementById('substitute-statement');
+        if (stmt) stmt.value = '';
+        const retSlip = document.getElementById('substitute-return-slip');
+        if (retSlip) retSlip.value = '';
+        const pwd = document.getElementById('substitute-password');
+        if (pwd) pwd.value = '';
+        
         document.getElementById('edit-req-modal').style.display = 'none';
     };
 
@@ -284,13 +309,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const btn = document.getElementById('save-edit-btn');
             const msg = document.getElementById('edit-msg');
             btn.disabled = true;
-            msg.innerHTML = '<span style="color:var(--info);">กำลังบันทึกข้อมูลและประวัติ...</span>';
+            if (msg) { msg.style.color = 'var(--primary)'; msg.textContent = 'กำลังบันทึกข้อมูลและประวัติ...'; }
 
             const reqId = document.getElementById('edit-req-id').value;
             const reqType = document.getElementById('edit-req-type').value;
             const dept = document.getElementById('edit-req-dept').value;
             const purpose = document.getElementById('edit-req-purpose').value;
             const reason = document.getElementById('edit-req-reason').value;
+            const isSubstitute = document.getElementById('edit-is-substitute')?.value === 'true';
 
             try {
                 const { data: oldData } = await supabaseClient.from('clearances').select('*').eq('id', reqId).single();
@@ -298,7 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let updatePayload = { department: dept, purpose: purpose };
                 let logDetails = `แก้ไขฝ่ายเป็น ${dept}, หัวข้อเป็น ${purpose}`;
 
-                if (reqType === 'advance' && oldData.status === 'pending_advance') {
+                if (reqType === 'advance' && oldData.status === 'pending_advance' && !isSubstitute) {
                     const newAmt = parseFloat(document.getElementById('edit-req-amount').value);
                     updatePayload.requested_amount = newAmt;
                     logDetails += `, แก้ไขยอดเงินล่วงหน้าจาก ${oldData.requested_amount} เป็น ${newAmt}`;
@@ -327,31 +353,83 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
+                // 🌟 จัดการอัปโหลดไฟล์ ถ้าเป็นการ "เคลียร์บิลแทน"
+                if (isSubstitute) {
+                    const sFile = document.getElementById('substitute-statement')?.files[0];
+                    const rFile = document.getElementById('substitute-return-slip')?.files[0];
+                    const pwd = document.getElementById('substitute-password')?.value || null;
+
+                    if (!sFile) throw new Error("กรุณาแนบใบเสร็จ / Statement ด้วยครับ");
+
+                    if (msg) msg.textContent = 'กำลังอัปโหลดไฟล์หลักฐาน...';
+                    let sUrl = null, rUrl = null;
+
+                    const path1 = `statement-${Date.now()}.${sFile.name.split('.').pop()}`;
+                    const { error: err1 } = await supabaseClient.storage.from('receipts').upload(path1, sFile);
+                    if (err1) throw err1;
+                    sUrl = supabaseClient.storage.from('receipts').getPublicUrl(path1).data.publicUrl;
+
+                    if (rFile) {
+                        if (msg) msg.textContent = 'กำลังอัปโหลดสลิปเงินทอน...';
+                        const path2 = `return-${Date.now()}.${rFile.name.split('.').pop()}`;
+                        const { error: err2 } = await supabaseClient.storage.from('slips').upload(path2, rFile);
+                        if (err2) throw err2;
+                        rUrl = supabaseClient.storage.from('slips').getPublicUrl(path2).data.publicUrl;
+                    }
+
+                    updatePayload.statement_url = sUrl;
+                    if (rUrl) updatePayload.member_return_slip = rUrl;
+                    updatePayload.statement_password = pwd;
+                    updatePayload.status = 'pending_clearance'; 
+                }
+
+                if (msg) msg.textContent = 'กำลังอัปเดตฐานข้อมูล...';
                 const { error: upErr } = await supabaseClient.from('clearances').update(updatePayload).eq('id', reqId);
                 if (upErr) throw upErr;
 
                 const { error: logErr } = await supabaseClient.from('audit_logs').insert([{
                     clearance_id: reqId,
                     admin_id: currentUser.id,
-                    action_type: 'admin_edit',
+                    action_type: isSubstitute ? 'substitute_clearance' : 'admin_edit',
                     old_value: `ฝ่าย: ${oldData.department||'-'}, หัวข้อ: ${oldData.purpose}`,
                     new_value: logDetails,
                     edit_reason: reason
                 }]);
                 if (logErr) throw logErr;
 
-                msg.innerHTML = '<span style="color:var(--success);">✅ บันทึกสำเร็จ</span>';
+                if (msg) { msg.style.color = 'var(--success)'; msg.innerHTML = isSubstitute ? '✅ ส่งเคลียร์บิลแทนเรียบร้อย!' : '✅ บันทึกการแก้ไขสำเร็จ!'; }
                 setTimeout(() => {
                     window.closeEditModal();
                     window.loadPendingRequests(); 
+                    window.loadClearanceHistory();
                 }, 1500);
 
             } catch (err) {
-                msg.innerHTML = `<span style="color:red;">ผิดพลาด: ${err.message}</span>`;
+                if (msg) msg.innerHTML = `<span style="color:red;">ผิดพลาด: ${err.message}</span>`;
+            } finally {
                 btn.disabled = false;
             }
         });
     }
+
+    // 🌟 ฟังก์ชันพิเศษ V5.4: เปิด Modal แอดมินเคลียร์บิลแทน
+    window.openSubstituteClearance = async function(id) {
+        await window.openEditModal(id); 
+
+        document.getElementById('edit-is-substitute').value = 'true';
+        document.querySelector('#edit-req-modal h3').innerHTML = '👑 เคลียร์บิลแทนผู้เบิก';
+        document.getElementById('substitute-file-section').style.display = 'block';
+        
+        document.getElementById('edit-req-reason').value = 'แอดมินทำการเคลียร์บิลแทนผู้เบิก (Substitute Clearance)';
+        document.getElementById('edit-reason-container').style.display = 'none';
+
+        const btn = document.getElementById('save-edit-btn');
+        if (btn) {
+            btn.innerHTML = '🚀 ส่งบิลเคลียร์เงิน (แทน Member)';
+            btn.className = 'btn btn-primary';
+        }
+    };
+
 
     // ==========================================
     // 4. ระบบ Modal อนุมัติ (เพิ่ม Guardrail จับ Error 100%)
@@ -378,10 +456,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 previewDiv.style.display = 'block';
                 document.getElementById('modal-no-statement').style.display = 'none';
                 
-                // ตรวจสอบว่ามีรหัสผ่านไหม ถ้ามีให้แสดงตัวแดง
                 let pwdText = c.statement_password ? `<div style="color:var(--danger); font-size:13px; font-weight:bold; margin-top:8px; padding:6px; background:#fee2e2; border-radius:6px;">🔑 รหัสผ่านไฟล์: ${c.statement_password}</div>` : '';
 
-                // เช็กว่าเป็นไฟล์ PDF หรือไม่
                 if (targetImg.toLowerCase().includes('.pdf')) {
                     previewDiv.innerHTML = `<label style="color: var(--text-muted); display: block; margin-bottom: 10px;">📎 ไฟล์หลักฐาน / Statement</label>
                     <a href="${targetImg}" target="_blank" class="btn btn-info" style="display:block; width:100%; text-align:center; padding:10px; box-sizing:border-box; text-decoration:none;">📄 คลิกเพื่อเปิดดูไฟล์ PDF</a>
@@ -561,7 +637,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const shortId = reqId.substring(0,6);
                     const logDesc = window.currentClearance.status === 'pending_advance' ? `[โอนตั้งต้น] ${reqPurpose} (${shortId})` : `[เคลียร์บิล] ${reqPurpose} (${shortId})`;
                     
-                    // 🌟 เพิ่ม Guardrail เช็ก Error ตรงจุดที่เคยมีปัญหา
                     const { error: txInsErr } = await supabaseClient.from('transactions').insert([{ 
                         transaction_date: new Date().toISOString().split('T')[0], 
                         transaction_type: actionDir === 'pay' ? 'expense' : 'income', 
@@ -575,7 +650,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         clearance_id: reqId,
                         created_by: currentUser.id 
                     }]);
-                    if (txInsErr) throw txInsErr; // โยน Error ทันทีถ้าไม่สำเร็จ
+                    if (txInsErr) throw txInsErr; 
                 }
 
                 let newStat = window.currentClearance.status === 'pending_advance' ? 'advance_transferred' : 'cleared';
@@ -716,28 +791,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#clearance-history-table tbody');
         if (!tbody) return;
         try {
-            const { data, error } = await supabaseClient.from('clearances').select(`*, profiles (full_name)`).not('status', 'in', '("draft","pending_advance","pending_clearance")').order('created_at', { ascending: false });
+            const { data, error } = await supabaseClient.from('clearances').select('*, profiles(full_name)').order('created_at', { ascending: false });
             if (error) throw error;
-            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">ไม่มีประวัติการอนุมัติ</td></tr>`; return; }
-
+            if (!data || data.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">ไม่มีประวัติ</td></tr>`; 
+                return; 
+            }
             tbody.innerHTML = data.map(req => {
                 const date = new Date(req.created_at).toLocaleDateString('th-TH');
+                const name = req.profiles ? req.profiles.full_name : 'Unknown';
+                const typeLabel = req.request_type === 'advance' ? 'เบิกล่วงหน้า' : 'สำรองจ่าย';
                 const amt = req.total_actual_amount > 0 ? req.total_actual_amount : req.requested_amount;
-                const typeL = req.request_type === 'advance' ? 'เบิกล่วงหน้า' : 'สำรองจ่าย';
-                let statL = req.status === 'advance_transferred' ? '<span class="status-badge" style="background:#dbeafe; color:#2563eb;">โอนตั้งต้นแล้ว (รอเคลียร์)</span>' : '<span class="status-badge" style="background:#d1fae5; color:#059669;">อนุมัติ/เคลียร์แล้ว</span>';
                 
+                let stat = ''; 
+                let btn = `<button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:12px;">🔍 ดูบิลย่อย</button>`;
+
+                if (req.status === 'draft') stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">📝 ร่าง</span>';
+                else if (req.status === 'pending_advance') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอโอนตั้งต้น</span>';
+                else if (req.status === 'pending_clearance') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจบิล</span>';
+                else if (req.status === 'advance_transferred') {
+                    stat = '<span class="status-badge" style="background:#dbeafe; color:#2563eb;">💸 รอ Member เคลียร์</span>';
+                    // 🌟 เพิ่มปุ่มเคลียร์แทนแอดมินตรงนี้
+                    btn = `<div style="display:flex; gap:5px; justify-content:center;">
+                             <button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:12px;">🔍 ดู</button>
+                             <button type="button" onclick="openSubstituteClearance('${req.id}')" class="btn btn-warning" style="padding:4px 8px; font-size:12px; color:white;">📝 เคลียร์แทน</button>
+                           </div>`;
+                }
+                else if (req.status === 'cleared') stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>';
+
                 return `
                     <tr>
                         <td>${date}</td>
-                        <td>${req.profiles?.full_name||'-'}</td>
-                        <td>${typeL}</td>
+                        <td>${name}</td>
+                        <td>${typeLabel}</td>
                         <td>${req.purpose}</td>
-                        <td style="font-weight:bold; color:var(--success);">฿${parseFloat(amt).toLocaleString()}</td>
-                        <td>${statL}</td>
-                        <td style="text-align:center;"><button onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:12px;">🔍 ดูบิลย่อย</button></td>
-                    </tr>`;
+                        <td style="font-weight:600;">฿${parseFloat(amt).toLocaleString()}</td>
+                        <td>${stat}</td>
+                        <td style="text-align:center; white-space:nowrap;">${btn}</td>
+                    </tr>
+                `;
             }).join('');
-        } catch (e) { console.error(e); }
+        } catch(e) { console.error(e); }
     };
 
     // ==========================================
@@ -1024,17 +1118,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }).join('');
         } catch (e) { 
             console.error("Load Pending Users Error:", e);
-            // 🌟 ให้มันโชว์ Error บนหน้าจอเลย จะได้รู้ว่าเกิดอะไรขึ้น
             tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล: ${e.message}</td></tr>`;
         }
     };
 
     window.approveUser = async function(id, currentName) {
-        // 1. ให้แอดมินยืนยันและแก้ชื่อที่จะโชว์ในระบบได้
         const finalName = prompt('ตรวจสอบ/แก้ไข ชื่อที่จะให้แสดงในระบบ:', currentName);
-        if (!finalName) return; // ถ้ากดยกเลิก ให้หยุดทำงาน
+        if (!finalName) return; 
 
-        // 2. ให้เลือกว่าจะเป็น Member หรือ Admin
         const isSetAsAdmin = confirm('ต้องการให้สิทธิ์เป็น 👑 Admin (ผู้ดูแลระบบ) หรือไม่?\n\n- กด [OK] = เป็น Admin\n- กด [Cancel] = เป็น Member ทั่วไป');
         const finalRole = isSetAsAdmin ? 'admin' : 'member';
 
@@ -1047,7 +1138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (error) throw error;
             alert(`🎉 อนุมัติคุณ ${finalName} (สิทธิ์: ${finalRole}) เรียบร้อยแล้ว!`);
-            window.loadPendingUsers(); // รีเฟรชตาราง
+            window.loadPendingUsers(); 
         } catch (err) {
             alert("❌ เกิดข้อผิดพลาด: " + err.message);
         }

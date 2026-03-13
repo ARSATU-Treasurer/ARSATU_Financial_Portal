@@ -409,7 +409,16 @@
                     </div>
                 </div>
 
-                <div style="background: #fffbeb; border-left: 4px solid var(--warning); padding: 15px; margin-top: 10px;">
+                <input type="hidden" id="edit-is-substitute" value="false">
+                <div id="substitute-file-section" style="display: none; background: #f0fdf4; border-left: 4px solid var(--success); padding: 15px; margin-top: 10px; border-radius: 8px;">
+                    <label style="color: var(--success); font-weight: bold; margin-bottom: 10px; display: block;">📎 แนบหลักฐาน (โหมดแอดมินเคลียร์บิลแทน)</label>
+                    <input type="file" id="substitute-statement" accept="image/png, image/jpeg, image/jpg, application/pdf" style="margin-bottom: 8px; background: white;">
+                    <input type="text" id="substitute-password" placeholder="🔑 รหัสผ่านเปิดไฟล์ PDF (ถ้ามี)" style="margin-bottom: 12px; border-color: #fde047; background: #fef9c3; width: 100%; padding: 8px; border-radius: 6px;">
+                    <label style="font-size: 13px; color: var(--danger); display: block;">สลิปโอนเงินทอนคืนค่าย (ถ้ามีเงินเหลือส่งคืน)</label>
+                    <input type="file" id="substitute-return-slip" accept="image/png, image/jpeg, image/jpg" style="background: white;">
+                </div>
+
+                <div id="edit-reason-container" style="background: #fffbeb; border-left: 4px solid var(--warning); padding: 15px; margin-top: 10px; border-radius: 8px;">
                     <label style="color: #b45309; font-weight: bold; margin-bottom: 5px;">📝 เหตุผลในการแก้ไข (บันทึกลง Audit Log)</label>
                     <input type="text" id="edit-req-reason" placeholder="เช่น แก้ไขพิมพ์ชื่อรายการผิด, ปรับยอดให้ตรงกับบิลจริง" required style="border-color: #fcd34d; background: white;">
                 </div>
