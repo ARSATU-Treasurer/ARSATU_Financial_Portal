@@ -54,26 +54,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (priceInput) total += (parseFloat(priceInput.value) || 0);
                     });
                 }
-                if (totalSpan) totalSpan.textContent = total.toLocaleString();
+                if (totalSpan) totalSpan.textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
                 const amt = parseFloat(reqAmt?.value) || 0;
                 
-                // คำนวณเงินทอน เฉพาะตอน "กำลังเคลียร์บิล (Advance)" เท่านั้น
-                if (reqType?.value === 'advance' && amt > 0 && window.isClearingAdvance) {
+                // 🌟 แก้ไขบั๊ก: คำนวณเงินทอนเฉพาะตอน "เคลียร์บิลจริงๆ" เท่านั้น (ไม่ใช่แบบร่าง)
+                if (reqType?.value === 'advance' && window.isClearingAdvance === true) {
                     if (diffSummary) diffSummary.style.display = 'block';
                     const diff = amt - total;
                     
-                    if (diff > 0 && total > 0) {
-                        if (diffSummary) diffSummary.innerHTML = `🚨 มีเงินเหลือทอนชุมนุม: <br><span style="font-size:18px;">${diff.toLocaleString()} บาท</span>`;
+                    if (diff > 0) {
+                        if (diffSummary) {
+                            diffSummary.innerHTML = `🚨 มีเงินเหลือทอนชุมนุม: <br><span style="font-size:18px;">${diff.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</span>`;
+                            diffSummary.style.color = 'var(--danger)';
+                        }
                         if (returnSlip) returnSlip.style.display = 'block';
                     } else if (diff < 0) {
-                        if (diffSummary) diffSummary.innerHTML = `💡 คุณสำรองจ่ายเกินไป (ชุมนุมจะโอนเพิ่มให้): <br><span style="font-size:18px;">${Math.abs(diff).toLocaleString()} บาท</span>`;
+                        if (diffSummary) {
+                            diffSummary.innerHTML = `💡 คุณสำรองจ่ายเกินไป (ชุมนุมจะโอนเพิ่มให้): <br><span style="font-size:18px;">${Math.abs(diff).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</span>`;
+                            diffSummary.style.color = 'var(--warning)';
+                        }
                         if (returnSlip) returnSlip.style.display = 'none';
                     } else {
-                        if (diffSummary) diffSummary.style.display = 'none';
+                        if (diffSummary) {
+                            diffSummary.innerHTML = `✅ ยอดพอดี (ไม่มีเงินทอน)`;
+                            diffSummary.style.color = 'var(--success)';
+                        }
                         if (returnSlip) returnSlip.style.display = 'none';
                     }
                 } else {
+                    // ถ้าเป็นแบบร่าง หรือ สำรองจ่ายปกติ ให้ซ่อนส่วนเงินทอนและสลิปไปเลย
                     if (diffSummary) diffSummary.style.display = 'none';
                     if (returnSlip) returnSlip.style.display = 'none';
                 }
@@ -127,7 +137,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                // ตรวจสอบนามสกุลไฟล์
                 if (!file.name.endsWith('.csv')) {
                     alert('กรุณาอัปโหลดไฟล์นามสกุล .csv เท่านั้น');
                     csvUpload.value = '';
@@ -138,9 +147,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 reader.onload = function(event) {
                     const text = event.target.result;
                     processCSV(text);
-                    csvUpload.value = ''; // ล้างค่าเผื่ออัปโหลดไฟล์เดิมซ้ำ
+                    csvUpload.value = ''; 
                 };
-                // อ่านไฟล์แบบ UTF-8 เพื่อรองรับภาษาไทย
                 reader.readAsText(file, 'UTF-8');
             });
         }
@@ -150,14 +158,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             let addedCount = 0;
             const tbody = document.getElementById('items-tbody');
             
-            // ลบแถวว่างเริ่มต้นออกก่อน
             if(tbody && tbody.children.length === 1) {
                 const firstRow = tbody.querySelector('tr');
                 const itemName = firstRow.querySelector('.item-name')?.value;
                 if(!itemName) tbody.innerHTML = ''; 
             }
 
-            // อ่านข้อมูล เริ่มจากบรรทัดที่ 2 (i=1) เพื่อข้าม Header
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i].trim();
                 if (!row) continue;
@@ -166,21 +172,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (cols.length >= 3) {
                     const name = cols[1] ? cols[1].trim() : '';
-                    
-                    // 🌟 ดักไว้: ถ้ารายการว่าง หรือเป็นแถวสรุปคำว่า "รวม" ให้ข้ามบรรทัดนี้ไปเลย
                     if (!name || name === 'รวม') continue; 
 
-                    // 🌟 แก้ไข Index ให้ตรงกับ Google Sheet (A=0, B=1, C=2, D=3, E=4)
-                    
-                    // ดึงจำนวน จากคอลัมน์ D (index 3)
                     let qtyStr = cols[3] ? cols[3].replace(/,/g, '') : '1';
                     const qty = parseFloat(qtyStr) || 1;
                     
-                    // ดึงราคารวม จากคอลัมน์ E (index 4)
                     let totalStr = cols[4] ? cols[4].replace(/,/g, '') : '0';
                     let total = parseFloat(totalStr);
                     
-                    // ถ้าราคารวมเป็น 0 หรือว่าง ให้เอา คอลัมน์ C (ราคา/หน่วย) * จำนวน
                     if (isNaN(total) || total === 0) {
                         let priceUnitStr = cols[2] ? cols[2].replace(/,/g, '') : '0';
                         total = (parseFloat(priceUnitStr) || 0) * qty;
@@ -203,13 +202,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.calculateTotal();
             if(addedCount > 0) {
                 alert(`✅ นำเข้ารายการสำเร็จ ${addedCount} รายการ\nกรุณาตรวจสอบความถูกต้องและยอดเงินรวมอีกครั้ง`);
-                if (importSection) importSection.style.display = 'none'; // พับหน้าจอเก็บ
+                if (importSection) importSection.style.display = 'none'; 
             } else {
                 alert('❌ ไม่พบข้อมูล หรือรูปแบบไฟล์ CSV ไม่ถูกต้อง');
             }
         }
 
-        // ฟังก์ชันช่วยแยกคอลัมน์ CSV (กันปัญหาเครื่องหมายจุลภาคซ้อนในชื่อสินค้า)
         function parseCSVRow(str) {
             const arr = [];
             let quote = false;
@@ -228,7 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupClearanceUI();
 
     // ==========================================
-    // 2. ส่งข้อมูลเบิก / เคลียร์บิล (V.5.2 อัปเดตเรื่องฝ่าย)
+    // 2. ส่งข้อมูลเบิก / เคลียร์บิล
     // ==========================================
     async function processRequest(isDraft) {
         const msg = document.getElementById('req-msg');
@@ -244,17 +242,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const purposeVal = document.getElementById('req-purpose')?.value || '';
         const reqAmtVal = parseFloat(document.getElementById('req-amount')?.value) || 0;
         const bankVal = document.getElementById('req-bank')?.value || '';
-        
-        // 🌟 ดึงค่า ฝ่าย/แผนก จาก Dropdown
         const deptVal = document.getElementById('req-dept')?.value || '';
 
-        // เช็กข้อมูลก่อนส่ง (ถ้าไม่ใช่ Save Draft ต้องกรอกให้ครบ)
         if (!isDraft) {
             if (purposeVal.trim() === '') {
                 if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณากรอกหัวข้อการเบิก'; }
                 if (saveBtn) saveBtn.disabled = false; if (subBtn) subBtn.disabled = false; return;
             }
-            // 🌟 เช็กว่าเลือกฝ่ายหรือยัง (ถ้ากำลังขอเบิกครั้งแรก)
             if (!window.isClearingAdvance && deptVal === '') {
                 if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณาเลือกฝ่าย'; }
                 if (saveBtn) saveBtn.disabled = false; if (subBtn) subBtn.disabled = false; return;
@@ -278,7 +272,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // 🌟 ตั้งสถานะตาม Flow
         let finalStatus = 'draft';
         if (!isDraft) {
             if (window.isClearingAdvance) {
@@ -294,7 +287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             let sUrl = null, rUrl = null;
             if (sFile) {
-                if(msg) msg.textContent = 'กำลังอัปโหลดใบเสร็จ...';
+                if(msg) msg.textContent = 'กำลังอัปโหลดไฟล์หลักฐาน...';
                 const path = `statement-${Date.now()}.${sFile.name.split('.').pop()}`;
                 const { error: uploadError } = await supabaseClient.storage.from('receipts').upload(path, sFile);
                 if (uploadError) throw uploadError;
@@ -311,10 +304,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(msg) msg.textContent = 'กำลังบันทึกข้อมูล...';
             let clearanceId = draftId;
 
-            // ดึงค่ารหัสผ่านไฟล์
             const stmtPwd = document.getElementById('req-statement-password')?.value || null;
 
-            // ข้อมูลที่จะส่งเข้า Supabase ตาราง clearances
             const clearanceData = { 
                 member_id: currentUser.id, 
                 request_type: typeVal, 
@@ -323,10 +314,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 total_actual_amount: totalActual, 
                 status: finalStatus, 
                 member_bank_details: bankVal,
-                statement_password: stmtPwd  // 🌟 เพิ่มบรรทัดนี้ เพื่อส่งรหัสผ่านไปบันทึก
+                statement_password: stmtPwd  
             };
             
-            // 🌟 ส่งค่า Department (ฝ่าย) ไปด้วยเฉพาะตอนที่ไม่ใช่การเคลียร์บิลซ้ำ (เพราะการเคลียร์บิลเราล็อกช่องฝ่ายไว้)
             if (!window.isClearingAdvance) {
                 clearanceData.department = deptVal || '-'; 
             }
@@ -335,12 +325,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (rUrl) clearanceData.member_return_slip = rUrl;
 
             if (draftId) {
-                // อัปเดตของเดิม
                 const { error: updateError } = await supabaseClient.from('clearances').update(clearanceData).eq('id', draftId);
                 if (updateError) throw updateError;
                 await supabaseClient.from('clearance_items').delete().eq('clearance_id', draftId);
             } else {
-                // สร้างใหม่
                 const { data, error: insertError } = await supabaseClient.from('clearances').insert([clearanceData]).select();
                 if (insertError) throw insertError;
                 clearanceId = data[0].id;
@@ -362,19 +350,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 msg.textContent = isDraft ? '💾 บันทึกแบบร่างเรียบร้อย' : '✅ ส่งคำขอเรียบร้อย'; 
             }
             
-            // ล้างฟอร์ม
             const formObj = document.getElementById('complex-clearance-form');
             if (formObj) {
                 formObj.reset();
-                formObj.dispatchEvent(new Event('reset')); // ทริกเกอร์ให้ดึงเลขบัญชี V3.1 กลับมา
+                formObj.dispatchEvent(new Event('reset')); 
             }
             
             document.getElementById('current-draft-id').value = '';
             document.getElementById('req-type').disabled = false;
             document.getElementById('req-purpose').disabled = false;
             document.getElementById('req-amount').disabled = false;
+            document.getElementById('req-amount').readOnly = false;
             
-            // 🌟 ปลดล็อกช่องฝ่ายให้กลับมาเลือกได้
             const deptSelect = document.getElementById('req-dept');
             if(deptSelect) deptSelect.disabled = false;
 
@@ -403,11 +390,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ==========================================
-    // 3. ฟังก์ชันดึงยอดเบิกล่วงหน้ามาเคลียร์บิล
+    // 3. ฟังก์ชันดึงแบบร่าง / ยอดเบิกล่วงหน้ามาแก้ไข (🌟 แก้ไขบั๊กแบบร่าง)
     // ==========================================
     window.clearAdvance = async function(id) {
-        window.isClearingAdvance = true;
-        
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById('tab-clearance').classList.add('active');
@@ -415,7 +400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.scrollTo({ top: 0, behavior: 'smooth' }); 
 
         const msg = document.getElementById('req-msg');
-        if (msg) { msg.style.color = 'var(--primary)'; msg.textContent = 'กำลังโหลดข้อมูลเพื่อเคลียร์บิล...'; }
+        if (msg) { msg.style.color = 'var(--primary)'; msg.textContent = 'กำลังโหลดข้อมูล...'; }
 
         try {
             const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
@@ -424,27 +409,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('current-draft-id').value = c.id;
             
             const typeSelect = document.getElementById('req-type');
-            typeSelect.value = 'advance'; 
-            typeSelect.disabled = true;
-            typeSelect.dispatchEvent(new Event('change'));
-
             const purposeInput = document.getElementById('req-purpose');
-            purposeInput.value = c.purpose; 
-            purposeInput.disabled = true;
-
             const amtInput = document.getElementById('req-amount');
-            amtInput.value = c.requested_amount; 
-            amtInput.disabled = true;
-
-            // 🌟 ซ่อนหรือล็อก Dropdown ฝ่ายไว้ตอนกำลังเคลียร์บิล
             const deptSelect = document.getElementById('req-dept');
-            if (deptSelect) {
-                // พยายามเลือกค่าเดิม (ถ้ามี) แล้วล็อกไว้
-                if (c.department) deptSelect.value = c.department;
-                deptSelect.disabled = true; 
+            const submitBtn = document.getElementById('submit-req-btn');
+
+            // หยอดข้อมูลเดิมลงฟอร์ม
+            typeSelect.value = c.request_type || 'reimbursement'; 
+            purposeInput.value = c.purpose || ''; 
+            amtInput.value = c.requested_amount || 0; 
+            if (deptSelect && c.department) deptSelect.value = c.department;
+
+            // 🌟 เช็กว่าเป็น "แบบร่าง" หรือ "กำลังเคลียร์บิลจริง"
+            if (c.status === 'draft') {
+                window.isClearingAdvance = false; // โหมดแบบร่าง (แก้ไขได้ทุกอย่าง)
+                
+                typeSelect.disabled = false;
+                purposeInput.disabled = false;
+                amtInput.disabled = false;
+                amtInput.readOnly = false;
+                if (deptSelect) deptSelect.disabled = false;
+                
+                submitBtn.innerHTML = '🚀 ส่งคำขอ';
+                if (msg) msg.textContent = '✏️ โหมดแก้ไขแบบร่าง (สามารถแก้ไขข้อมูลได้ทุกช่อง)';
+            } else {
+                window.isClearingAdvance = true; // โหมดเคลียร์บิล (ล็อกห้ามแก้ข้อมูลตั้งต้น)
+                
+                typeSelect.disabled = true;
+                purposeInput.disabled = true;
+                amtInput.disabled = true;
+                amtInput.readOnly = true;
+                if (deptSelect) deptSelect.disabled = true;
+                
+                submitBtn.innerHTML = '🚀 ส่งบิลเคลียร์เงิน';
+                if (msg) msg.textContent = '📝 โหมดเคลียร์บิล: กรุณาแก้ไขราคาตามจริงและแนบสลิป';
             }
 
-            document.getElementById('submit-req-btn').innerHTML = '🚀 ส่งบิลเคลียร์เงิน';
+            typeSelect.dispatchEvent(new Event('change'));
 
             const tbody = document.getElementById('items-tbody');
             if (tbody) {
@@ -467,7 +468,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             window.calculateTotal();
-            if (msg) { msg.style.color = 'var(--success)'; msg.textContent = 'กรุณาแก้ไขราคาสินค้าตามจริง และแนบใบกำกับภาษี'; }
             setTimeout(() => { if(msg) msg.textContent = ''; }, 4000);
         } catch (err) {
             console.error(err); 
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ==========================================
-    // 4. แจ้งยอดบริจาค & รายรับ (V.5.2 ล็อกฝ่ายเป็น 'ส่วนกลาง')
+    // 4. แจ้งยอดบริจาค & รายรับ
     // ==========================================
     async function handleTransactionForm(formId, prefix) {
         const form = document.getElementById(formId);
@@ -515,7 +515,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     amount: parseFloat(amount), 
                     slip_url: slipUrl, 
                     status: 'pending', 
-                    // 🌟 แจ้งบริจาค/รายรับอื่นๆ ให้เข้าฝ่าย "ส่วนกลาง" ไปก่อน
                     department: 'ส่วนกลาง', 
                     created_by: currentUser.id 
                 }]);
