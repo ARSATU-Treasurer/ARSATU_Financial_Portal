@@ -28,7 +28,7 @@
         label { display: block; font-weight: 500; margin-bottom: 5px; font-size: 14px; }
         input[type="text"], input[type="number"], input[type="date"], select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-family: 'Prompt', sans-serif; font-size: 14px; box-sizing: border-box; }
         input:focus, select:focus { outline: none; border-color: var(--primary); }
-        .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: 'Prompt', sans-serif; transition: 0.2s; font-size: 14px; }
+        .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: 'Prompt', sans-serif; transition: 0.2s; font-size: 14px; white-space: nowrap; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-info { background: var(--info); color: white; }
@@ -62,10 +62,18 @@
                 padding-bottom: 15px;
                 border-bottom: 1px solid var(--border);
             }
-            header > div { width: 100%; justify-content: space-between; }
+            
+            /* 🌟 ให้ส่วนขวาของหัวเว็บ (ชื่อ+ปุ่ม) ปัดบรรทัดได้ถ้าที่แคบไป */
+            header > div { width: 100%; }
+            header > div:last-child { flex-wrap: wrap; justify-content: flex-start; gap: 12px; }
+            
             .container, .card, .widget { padding: 15px; margin-bottom: 15px; }
             .form-row, .flex-row { flex-direction: column; gap: 10px; }
+            
+            /* 🌟 ปุ่มทั่วไปกว้าง 100% แต่ 'ยกเว้น' ปุ่มบนหัวเว็บให้กว้างพอดีตัวอักษร */
             .btn { width: 100%; padding: 12px; margin-bottom: 5px; }
+            header .btn { width: auto; padding: 6px 12px; margin-bottom: 0; }
+            
             .hide-mobile { display: none !important; }
         }
     </style>

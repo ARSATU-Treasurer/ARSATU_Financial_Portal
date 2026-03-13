@@ -37,7 +37,7 @@
         input:focus, select:focus { outline: none; border-color: var(--primary); background-color: #fff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
         input[type="file"] { padding: 8px; background: #f8fafc; border: 1px dashed #cbd5e1; width: 100%; border-radius: 8px; cursor: pointer; box-sizing: border-box; }
         button { font-family: 'Prompt', sans-serif; transition: 0.2s; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 15px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 15px; white-space: nowrap; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-outline { background: white; color: var(--text-main); border: 1px solid var(--border); }
@@ -68,10 +68,18 @@
                 padding-bottom: 15px;
                 border-bottom: 1px solid var(--border);
             }
-            header > div { width: 100%; justify-content: space-between; }
+            
+            /* 🌟 ให้ส่วนขวาของหัวเว็บ (ชื่อ+ปุ่ม) ปัดบรรทัดได้ถ้าที่แคบไป */
+            header > div { width: 100%; }
+            header > div:last-child { flex-wrap: wrap; justify-content: flex-start; gap: 12px; }
+            
             .container, .card, .widget { padding: 15px; margin-bottom: 15px; }
             .form-row, .flex-row { flex-direction: column; gap: 10px; }
+            
+            /* 🌟 ปุ่มทั่วไปกว้าง 100% แต่ 'ยกเว้น' ปุ่มบนหัวเว็บให้กว้างพอดีตัวอักษร */
             .btn { width: 100%; padding: 12px; margin-bottom: 5px; }
+            header .btn { width: auto; padding: 6px 12px; margin-bottom: 0; }
+            
             .hide-mobile { display: none !important; }
         }
     </style>
