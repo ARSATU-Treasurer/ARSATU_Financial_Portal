@@ -553,6 +553,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const title = document.getElementById('modal-title');
         const slipSec = document.getElementById('admin-slip-section');
         
+        // 🌟 โค้ดโชว์เลขบัญชี (ดึงมาจาก c.member_bank_details)
+        const bankDiv = document.getElementById('modal-member-bank');
+        const bankText = document.getElementById('modal-bank-text');
+        if(bankDiv && bankText) {
+            if(actionDir === 'pay' && c.member_bank_details) {
+                bankDiv.style.display = 'block';
+                bankText.textContent = c.member_bank_details;
+            } else {
+                bankDiv.style.display = 'none'; // ซ่อนถ้าไม่ต้องโอน หรือไม่มีเลขบัญชี
+            }
+        }
+        
         if (actionDir === 'pay') { 
             if(amtP) amtP.innerHTML = `💸 ชุมนุมต้องโอนจ่าย: <strong style="color:var(--danger); font-size:20px;">${processAmt.toLocaleString()}</strong> บาท`; 
             if(title) title.textContent = c.status === 'pending_advance' ? '💸 ยืนยันโอนเงินตั้งต้น (Advance)' : '💸 ยืนยันการโอนเงินออก'; 
