@@ -959,6 +959,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <tr><td style="padding:5px 0; color:gray;">ผู้บันทึก:</td><td>${tx.profiles?.full_name || 'แอดมิน'}</td></tr>
                 </table>
                 ${imgHtml}
+                
+                <div style="margin-top:20px; padding-top:15px; border-top:1px dashed #ccc; display:flex; justify-content:center;">
+                    <button onclick="undoTransaction('${tx.id}')" class="btn btn-danger" style="width:100%; padding:10px; font-size:14px;">🗑️ ยกเลิกรายการนี้ (Undo & คืนเงิน)</button>
+                </div>
             `;
         } catch (err) { content.innerHTML = '<span style="color:red;">โหลดข้อมูลไม่สำเร็จ</span>'; }
     };
@@ -1185,6 +1189,67 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch(e) { console.error("Profile/Noti Error:", e); }
 
+        // ==========================================
+    // 🌟 ฟังก์ชันยกเลิกรายการ (Undo / Revert) อัตโนมัติ
+    // ==========================================
+    window.undoTransaction = async function(txId) {
+        if(!confirm('⚠️ ยืนยันการ "ยกเลิก (Undo)" รายการนี้ใช่ไหม?\n\nระบบจะทำการ:\n1. ดึงยอดเงินกลับอัตโนมัติ\n2. ตีกลับบิลไปสถานะรอตรวจสอบใหม่')) return;
+
+        try {
+            // 1. ดึงข้อมูล Transaction
+            const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', txId).single();
+            if (!tx) throw new Error("ไม่พบข้อมูลรายการนี้");
+
+            document.getElementById('view-tx-content').innerHTML = '<div style="text-align:center; padding:20px; color:var(--info);">⏳ กำลังดึงเงินกลับและถอยสถานะ...</div>';
+
+            // 2. ดึงเงินกลับ (Reverse Bank & Fund)
+            const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', tx.bank_account_id).single();
+            const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', tx.fund_id).single();
+
+            let nBal = parseFloat(bData.balance || 0);
+            let nFun = parseFloat(fData.remaining_budget || 0);
+            const amt = parseFloat(tx.amount || 0);
+
+            // ถ้ารายการเดิมเป็น "รายรับ" -> ต้อง "หักออก" | ถ้ารายการเดิมเป็น "รายจ่าย" -> ต้อง "บวกกลับ"
+            const isIncome = ['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type);
+            if (isIncome) {
+                nBal -= amt; nFun -= amt;
+            } else {
+                nBal += amt; nFun += amt;
+            }
+
+            await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', tx.bank_account_id);
+            await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', tx.fund_id);
+
+            // 3. จัดการสถานะและลบรายการ
+            if (tx.clearance_id) {
+                // กรณีเป็นรายการเบิกเงิน/เคลียร์บิล -> ลบ transaction ทิ้ง และถอยสถานะ clearance
+                let revertStatus = 'pending_clearance';
+                if (tx.description.includes('[โอนตั้งต้น]')) revertStatus = 'pending_advance';
+                
+                await supabaseClient.from('clearances').update({ status: revertStatus }).eq('id', tx.clearance_id);
+                await supabaseClient.from('transactions').delete().eq('id', txId);
+            } else {
+                // กรณีเป็นรายการแจ้งรับเงิน/บริจาค/แอดมินคีย์เอง -> ลบทิ้ง หรือถอยเป็นรออนุมัติ
+                if (tx.transaction_type === 'income' || tx.transaction_type === 'expense') {
+                    // ถ้าแอดมินคีย์เอง ลบทิ้งไปเลย
+                    await supabaseClient.from('transactions').delete().eq('id', txId);
+                } else {
+                    // ถ้า Member ส่งยอดบริจาค ถอยกลับไปรออนุมัติ
+                    await supabaseClient.from('transactions').update({ status: 'pending' }).eq('id', txId);
+                }
+            }
+
+            alert("✅ ยกเลิกรายการและคืนยอดเงินเรียบร้อย");
+            document.getElementById('view-tx-modal').style.display = 'none';
+            window.loadAllAdminData(); // โหลดหน้าใหม่
+
+        } catch (err) {
+            alert("❌ ผิดพลาด: " + err.message);
+            document.getElementById('view-tx-modal').style.display = 'none';
+        }
+    };
+
         window.loadDashboardWidgets();
         window.loadPendingDonations();
         window.loadPendingRequests();
@@ -1192,6 +1257,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.loadClearanceHistory();
         window.loadSettingsData();
         window.loadPendingUsers(); 
+
+        
     };
 
     window.loadAllAdminData();
