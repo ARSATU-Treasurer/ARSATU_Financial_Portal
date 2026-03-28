@@ -2,12 +2,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 🌟 ฟังก์ชันผู้ช่วยส่ง LINE
     window.sendLineMessage = function(msg) {
-        const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; // 👈 เอาลิงก์ GAS มาใส่ตรงนี้!
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; 
         fetch(gasUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'notify_admin', message: msg }) }).catch(e => console.log(e));
     };
 
     let currentUser = null;
-    window.isClearingAdvance = false; // ตัวแปรเช็กว่ากำลังเคลียร์บิลจากเงินตั้งต้นอยู่หรือไม่
+    window.isClearingAdvance = false;
 
     try {
         const { data, error } = await supabaseClient.auth.getSession();
@@ -22,19 +22,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // ออกจากระบบ V.5.1 (เช็ก LIFF)
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             await supabaseClient.auth.signOut();
-            const source = localStorage.getItem('loginSource'); // อ่านเศษขนมปัง
-            localStorage.removeItem('loginSource'); // เคลียร์ความจำทิ้ง
-            
-            if (source === 'liff') {
-                window.location.replace('index-liff.html'); // กลับไปหน้า LINE
-            } else {
-                window.location.replace('index.html'); // กลับไปหน้าเว็บปกติ
-            }
+            const source = localStorage.getItem('loginSource');
+            localStorage.removeItem('loginSource');
+            if (source === 'liff') window.location.replace('index-liff.html');
+            else window.location.replace('index.html');
         });
     }
 
@@ -64,7 +59,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const amt = parseFloat(reqAmt?.value) || 0;
                 
-                // 🌟 แก้ไขบั๊ก: คำนวณเงินทอนเฉพาะตอน "เคลียร์บิลจริงๆ" เท่านั้น (ไม่ใช่แบบร่าง)
                 if (reqType?.value === 'advance' && window.isClearingAdvance === true) {
                     if (diffSummary) diffSummary.style.display = 'block';
                     const diff = amt - total;
@@ -89,7 +83,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (returnSlip) returnSlip.style.display = 'none';
                     }
                 } else {
-                    // ถ้าเป็นแบบร่าง หรือ สำรองจ่ายปกติ ให้ซ่อนส่วนเงินทอนและสลิปไปเลย
                     if (diffSummary) diffSummary.style.display = 'none';
                     if (returnSlip) returnSlip.style.display = 'none';
                 }
@@ -127,7 +120,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (reqType) reqType.dispatchEvent(new Event('change'));
         if (addBtn) addBtn.click();
 
-        // 🌟 V.5.2: ระบบนำเข้าไฟล์ CSV อัตโนมัติ
         const toggleImportBtn = document.getElementById('toggle-import-btn');
         const importSection = document.getElementById('import-section');
         const csvUpload = document.getElementById('csv-upload');
@@ -278,18 +270,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // 🌟 ตั้งสถานะตาม Flow (แก้บั๊ก: บันทึกแบบร่างตอนเคลียร์บิล)
         let finalStatus;
         if (isDraft) {
             if (window.isClearingAdvance) {
-                // ถ้ากดแบบร่างตอนกำลังเคลียร์บิล ให้จำสถานะเดิมไว้ (ห้ามกลับไปเป็นร่างปกติ)
                 finalStatus = 'advance_transferred';
             } else {
-                // ถ้าเป็นรายการใหม่ที่เพิ่งสร้าง ให้เป็นร่างปกติ
                 finalStatus = 'draft';
             }
         } else {
-            // ถ้ากดปุ่ม "🚀 ส่งคำขอ / ส่งบิลเคลียร์"
             if (window.isClearingAdvance) {
                 finalStatus = 'pending_clearance'; 
             } else {
@@ -319,7 +307,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if(msg) msg.textContent = 'กำลังบันทึกข้อมูล...';
             let clearanceId = draftId;
-
             const stmtPwd = document.getElementById('req-statement-password')?.value || null;
 
             const clearanceData = { 
@@ -370,19 +357,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 🌟 V.6.0 แจ้งเตือนเข้ากลุ่มแอดมิน
             // ==========================================
             if (!isDraft) {
-                // สร้างข้อความสรุป
-                const typeLabel = typeVal === 'advance' ? 'ขอเบิกล่วงหน้า (Advance)' : 'เคลียร์บิล/สำรองจ่าย';
-                const alertMessage = `🚨 มีรายการเบิกเงินใหม่ 🚨\n\n👤 ผู้เบิก: ${currentUser?.user_metadata?.full_name || 'สมาชิกค่าย'}\n📁 ฝ่าย: ${deptVal || '-'}\n📌 หัวข้อ: ${purposeVal}\n💰 ยอดเงิน: ฿${reqAmtVal > 0 ? reqAmtVal.toLocaleString() : totalActual.toLocaleString()}\n🏷️ ประเภท: ${typeLabel}\n\nเหรัญญิกสามารถตรวจสอบได้ที่ Admin Dashboard ครับ!`;
+                const typeLabel = typeVal === 'advance' ? 'ขอเบิกล่วงหน้า (Advance)' : 'เคลียร์บิล / สำรองจ่าย';
+                let memberName = document.getElementById('current-user-name')?.textContent || 'สมาชิกค่าย';
+                if (memberName === 'กำลังโหลด...' || !memberName) memberName = 'สมาชิกค่าย';
+                
+                const finalAmt = reqAmtVal > 0 && typeVal === 'advance' && !window.isClearingAdvance ? reqAmtVal : totalActual;
 
-                // ส่งไปที่ Google Apps Script
-                fetch('https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec', {
-                    method: 'POST',
-                    mode: 'no-cors', // สั่งไม่ให้เว็บเบราว์เซอร์บล็อก
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'notify_admin', message: alertMessage })
-                }).catch(e => console.log("แจ้งเตือน LINE ไม่สำเร็จ:", e));
+                const alertMessage = `🚨 มีรายการเบิกเงินใหม่ 🚨\n\n👤 ผู้เบิก: ${memberName}\n📁 ฝ่าย: ${deptVal || '-'}\n📌 หัวข้อ: ${purposeVal}\n💰 ยอดเงิน: ฿${finalAmt.toLocaleString()}\n🏷️ ประเภท: ${typeLabel}\n\n🙏 เหรัญญิกตรวจสอบได้ที่ Admin Dashboard ครับ`;
+                if (window.sendLineMessage) window.sendLineMessage(alertMessage);
             }
-            // ==========================================
             
             const formObj = document.getElementById('complex-clearance-form');
             if (formObj) {
@@ -424,7 +407,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ==========================================
-    // 3. ฟังก์ชันดึงแบบร่าง / ยอดเบิกล่วงหน้ามาแก้ไข (🌟 แก้ไขบั๊กแบบร่าง)
+    // 3. ฟังก์ชันดึงแบบร่าง / ยอดเบิกล่วงหน้ามาแก้ไข
     // ==========================================
     window.clearAdvance = async function(id) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -448,16 +431,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const deptSelect = document.getElementById('req-dept');
             const submitBtn = document.getElementById('submit-req-btn');
 
-            // หยอดข้อมูลเดิมลงฟอร์ม
             typeSelect.value = c.request_type || 'reimbursement'; 
             purposeInput.value = c.purpose || ''; 
             amtInput.value = c.requested_amount || 0; 
             if (deptSelect && c.department) deptSelect.value = c.department;
 
-            // 🌟 เช็กว่าเป็น "แบบร่าง" หรือ "กำลังเคลียร์บิลจริง"
             if (c.status === 'draft') {
-                window.isClearingAdvance = false; // โหมดแบบร่าง (แก้ไขได้ทุกอย่าง)
-                
+                window.isClearingAdvance = false; 
                 typeSelect.disabled = false;
                 purposeInput.disabled = false;
                 amtInput.disabled = false;
@@ -467,8 +447,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 submitBtn.innerHTML = '🚀 ส่งคำขอ';
                 if (msg) msg.textContent = '✏️ โหมดแก้ไขแบบร่าง (สามารถแก้ไขข้อมูลได้ทุกช่อง)';
             } else {
-                window.isClearingAdvance = true; // โหมดเคลียร์บิล (ล็อกห้ามแก้ข้อมูลตั้งต้น)
-                
+                window.isClearingAdvance = true; 
                 typeSelect.disabled = true;
                 purposeInput.disabled = true;
                 amtInput.disabled = true;
@@ -511,7 +490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ==========================================
-    // 4. แจ้งยอดบริจาค & รายรับ
+    // 4. แจ้งยอดบริจาค & รายรับ (มี LINE Notify)
     // ==========================================
     async function handleTransactionForm(formId, prefix) {
         const form = document.getElementById(formId);
@@ -556,9 +535,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งรายการเพื่อตรวจสอบเรียบร้อย'; }
 
-                // --- 🌟 แจ้งเตือน LINE (ส่งยอดบริจาค/อื่นๆ) ---
-                const typeLabel = type === 'donation_cash' ? 'รับบริจาค (เงินสด)' : type === 'donation_transfer' ? 'รับบริจาค (โอน)' : type === 'income' ? 'รายรับอื่นๆ' : 'รายจ่ายอื่นๆ';
-                const memberName = currentUser?.user_metadata?.full_name || 'สมาชิก';
+                // 🌟 แจ้งเตือน LINE (ส่งยอดบริจาค/อื่นๆ)
+                let typeLabel = 'รายการ';
+                if (type === 'donation_cash') typeLabel = 'รับบริจาค (เงินสด)';
+                else if (type === 'donation_transfer') typeLabel = 'รับบริจาค (โอน)';
+                else if (type === 'income') typeLabel = 'รายรับเข้าชุมนุม';
+                else if (type === 'expense') typeLabel = 'รายจ่ายอื่นๆ';
+
+                let memberName = document.getElementById('current-user-name')?.textContent || 'สมาชิกค่าย';
+                if (memberName === 'กำลังโหลด...' || !memberName) memberName = 'สมาชิกค่าย';
+
                 const alertMsg = `📥 มีรายการแจ้งเงินใหม่ (รอตรวจสอบ)\n\n👤 ผู้แจ้ง: ${memberName}\n🏷️ ประเภท: ${typeLabel}\n📝 รายละเอียด: ${desc}\n💰 ยอดเงิน: ฿${parseFloat(amount).toLocaleString()}\n\n🙏 เหรัญญิกตรวจสอบได้ที่หน้า Dashboard ครับ`;
                 if (window.sendLineMessage) window.sendLineMessage(alertMsg);
 
@@ -679,4 +665,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
     window.loadUserProfileAndNoti();
+
+    // 🌟 โชว์ Pop-up คู่มือครั้งแรกที่เข้าใช้งาน
+    setTimeout(() => {
+        if (!localStorage.getItem('hasSeenFlowchart')) {
+            const howToModal = document.getElementById('howto-modal');
+            if (howToModal) {
+                howToModal.style.display = 'flex';
+                localStorage.setItem('hasSeenFlowchart', 'true');
+            }
+        }
+    }, 1000);
 });
