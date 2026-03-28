@@ -359,6 +359,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 msg.style.color = 'var(--success)'; 
                 msg.textContent = isDraft ? '💾 บันทึกแบบร่างเรียบร้อย' : '✅ ส่งคำขอเรียบร้อย'; 
             }
+
+            // ==========================================
+            // 🌟 V.6.0 แจ้งเตือนเข้ากลุ่มแอดมิน
+            // ==========================================
+            if (!isDraft) {
+                // สร้างข้อความสรุป
+                const typeLabel = typeVal === 'advance' ? 'ขอเบิกล่วงหน้า (Advance)' : 'เคลียร์บิล/สำรองจ่าย';
+                const alertMessage = `🚨 มีรายการเบิกเงินใหม่ 🚨\n\n👤 ผู้เบิก: ${currentUser?.user_metadata?.full_name || 'สมาชิกค่าย'}\n📁 ฝ่าย: ${deptVal || '-'}\n📌 หัวข้อ: ${purposeVal}\n💰 ยอดเงิน: ฿${reqAmtVal > 0 ? reqAmtVal.toLocaleString() : totalActual.toLocaleString()}\n🏷️ ประเภท: ${typeLabel}\n\nเหรัญญิกสามารถตรวจสอบได้ที่ Admin Dashboard ครับ!`;
+
+                // ส่งไปที่ Google Apps Script
+                fetch('https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec', {
+                    method: 'POST',
+                    mode: 'no-cors', // สั่งไม่ให้เว็บเบราว์เซอร์บล็อก
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'notify_admin', message: alertMessage })
+                }).catch(e => console.log("แจ้งเตือน LINE ไม่สำเร็จ:", e));
+            }
+            // ==========================================
             
             const formObj = document.getElementById('complex-clearance-form');
             if (formObj) {
