@@ -1,5 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
+    // 🌟 ฟังก์ชันผู้ช่วยส่ง LINE
+    window.sendLineMessage = function(msg) {
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; // 👈 เอาลิงก์ GAS มาใส่ตรงนี้!
+        fetch(gasUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'notify_admin', message: msg }) }).catch(e => console.log(e));
+    };
+
     let currentUser = null;
     window.isClearingAdvance = false; // ตัวแปรเช็กว่ากำลังเคลียร์บิลจากเงินตั้งต้นอยู่หรือไม่
 
@@ -549,6 +555,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (insertError) throw insertError;
                 
                 if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งรายการเพื่อตรวจสอบเรียบร้อย'; }
+
+                // --- 🌟 แจ้งเตือน LINE (ส่งยอดบริจาค/อื่นๆ) ---
+                const typeLabel = type === 'donation_cash' ? 'รับบริจาค (เงินสด)' : type === 'donation_transfer' ? 'รับบริจาค (โอน)' : type === 'income' ? 'รายรับอื่นๆ' : 'รายจ่ายอื่นๆ';
+                const memberName = currentUser?.user_metadata?.full_name || 'สมาชิก';
+                const alertMsg = `📥 มีรายการแจ้งเงินใหม่ (รอตรวจสอบ)\n\n👤 ผู้แจ้ง: ${memberName}\n🏷️ ประเภท: ${typeLabel}\n📝 รายละเอียด: ${desc}\n💰 ยอดเงิน: ฿${parseFloat(amount).toLocaleString()}\n\n🙏 เหรัญญิกตรวจสอบได้ที่หน้า Dashboard ครับ`;
+                if (window.sendLineMessage) window.sendLineMessage(alertMsg);
+
                 form.reset(); 
                 if (document.getElementById(`${prefix}-date`)) document.getElementById(`${prefix}-date`).valueAsDate = new Date();
                 setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);

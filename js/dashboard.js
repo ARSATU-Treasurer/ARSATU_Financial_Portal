@@ -1,5 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
+    // 🌟 ฟังก์ชันผู้ช่วยส่ง LINE (ฝั่งแอดมิน)
+    window.sendLineMessage = function(msg) {
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; // 👈 เอาลิงก์ GAS มาใส่ตรงนี้!
+        fetch(gasUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'notify_admin', message: msg }) }).catch(e => console.log(e));
+    };
+
     let currentUser = null;
     try {
         const { data, error } = await supabaseClient.auth.getSession();
@@ -138,6 +144,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (tErr) throw tErr;
                 
                 alert("✅ อนุมัติเรียบร้อย"); 
+
+                // --- 🌟 แจ้งเตือน LINE (แอดมินอนุมัติเงินเข้า) ---
+                const alertMsg = `✅ อนุมัติรายการเข้าบัญชีแล้ว\n\n💰 ยอดเงิน: ฿${parseFloat(amount).toLocaleString()}\n🏷️ ประเภท: ${type === 'expense' ? 'รายจ่าย' : 'รายรับ/บริจาค'}\n\nระบบบันทึกลงสมุดบัญชีและอัปเดตยอดกองทุนเรียบร้อยแล้วครับ!`;
+                if (window.sendLineMessage) window.sendLineMessage(alertMsg);
+
                 window.loadAllAdminData();
             } catch (err) { alert("เกิดข้อผิดพลาด: " + err.message); }
         }
@@ -673,6 +684,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (clearUpErr) throw clearUpErr;
 
                 if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ดำเนินการสำเร็จ'; }
+
+                // --- 🌟 แจ้งเตือน LINE (แอดมินจัดการบิลเบิก/เคลียร์) ---
+                const reqPurpose = window.currentClearance?.purpose || '-';
+                const actionText = newStat === 'advance_transferred' ? '💸 แอดมินโอนเงินล่วงหน้าให้แล้ว' : '✅ แอดมินอนุมัติเคลียร์บิลสำเร็จ';
+                const alertMsg = `${actionText}\n\n📌 หัวข้อ: ${reqPurpose}\n💰 ยอดอนุมัติ: ฿${finalTotal.toLocaleString()}\n\n(บันทึกลงสมุดบัญชีเรียบร้อย)`;
+                if (window.sendLineMessage) window.sendLineMessage(alertMsg);
+
                 setTimeout(() => { window.closeModal(); window.loadAllAdminData(); }, 2000);
                 
             } catch (err) { 
