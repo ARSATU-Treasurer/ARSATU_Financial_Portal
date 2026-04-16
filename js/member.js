@@ -613,10 +613,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tbody = document.querySelector('#member-history-table tbody');
             if (!tbody) return;
             
-            // 🌟 ดึงประวัติที่ "ตัวเองเป็นคนสร้าง" หรือ "เพื่อนสร้างให้ตัวเอง"
+            // 🌟 แก้ไขตรงนี้: ชี้เป้าไปที่ profiles!member_id(full_name)
             const { data, error } = await supabaseClient.from('clearances')
-                .select('*, profiles!clearances_member_id_fkey(full_name)')
-                .or(`member_id.eq.${currentUser.id},co_worker_id.eq.${currentUser.id}`) // 👈 จุดสำคัญ! ดึงมาทั้ง 2 กรณี
+                .select('*, profiles!member_id(full_name)')
+                .or(`member_id.eq.${currentUser.id},co_worker_id.eq.${currentUser.id}`) 
                 .order('created_at', { ascending: false });
             
             tbody.innerHTML = data.map(req => {
@@ -655,23 +655,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.loadData();
 
-    // 🌟 ฟังก์ชันโหลดรายชื่อเพื่อนร่วมค่าย (มาใส่ใน Dropdown)
-    window.loadCoWorkers = async function() {
-        try {
-            // ดึงรายชื่อคนที่อนุมัติแล้ว และไม่ใช่ตัวเอง
-            const { data } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
-            const cwSelect = document.getElementById('req-co-worker');
-            if (cwSelect && data) {
-                data.forEach(user => {
-                    const opt = document.createElement('option');
-                    opt.value = user.id;
-                    opt.textContent = `${user.full_name} (${user.department || 'ส่วนกลาง'})`;
-                    cwSelect.appendChild(opt);
-                });
-            }
-        } catch(e) { console.error("โหลดรายชื่อเพื่อนไม่สำเร็จ:", e); }
-    };
-
     // ==========================================
     // V.3.2: โหลดชื่อผู้ใช้, สลับหน้า Admin, และกระดิ่งแจ้งเตือน
     // ==========================================
@@ -702,6 +685,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
     window.loadUserProfileAndNoti();
+    window.loadCoWorkers(); // 🌟 เรียกใช้ฟังก์ชันตอนโหลดหน้าเว็บ
 
     // 🌟 โชว์ Pop-up คู่มือครั้งแรกที่เข้าใช้งาน
     setTimeout(() => {
