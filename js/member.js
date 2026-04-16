@@ -9,6 +9,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUser = null;
     window.isClearingAdvance = false;
 
+    // 🌟 ฟังก์ชันโหลดรายชื่อเพื่อนร่วมค่าย (มาใส่ใน Dropdown)
+    window.loadCoWorkers = async function() {
+        try {
+            // ดึงรายชื่อคนที่อนุมัติแล้ว และไม่ใช่ตัวเอง
+            const { data } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
+            const cwSelect = document.getElementById('req-co-worker');
+            if (cwSelect && data) {
+                data.forEach(user => {
+                    const opt = document.createElement('option');
+                    opt.value = user.id;
+                    opt.textContent = `${user.full_name} (${user.department || 'ส่วนกลาง'})`;
+                    cwSelect.appendChild(opt);
+                });
+            }
+        } catch(e) { console.error("โหลดรายชื่อเพื่อนไม่สำเร็จ:", e); }
+    };
+
     try {
         const { data, error } = await supabaseClient.auth.getSession();
         if (error || !data.session) {
@@ -309,8 +326,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             let clearanceId = draftId;
             const stmtPwd = document.getElementById('req-statement-password')?.value || null;
 
+            // 🌟 ดึงค่าไอดีเพื่อนร่วมเบิก (ถ้าเลือกไว้)
+            const coWorkerVal = document.getElementById('req-co-worker')?.value || null;
+
             const clearanceData = { 
                 member_id: currentUser.id, 
+                co_worker_id: coWorkerVal, // 👈 เพิ่มบรรทัดนี้ส่งไปบันทึก
                 request_type: typeVal, 
                 purpose: purposeVal, 
                 requested_amount: reqAmtVal, 
@@ -592,12 +613,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tbody = document.querySelector('#member-history-table tbody');
             if (!tbody) return;
             
-            const { data, error } = await supabaseClient.from('clearances').select('*').eq('member_id', currentUser.id).order('created_at', { ascending: false });
-            if (error) throw error;
-            if (!data || data.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">ยังไม่มีประวัติ</td></tr>`; 
-                return; 
-            }
+            // 🌟 ดึงประวัติที่ "ตัวเองเป็นคนสร้าง" หรือ "เพื่อนสร้างให้ตัวเอง"
+            const { data, error } = await supabaseClient.from('clearances')
+                .select('*, profiles!clearances_member_id_fkey(full_name)')
+                .or(`member_id.eq.${currentUser.id},co_worker_id.eq.${currentUser.id}`) // 👈 จุดสำคัญ! ดึงมาทั้ง 2 กรณี
+                .order('created_at', { ascending: false });
             
             tbody.innerHTML = data.map(req => {
                 const date = new Date(req.created_at).toLocaleDateString('th-TH');
@@ -634,6 +654,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.loadData();
+
+    // 🌟 ฟังก์ชันโหลดรายชื่อเพื่อนร่วมค่าย (มาใส่ใน Dropdown)
+    window.loadCoWorkers = async function() {
+        try {
+            // ดึงรายชื่อคนที่อนุมัติแล้ว และไม่ใช่ตัวเอง
+            const { data } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
+            const cwSelect = document.getElementById('req-co-worker');
+            if (cwSelect && data) {
+                data.forEach(user => {
+                    const opt = document.createElement('option');
+                    opt.value = user.id;
+                    opt.textContent = `${user.full_name} (${user.department || 'ส่วนกลาง'})`;
+                    cwSelect.appendChild(opt);
+                });
+            }
+        } catch(e) { console.error("โหลดรายชื่อเพื่อนไม่สำเร็จ:", e); }
+    };
 
     // ==========================================
     // V.3.2: โหลดชื่อผู้ใช้, สลับหน้า Admin, และกระดิ่งแจ้งเตือน
