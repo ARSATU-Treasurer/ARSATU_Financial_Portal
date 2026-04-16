@@ -34,10 +34,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             await supabaseClient.auth.signOut();
-            const source = localStorage.getItem('loginSource');
             localStorage.removeItem('loginSource');
-            if (source === 'liff') window.location.replace('index-liff.html');
-            else window.location.replace('index.html');
+            window.location.replace('index.html');
         });
     }
 
@@ -106,7 +104,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
         
         try {
-            const { data, error } = await supabaseClient.from('transactions').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+            const { data, error } = await supabaseClient.from('transactions')
+                .select('*')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+                
             if (error) throw error;
             
             if (!data || data.length === 0) { 
@@ -142,8 +144,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td>${slipLink}</td>
                         <td>
                             <div style="display:flex; flex-direction:column; gap:5px;">
-                                <select id="bank-for-${req.id}" style="padding:5px; border-radius:4px; font-size:12px;"><option value="">-- เลือกบัญชี --</option>${bankOpts}</select>
-                                <select id="fund-for-${req.id}" style="padding:5px; border-radius:4px; font-size:12px;"><option value="">-- เลือกกองทุน --</option>${fundOpts}</select>
+                                <select id="bank-for-${req.id}" style="padding:5px; border-radius:4px; font-size:12px;">
+                                    <option value="">-- เลือกบัญชี --</option>${bankOpts}
+                                </select>
+                                <select id="fund-for-${req.id}" style="padding:5px; border-radius:4px; font-size:12px;">
+                                    <option value="">-- เลือกกองทุน --</option>${fundOpts}
+                                </select>
                                 <button onclick="approveDonation('${req.id}', ${req.amount}, '${req.transaction_type}')" class="btn btn-success" style="padding:5px 10px; font-size:12px;">✅ อนุมัติ</button>
                             </div>
                         </td>
@@ -166,19 +172,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (confirm(`ยืนยันนำรายการ ฿${amount.toLocaleString()} เข้าบัญชีและกองทุน?`)) {
             try {
-                // อัปเดตธนาคาร
                 const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', bankId).single();
                 let nBal = parseFloat(bData.balance); 
                 nBal += (type === 'expense' ? -parseFloat(amount) : parseFloat(amount));
                 await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
 
-                // อัปเดตกองทุน
                 const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', fundId).single();
                 let nFun = parseFloat(fData.remaining_budget); 
                 nFun += (type === 'expense' ? -parseFloat(amount) : parseFloat(amount));
                 await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
                 
-                // อัปเดตสถานะ
                 await supabaseClient.from('transactions').update({ status: 'approved', bank_account_id: bankId, fund_id: fundId }).eq('id', id);
                 
                 alert("✅ อนุมัติเรียบร้อย"); 
@@ -337,10 +340,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (items && items.length > 0) {
                     items.forEach(it => {
                         const tr = document.createElement('tr');
-                        // จัดการหลีกเลี่ยงเครื่องหมายคำพูดในชื่อ
                         let safeName = it.item_name.replace(/"/g, '&quot;');
                         tr.innerHTML = `
-                            <td><input type="hidden" class="edit-item-id" value="${it.id}"><input type="text" class="edit-item-name" value="${safeName}" style="width:100%; padding:5px;" required></td>
+                            <td><input type="hidden" class="edit-item-id" value="${it.id}">
+                            <input type="text" class="edit-item-name" value="${safeName}" style="width:100%; padding:5px;" required></td>
                             <td><input type="number" class="edit-item-qty" min="1" value="${it.quantity}" style="width:100%; padding:5px; text-align:center;" required></td>
                             <td><input type="number" class="edit-item-price" min="0" step="0.01" value="${it.total_price}" style="width:100%; padding:5px; text-align:right;" required></td>
                             <td style="text-align: center;"><button type="button" class="btn btn-danger edit-del-btn" style="padding: 4px 8px; font-size: 11px;">ลบ</button></td>
@@ -394,7 +397,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.getElementById('edit-items-tbody'); 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><input type="hidden" class="edit-item-id" value="new"><input type="text" class="edit-item-name" placeholder="ชื่อรายการ" style="width:100%; padding:5px;" required></td>
+            <td><input type="hidden" class="edit-item-id" value="new">
+            <input type="text" class="edit-item-name" placeholder="ชื่อรายการ" style="width:100%; padding:5px;" required></td>
             <td><input type="number" class="edit-item-qty" min="1" value="1" style="width:100%; padding:5px; text-align:center;" required></td>
             <td><input type="number" class="edit-item-price" min="0" step="0.01" value="0" style="width:100%; padding:5px; text-align:right;" required></td>
             <td style="text-align: center;"><button type="button" class="btn btn-danger edit-del-btn" style="padding: 4px 8px; font-size: 11px;">ลบ</button></td>
@@ -602,7 +606,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('admin-action-form')?.reset();
     };
 
-    // 🌟 แก้ปัญหาปุ่มค้างจาก required ที่ถูกซ่อน
     window.recalculateAdminTotal = function() {
         const c = window.currentClearance; 
         if(!c) return;
@@ -655,7 +658,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bankDiv = document.getElementById('modal-member-bank');
         const bankText = document.getElementById('modal-bank-text');
 
-        // ปลดล็อก Required ก่อน เพื่อไม่ให้เบราว์เซอร์แอบบล็อก
         if (bankSel) bankSel.required = false;
         if (fundSel) fundSel.required = false;
 
@@ -679,8 +681,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (actionDir === 'receive') { 
             if(amtP) amtP.innerHTML = `📥 ชุมนุมได้รับเงินทอน: <strong style="color:var(--success); font-size:20px;">${processAmt.toLocaleString()}</strong> บาท`; 
             if(title) title.textContent = '📥 ยืนยันรับเงินทอนเคลียร์บิล'; 
-            if(slipSec) slipSec.style.display = 'none';  // ไม่โชว์อัปโหลดสลิป
-            if(bankFundWrapper) bankFundWrapper.style.display = 'flex'; // แต่โชว์ให้เลือกบัญชีเก็บเงิน
+            if(slipSec) slipSec.style.display = 'none';  
+            if(bankFundWrapper) bankFundWrapper.style.display = 'flex'; 
             if (bankSel) bankSel.required = true;
             if (fundSel) fundSel.required = true;
         } 
@@ -957,6 +959,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการ Co-Worker</button>`;
 
+                // 🌟 เพิ่มปุ่มลบถาวรให้แอดมิน (เฉพาะรายการที่ยกเลิกแล้ว หรือยังไม่ได้อนุมัติ)
+                let deleteBtn = '';
+                if (['draft', 'pending_advance', 'pending_clearance', 'cancelled'].includes(req.status)) {
+                    deleteBtn = `<button type="button" onclick="deleteDraft('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--danger); color:var(--danger);">🗑️ ลบทิ้งถาวร</button>`;
+                }
+
                 return `
                     <tr>
                         <td>${date}</td>
@@ -969,6 +977,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
                                 ${btn}
                                 ${cwBtn}
+                                ${deleteBtn}
                             </div>
                         </td>
                     </tr>
@@ -1279,6 +1288,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    // 🌟 V.8.0 ฟังก์ชันลบบิลถาวร (สำหรับแอดมิน)
+    window.deleteDraft = async function(id) {
+        if(!confirm('⚠️ ยืนยันการ "ลบทิ้งถาวร" ?\nการกระทำนี้ไม่สามารถย้อนกลับได้ครับ')) return;
+        try {
+            await supabaseClient.from('clearance_items').delete().eq('clearance_id', id);
+            await supabaseClient.from('audit_logs').delete().eq('clearance_id', id);
+            await supabaseClient.from('clearances').delete().eq('id', id);
+            
+            alert('✅ ลบรายการเรียบร้อยแล้ว');
+            window.loadClearanceHistory();
+            window.loadPendingRequests();
+        } catch(e) {
+            alert('❌ ลบไม่สำเร็จ: ' + e.message);
+        }
+    };
+
     // ==========================================
     // 🌟 แก้ไข: ดัก Error Export CSV และป้องกันบั๊กเบราว์เซอร์บล็อกการดาวน์โหลด
     // ==========================================
@@ -1310,13 +1335,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const fundMap = {}; 
             fData?.forEach(f => fundMap[f.id] = f.fund_name);
 
-            // \uFEFF คือ BOM เพื่อให้ Excel ภาษาไทยไม่เป็นภาษาต่างดาว
             let csvContent = "\uFEFFวันที่,ฝ่าย,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n";
             
             txs.forEach(tx => {
                 const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
                 
-                // 🌟 กันพังเวลาผู้ใช้พิมพ์เครื่องหมายคำพูดในชื่อ
                 let desc = (tx.description || '-') + (tx.location ? ` (ส: ${tx.location})` : '');
                 desc = desc.replace(/"/g, '""'); 
                 
@@ -1340,7 +1363,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            // สร้างไฟล์และดาวน์โหลด
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); 
             const url = URL.createObjectURL(blob); 
             const link = document.createElement("a"); 
@@ -1349,7 +1371,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const filenameLabel = selectedDept ? `_${selectedDept}` : '_All';
             link.setAttribute("download", `ARSATU_Ledger${filenameLabel}_${new Date().toISOString().split('T')[0]}.csv`);
             
-            // ใช้ setTimeout เล็กน้อยแก้บั๊ก Safari บล็อก Pop-up
             document.body.appendChild(link); 
             link.click(); 
             setTimeout(() => { 
