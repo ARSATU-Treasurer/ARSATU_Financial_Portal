@@ -457,6 +457,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             amtInput.value = c.requested_amount || 0; 
             if (deptSelect && c.department) deptSelect.value = c.department;
 
+            // 🌟 ดึงชื่อ Co-worker กลับมาแสดงสำหรับรายการเก่า
+            const cwSelect = document.getElementById('req-co-worker');
+            if (cwSelect) cwSelect.value = c.co_worker_id || '';
+
             if (c.status === 'draft') {
                 window.isClearingAdvance = false; 
                 typeSelect.disabled = false;
