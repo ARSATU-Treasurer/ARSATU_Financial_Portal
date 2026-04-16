@@ -572,7 +572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 else if (req.status === 'cleared') { stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>'; }
                 
-                let cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการคนแท็ก</button>`;
+                let cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการ Co-Worker</button>`;
                 
                 // 🌟 เพิ่มปุ่มให้ดูบิลย่อยได้ในหน้า Member แล้ว!
                 let viewBtn = `<button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%;">🔍 ดูบิลย่อย</button>`;
