@@ -6,19 +6,7 @@
     <title>Member Portal - ระบบบริหารการเงิน</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root { 
-            --primary: #3b82f6; 
-            --primary-hover: #2563eb; 
-            --success: #10b981; 
-            --warning: #f59e0b; 
-            --danger: #ef4444; 
-            --info: #0ea5e9;
-            --bg-color: #f1f5f9; 
-            --text-main: #334155; 
-            --text-muted: #64748b; 
-            --border: #e2e8f0; 
-            --card-bg: #ffffff; 
-        }
+        :root { --primary: #3b82f6; --primary-hover: #2563eb; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --info: #0ea5e9; --bg-color: #f1f5f9; --text-main: #334155; --text-muted: #64748b; --border: #e2e8f0; --card-bg: #ffffff; }
         body { font-family: 'Prompt', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; }
         header { background-color: var(--card-bg); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
         h2, h3 { color: #0f172a; margin-top: 0; }
@@ -47,27 +35,11 @@
         td { padding: 12px; border-bottom: 1px solid var(--border); }
         .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
 
-        /* ==========================================
-           V.5.2: Responsive UI (สำหรับหน้าจอมือถือ)
-           ========================================== */
-        .table-responsive {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch; 
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
 
         @media (max-width: 768px) {
             body { padding: 10px; font-size: 14px; }
-            header {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 15px;
-                padding-bottom: 15px;
-                border-bottom: 1px solid var(--border);
-            }
+            header { flex-direction: column; align-items: flex-start !important; gap: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
             header > div { width: 100%; }
             header > div:last-child { flex-wrap: wrap; justify-content: flex-start; gap: 12px; }
             .container, .card, .widget { padding: 15px; margin-bottom: 15px; }
@@ -77,22 +49,8 @@
             .hide-mobile { display: none !important; }
         }
 
-        /* ========================================= */
-        /* 🌟 แก้ไข Pop-up ทุกอันให้เลื่อนขึ้นลงได้บนมือถือ */
-        /* ========================================= */
-        #view-tx-modal > div,
-        #view-clearance-modal > div,
-        #action-modal > div,
-        #edit-req-modal > div,
-        #howto-modal > div,
-        #flowchart-modal > div,
-        #select-coworker-modal > div,
-        #coworker-modal > div {
-            max-height: 85vh !important; 
-            overflow-y: auto !important; 
-            -webkit-overflow-scrolling: touch !important; 
-            margin-top: 20px; 
-            margin-bottom: 20px;
+        #view-tx-modal > div, #view-clearance-modal > div, #action-modal > div, #edit-req-modal > div, #howto-modal > div, #flowchart-modal > div, #select-coworker-modal > div, #coworker-modal > div {
+            max-height: 85vh !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; margin-top: 20px; margin-bottom: 20px;
         }
     </style>
 </head>
@@ -127,28 +85,13 @@
             <div class="card" style="border-left: 5px solid var(--warning); background: #fffbeb; padding: 15px 20px; margin-bottom: 20px; border-color: #fde047;">
                 <h3 style="margin: 0 0 8px 0; color: #b45309; font-size: 16px;">📢 ประกาศจากเหรัญญิกชุมนุม</h3>
                 <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.6;">
-                    - ตรวจสอบ <strong>สรุปรายการใช้จ่ายค่ายเก่า</strong> ได้ที่นี่ 👉 <a href="https://drive.google.com/drive/folders/16JxsSAVz2uIrdgBC_gm0Pik-IRLiJbsX?usp=sharing" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">[คลิกเพื่อเปิดเอกสาร]</a><br>
-                    - ตรวจสอบ <strong>งบประมาณค่ายล่าสุด</strong> ได้ที่นี่ 👉 <a href="ลิงก์_Google_Drive_ของคุณ" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">[คลิกเพื่อเปิดเอกสาร]</a><br>
-                    - อย่าลืมทำรายการเคลียร์บิลให้แล้วเสร็จน้าา
+                    - ตรวจสอบ <strong>สรุปรายการใช้จ่ายค่ายเก่า</strong> ได้ที่นี่ 👉 <a href="#" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">[คลิกเพื่อเปิดเอกสาร]</a><br>
+                    - ตรวจสอบ <strong>งบประมาณค่ายล่าสุด</strong> ได้ที่นี่ 👉 <a href="#" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">[คลิกเพื่อเปิดเอกสาร]</a>
                 </p>
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                <div class="card">
-                    <h3 style="color: var(--text-muted); font-size: 16px;">💳 บัญชีธนาคาร (คงเหลือ)</h3>
-                    <div class="table-responsive">
-                        <table id="member-bank-table">
-                            <tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3 style="color: var(--text-muted); font-size: 16px;">💰 งบประมาณกองทุน (คงเหลือ)</h3>
-                    <div class="table-responsive">
-                        <table id="member-fund-table">
-                            <tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="card"><h3 style="color: var(--text-muted); font-size: 16px;">💳 บัญชีธนาคาร (คงเหลือ)</h3><div class="table-responsive"><table id="member-bank-table"><tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody></table></div></div>
+                <div class="card"><h3 style="color: var(--text-muted); font-size: 16px;">💰 งบประมาณกองทุน (คงเหลือ)</h3><div class="table-responsive"><table id="member-fund-table"><tbody><tr><td style="text-align: center; color: gray;">กำลังโหลด...</td></tr></tbody></table></div></div>
             </div>
         </div>
 
@@ -164,88 +107,45 @@
 
             <div class="card">
                 <h3 style="margin-bottom: 5px;">สร้างใบขอเบิกเงิน / เคลียร์เงินทดรองจ่าย</h3>
-                <p style="margin-top: 0; margin-bottom: 18px; font-size: 13px;">
-                    <span onclick="document.getElementById('flowchart-modal').style.display='flex'" style="color: var(--info); cursor: pointer; font-weight: 600; text-decoration: underline; display: inline-flex; align-items: center; gap: 5px; background: #f0f9ff; padding: 4px 8px; border-radius: 6px; border: 1px solid #bae6fd;">
-                        🤔 สงสัยขั้นตอนการเบิกเงิน? (คลิกเพื่อดู Flowchart)
-                    </span>
-                </p>
+                <p style="margin-top: 0; margin-bottom: 18px; font-size: 13px;"><span onclick="document.getElementById('flowchart-modal').style.display='flex'" style="color: var(--info); cursor: pointer; font-weight: 600; text-decoration: underline; display: inline-flex; align-items: center; gap: 5px; background: #f0f9ff; padding: 4px 8px; border-radius: 6px; border: 1px solid #bae6fd;">🤔 สงสัยขั้นตอนการเบิกเงิน? (คลิกเพื่อดู Flowchart)</span></p>
                 
                 <form id="complex-clearance-form">
                     <input type="hidden" id="current-draft-id" value="">
-                    
                     <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                         <div class="form-group" style="margin-bottom: 0;">
                             <label>ประเภทคำขอ</label>
-                            <select id="req-type" required>
-                                <option value="reimbursement">สำรองจ่ายไปแล้ว (Reimbursement)</option>
-                                <option value="advance">ขอเบิกเงินล่วงหน้า (Advance)</option>
-                            </select>
+                            <select id="req-type" required><option value="reimbursement">สำรองจ่ายไปแล้ว (Reimbursement)</option><option value="advance">ขอเบิกเงินล่วงหน้า (Advance)</option></select>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
                             <label>ฝ่าย / แผนก</label>
                             <select id="req-dept" required>
                                 <option value="" disabled selected>-- เลือกฝ่าย --</option>
-                                <option value="อำนวยการ">อำนวยการ-ประธาน/รองประธาน/เลขานุการ</option>
-                                <option value="สวัสดิการ">สวัสดิการ</option>
-                                <option value="โครงงาน">โครงงาน</option>
-                                <option value="อุปกรณ์">อุปกรณ์</option>
-                                <option value="สถานที่">สถานที่</option>
-                                <option value="สันทนาการ">สันทนาการ</option>
-                                <option value="เหรัญญิก">เหรัญญิก</option>
-                                <option value="สปอนเซอร์">สปอนเซอร์</option>
-                                <option value="PR">PR</option>
-                                <option value="สัมพันธ์ชาวบ้าน">สัมพันธ์ชาวบ้าน</option>
-                                <option value="อื่นๆ">อื่นๆ</option>
+                                <option value="อำนวยการ">อำนวยการ-ประธาน/รองประธาน/เลขานุการ</option><option value="สวัสดิการ">สวัสดิการ</option><option value="โครงงาน">โครงงาน</option><option value="อุปกรณ์">อุปกรณ์</option><option value="สถานที่">สถานที่</option><option value="สันทนาการ">สันทนาการ</option><option value="เหรัญญิก">เหรัญญิก</option><option value="สปอนเซอร์">สปอนเซอร์</option><option value="PR">PR</option><option value="สัมพันธ์ชาวบ้าน">สัมพันธ์ชาวบ้าน</option><option value="อื่นๆ">อื่นๆ</option>
                             </select>
                         </div>
                     </div>
 
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: var(--text-main);">👥 เพิ่ม Co-Worker</label>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: var(--text-main);">👥 เพิ่ม CoWorker</label>
                         <div style="display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px;">
-                            <div id="coworker-summary" style="flex: 1; font-size: 13px; color: var(--text-muted); line-height: 1.4;">
-                                ไม่มีผู้ร่วมเบิก (ทำรายการของตัวเอง)
-                            </div>
-                            <button type="button" onclick="openSelectCoWorkerModal()" class="btn btn-outline" style="padding: 6px 10px; font-size: 12px; border-color: var(--primary); color: var(--primary); background: white; white-space: nowrap;">
-                                ➕ เลือกชื่อ
-                            </button>
+                            <div id="coworker-summary" style="flex: 1; font-size: 13px; color: var(--text-muted); line-height: 1.4;">ไม่มีผู้ร่วมเบิก (ทำรายการของตัวเอง)</div>
+                            <button type="button" onclick="openSelectCoWorkerModal()" class="btn btn-outline" style="padding: 6px 10px; font-size: 12px; border-color: var(--primary); color: var(--primary); background: white; white-space: nowrap;">➕ เลือกชื่อ</button>
                         </div>
-                        <small style="color: gray; font-size: 12px; margin-top: 5px; display: block;">*Co-Worker จะเห็นบิลนี้ในประวัติ และช่วยจัดการบิลได้</small>
+                        <small style="color: gray; font-size: 12px; margin-top: 5px; display: block;">*CoWorker จะเห็นบิลนี้ในประวัติ และสามารถจัดการบิลได้</small>
                     </div>
 
-                    <div class="form-group">
-                        <label>หัวข้อ / วัตถุประสงค์</label>
-                        <input type="text" id="req-purpose" placeholder="เช่น ซื้อวัตถุดิบทำอาหารค่าย" required>
-                    </div>
-
-                    <div class="form-group" id="advance-section" style="display: none; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #bfdbfe;">
-                        <label style="color: var(--primary);">จำนวนเงินที่ต้องการเบิกล่วงหน้า (บาท)</label>
-                        <input type="number" id="req-amount" min="0" step="0.01" value="0">
-                    </div>
+                    <div class="form-group"><label>หัวข้อ / วัตถุประสงค์</label><input type="text" id="req-purpose" placeholder="เช่น ซื้อวัตถุดิบทำอาหารค่าย" required></div>
+                    <div class="form-group" id="advance-section" style="display: none; background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #bfdbfe;"><label style="color: var(--primary);">จำนวนเงินที่ต้องการเบิกล่วงหน้า (บาท)</label><input type="number" id="req-amount" min="0" step="0.01" value="0"></div>
 
                     <div style="margin: 25px 0; border: 1px dashed var(--info); padding: 15px; border-radius: 8px; background: #f0f9ff;">
-                        <button type="button" class="btn btn-outline" id="toggle-import-btn" style="width: 100%; border-color: var(--info); color: var(--info); font-weight: 600;">
-                            📊 รายการอัตโนมัติจาก Google Sheet
-                        </button>
-                        
+                        <button type="button" class="btn btn-outline" id="toggle-import-btn" style="width: 100%; border-color: var(--info); color: var(--info); font-weight: 600;">📊 รายการอัตโนมัติจาก Google Sheet</button>
                         <div id="import-section" style="display: none; margin-top: 15px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #bae6fd;">
-                            <p style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-top: 0;">
-                                <strong>คำแนะนำการใช้งาน:</strong> สำหรับฝ่ายที่ทำลิสต์มาแล้วสามารถปรับไฟล์ให้เป็นตารางหัวข้อตามตัวอย่าง หรือสามารถ duplicate ไฟล์ Google Sheet นี้เพื่อนำไปลิสต์รายการได้<br><br>
-                                <strong>ขั้นตอน:</strong><br>
-                                1. กดดาวน์โหลดฟอร์ม (Make a copy / ทำสำเนา)<br>
-                                2. พิมพ์ลิสต์รายการของคุณ<br>
-                                3. ตรวจสอบยอดเงินโดยเฉพาะราคารวม<br>
-                                4. ดาวน์โหลดเป็น CSV (ไปที่ ไฟล์ > ดาวน์โหลด > ค่าที่คั่นด้วยจุลภาค .csv)<br>
-                                5. กลับมาอัพโหลดไฟล์ที่ปุ่มอัพโหลดด้านล่าง<br>
-                                6. รายการจะดึงขึ้นมาเป็นแบบร่างอัตโนมัติ สามารถแก้ไขราคาหรือรายการได้ก่อนส่ง
-                            </p>
+                            <p style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-top: 0;"><strong>คำแนะนำ:</strong> สามารถโหลดฟอร์มตารางไปพิมพ์รายการ แล้วบันทึกเป็นไฟล์ .csv เพื่ออัปโหลดได้เลยครับ</p>
                             <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
-                                <a href="https://docs.google.com/spreadsheets/d/164Ar4s4tpkOQ5R5GJqBT9ti94lbVHaadgZyRtIntvlw/edit?usp=sharing" target="_blank" class="btn btn-info" style="text-decoration: none; text-align: center; flex: 1; min-width: 200px;">
-                                    📝 1. ดาวน์โหลดฟอร์ม (Google Sheet)
-                                </a>
-                                <label class="btn btn-success" style="flex: 1; text-align: center; cursor: pointer; margin: 0; min-width: 200px;">
+                                <a href="https://docs.google.com/spreadsheets/d/164Ar4s4tpkOQ5R5GJqBT9ti94lbVHaadgZyRtIntvlw/edit?usp=sharing" target="_blank" class="btn btn-info" style="text-decoration: none; text-align: center; flex: 1; min-width: 200px;">📝 1. ดาวน์โหลดฟอร์ม (Sheet)</a>
+                                <label class="btn btn-success" style="flex: 1; text-align: center; cursor: pointer; margin: 0; min-width: 200px; position: relative; overflow: hidden;">
                                     📥 2. อัพโหลดลิสต์รายการ (.csv)
-                                    <input type="file" id="csv-upload" accept=".csv" style="display: none;">
+                                    <input type="file" id="csv-upload" accept=".csv" style="position: absolute; top: 0; left: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer;">
                                 </label>
                             </div>
                         </div>
@@ -256,43 +156,22 @@
                             <label style="margin: 0;">🛒 รายการสินค้า</label>
                             <button type="button" id="add-item-btn" class="btn" style="background: #e2e8f0; color: #475569; padding: 6px 12px; font-size: 13px;">+ เพิ่มรายการ</button>
                         </div>
-                        
                         <div class="table-responsive" style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
                             <table id="items-table" style="min-width: 500px;">
-                                <thead>
-                                    <tr>
-                                        <th>รายการ</th>
-                                        <th style="width: 15%;">จำนวน</th>
-                                        <th style="width: 25%;">ราคารวม (฿)</th>
-                                        <th style="width: 10%; text-align: center;">ลบ</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>รายการ</th><th style="width: 15%;">จำนวน</th><th style="width: 25%;">ราคารวม (฿)</th><th style="width: 10%; text-align: center;">ลบ</th></tr></thead>
                                 <tbody id="items-tbody"></tbody>
                             </table>
                         </div>
-                        
-                        <div style="text-align: right; margin-top: 15px; font-size: 16px;">
-                            รวมเป็นเงินที่จ่ายจริง: <strong style="color: var(--success); font-size: 20px;"><span id="total-actual">0</span> ฿</strong>
-                        </div>
+                        <div style="text-align: right; margin-top: 15px; font-size: 16px;">รวมเป็นเงินที่จ่ายจริง: <strong style="color: var(--success); font-size: 20px;"><span id="total-actual">0</span> ฿</strong></div>
                         <div id="diff-summary" style="text-align: right; margin-top: 5px; color: var(--warning); font-weight: 600; display: none;"></div>
                     </div>
 
                     <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                        <div class="form-group">
-                            <label>แนบไฟล์ใบเสร็จ / Statement (รูป หรือ PDF)</label>
-                            <input type="file" id="req-statement" accept="image/png, image/jpeg, image/jpg, application/pdf">
-                            <input type="text" id="req-statement-password" placeholder="🔑 รหัสผ่านเปิดไฟล์ PDF (ถ้ามี)" style="margin-top: 8px; border-color: #fde047; background-color: #fef9c3;">
-                        </div>
-                        <div class="form-group">
-                            <label>ข้อมูลบัญชีรับเงิน (หากต้องโอนคืนคุณ)</label>
-                            <input type="text" id="req-bank" placeholder="เช่น กสิกรไทย 123-4-56789-0 นายสมชาย">
-                        </div>
+                        <div class="form-group"><label>แนบไฟล์ใบเสร็จ / Statement (รูป หรือ PDF)</label><input type="file" id="req-statement" accept="image/png, image/jpeg, image/jpg, application/pdf"><input type="text" id="req-statement-password" placeholder="🔑 รหัสผ่านเปิดไฟล์ PDF (ถ้ามี)" style="margin-top: 8px; border-color: #fde047; background-color: #fef9c3;"></div>
+                        <div class="form-group"><label>ข้อมูลบัญชีรับเงิน (หากต้องโอนคืนคุณ)</label><input type="text" id="req-bank" placeholder="เช่น กสิกรไทย 123-4-56789-0 นายสมชาย"></div>
                     </div>
 
-                    <div class="form-group" id="return-slip-section" style="display: none; background: #fef2f2; padding: 15px; border-radius: 8px; border: 1px dashed #f87171;">
-                        <label style="color: var(--danger);">แนบสลิปโอนเงินทอนคืนชุมนุม (เงินเหลือ)</label>
-                        <input type="file" id="req-return-slip" accept="image/png, image/jpeg, image/jpg">
-                    </div>
+                    <div class="form-group" id="return-slip-section" style="display: none; background: #fef2f2; padding: 15px; border-radius: 8px; border: 1px dashed #f87171;"><label style="color: var(--danger);">แนบสลิปโอนเงินทอนคืนชุมนุม (เงินเหลือ)</label><input type="file" id="req-return-slip" accept="image/png, image/jpeg, image/jpg"></div>
 
                     <div style="display: flex; gap: 10px; margin-top: 25px; flex-wrap: wrap;">
                         <button type="button" id="save-draft-btn" class="btn btn-outline" style="flex: 1; min-width: 120px;">💾 บันทึกแบบร่าง</button>
@@ -306,16 +185,7 @@
                 <h3>ประวัติคำขอเบิกเงินของฉัน</h3>
                 <div class="table-responsive">
                     <table id="member-history-table">
-                        <thead>
-                            <tr>
-                                <th>วันที่</th>
-                                <th>ประเภท</th>
-                                <th>รายการ</th>
-                                <th>ยอดเงิน</th>
-                                <th>สถานะ</th>
-                                <th>จัดการ</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>วันที่</th><th>ประเภท</th><th>รายการ</th><th>ยอดเงิน</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
                         <tbody><tr><td colspan="6" style="text-align: center; color: var(--text-muted);">กำลังโหลดประวัติ...</td></tr></tbody>
                     </table>
                 </div>
@@ -326,69 +196,25 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
                 <div class="card" style="border-top: 4px solid var(--success);">
                     <h3>💝 แจ้งยอดรับบริจาค</h3>
-                    <p style="color: var(--text-muted); font-size: 13px; margin-top: -10px;">สำหรับบันทึกเงินบริจาคเข้าชุมนุม</p>
                     <form id="donation-form">
-                        <div class="form-group">
-                            <label>ช่องทางบริจาค</label>
-                            <select id="don-type" required>
-                                <option value="donation_transfer">📱 โอนเงินเข้าบัญชี</option>
-                                <option value="donation_cash">💵 เงินสด</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>วันที่บริจาค</label>
-                            <input type="date" id="don-date" required>
-                        </div>
-                        <div class="form-group">
-                            <label>ชื่อผู้บริจาค / รายละเอียด</label>
-                            <input type="text" id="don-desc" placeholder="เช่น บริจาคจากรุ่นพี่ ปี 60" required>
-                        </div>
-                        <div class="form-group">
-                            <label>สถานที่รับบริจาค (ถ้ามี)</label>
-                            <input type="text" id="don-location" placeholder="เช่น ลานกิจกรรม, ถนนคนเดิน">
-                        </div>
-                        <div class="form-group">
-                            <label>จำนวนเงิน (บาท)</label>
-                            <input type="number" id="don-amount" min="0" step="0.01" placeholder="0.00" required>
-                        </div>
-                        <div class="form-group">
-                            <label>สลิป / หลักฐานการโอน</label>
-                            <input type="file" id="don-slip" accept="image/png, image/jpeg, image/jpg" required>
-                        </div>
-                        <button type="submit" class="btn btn-success" style="width: 100%;">ส่งยอดบริจาค</button>
-                        <div id="don-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
+                        <div class="form-group"><label>ช่องทางบริจาค</label><select id="don-type" required><option value="donation_transfer">📱 โอนเงินเข้าบัญชี</option><option value="donation_cash">💵 เงินสด</option></select></div>
+                        <div class="form-group"><label>วันที่บริจาค</label><input type="date" id="don-date" required></div>
+                        <div class="form-group"><label>ชื่อผู้บริจาค / รายละเอียด</label><input type="text" id="don-desc" placeholder="เช่น บริจาคจากรุ่นพี่ ปี 60" required></div>
+                        <div class="form-group"><label>สถานที่รับบริจาค (ถ้ามี)</label><input type="text" id="don-location" placeholder="เช่น ลานกิจกรรม"></div>
+                        <div class="form-group"><label>จำนวนเงิน (บาท)</label><input type="number" id="don-amount" min="0" step="0.01" placeholder="0.00" required></div>
+                        <div class="form-group"><label>สลิป / หลักฐานการโอน</label><input type="file" id="don-slip" accept="image/png, image/jpeg, image/jpg" required></div>
+                        <button type="submit" class="btn btn-success" style="width: 100%;">ส่งยอดบริจาค</button><div id="don-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
                     </form>
                 </div>
-
                 <div class="card" style="border-top: 4px solid var(--primary);">
                     <h3>📝 แจ้งรายรับ / รายจ่าย (อื่นๆ)</h3>
-                    <p style="color: var(--text-muted); font-size: 13px; margin-top: -10px;">รายการที่ไม่ใช่การเบิกเงิน เช่น สปอนเซอร์, จ่ายค่าปรับ</p>
                     <form id="other-trans-form">
-                        <div class="form-group">
-                            <label>ประเภทรายการ</label>
-                            <select id="other-type" required>
-                                <option value="income">📈 รายรับเข้าชุมนุม</option>
-                                <option value="expense">📉 รายจ่าย (หักจากชุมนุม)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>วันที่เกิดรายการ</label>
-                            <input type="date" id="other-date" required>
-                        </div>
-                        <div class="form-group">
-                            <label>รายละเอียด</label>
-                            <input type="text" id="other-desc" placeholder="เช่น สปอนเซอร์บริษัท A" required>
-                        </div>
-                        <div class="form-group">
-                            <label>จำนวนเงิน (บาท)</label>
-                            <input type="number" id="other-amount" min="0" step="0.01" placeholder="0.00" required>
-                        </div>
-                        <div class="form-group">
-                            <label>หลักฐาน (ถ้ามี)</label>
-                            <input type="file" id="other-slip" accept="image/png, image/jpeg, image/jpg">
-                        </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">ส่งรายการ</button>
-                        <div id="other-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
+                        <div class="form-group"><label>ประเภทรายการ</label><select id="other-type" required><option value="income">📈 รายรับเข้าชุมนุม</option><option value="expense">📉 รายจ่าย (หักจากชุมนุม)</option></select></div>
+                        <div class="form-group"><label>วันที่เกิดรายการ</label><input type="date" id="other-date" required></div>
+                        <div class="form-group"><label>รายละเอียด</label><input type="text" id="other-desc" placeholder="เช่น สปอนเซอร์บริษัท A" required></div>
+                        <div class="form-group"><label>จำนวนเงิน (บาท)</label><input type="number" id="other-amount" min="0" step="0.01" placeholder="0.00" required></div>
+                        <div class="form-group"><label>หลักฐาน (ถ้ามี)</label><input type="file" id="other-slip" accept="image/png, image/jpeg, image/jpg"></div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">ส่งรายการ</button><div id="other-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
                     </form>
                 </div>
             </div>
@@ -398,156 +224,36 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-client.js"></script>
     <script src="js/member.js"></script>
-    
     <script>
-        // ==========================================
-        // โค้ดสำหรับ V.3.1 (เวอร์ชันจำเลขอัตโนมัติถาวร + จำฝ่าย)
-        // ==========================================
-        let savedBankDetails = ""; 
-        let savedDepartment = localStorage.getItem('user_department') || ""; 
-
+        let savedBankDetails = ""; let savedDepartment = localStorage.getItem('user_department') || ""; 
         function switchTab(evt, tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            evt.currentTarget.classList.add('active');
-
-            if (tabId === 'tab-clearance') {
-                applySavedData(); 
-            }
+            document.getElementById(tabId).classList.add('active'); evt.currentTarget.classList.add('active');
+            if (tabId === 'tab-clearance') applySavedData(); 
         }
-        
         if(document.getElementById('don-date')) document.getElementById('don-date').valueAsDate = new Date();
         if(document.getElementById('other-date')) document.getElementById('other-date').valueAsDate = new Date();
-
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(async () => {
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (!user) return;
-                    
-                    const { data: profile } = await supabaseClient.from('profiles').select('bank_details').eq('id', user.id).single();
-                    
-                    if (profile && profile.bank_details) {
-                        savedBankDetails = profile.bank_details; 
-                        applySavedData(); 
-                    }
-                } catch(e) { console.error("โหลดข้อมูลบัญชีส่วนตัวไม่สำเร็จ:", e); }
-            }, 800); 
-
-            const deptSelect = document.getElementById('req-dept');
-            if (deptSelect) {
-                deptSelect.addEventListener('change', (e) => {
-                    localStorage.setItem('user_department', e.target.value);
-                    savedDepartment = e.target.value;
-                });
-            }
+            setTimeout(async () => { try { const { data: { user } } = await supabaseClient.auth.getUser(); if (!user) return; const { data: profile } = await supabaseClient.from('profiles').select('bank_details').eq('id', user.id).single(); if (profile && profile.bank_details) { savedBankDetails = profile.bank_details; applySavedData(); } } catch(e) {} }, 800); 
+            const deptSelect = document.getElementById('req-dept'); if (deptSelect) deptSelect.addEventListener('change', (e) => { localStorage.setItem('user_department', e.target.value); savedDepartment = e.target.value; });
         });
-
         function applySavedData() {
-            if (savedBankDetails) {
-                const myBankInfo = document.getElementById('my-bank-info');
-                const reqBank = document.getElementById('req-bank');
-                if(myBankInfo && !myBankInfo.value) myBankInfo.value = savedBankDetails;
-                if(reqBank && !reqBank.value) reqBank.value = savedBankDetails;
-            }
-            if (savedDepartment) {
-                const reqDept = document.getElementById('req-dept');
-                if (reqDept && !reqDept.disabled && !reqDept.value) {
-                    reqDept.value = savedDepartment;
-                }
-            }
+            if (savedBankDetails) { const m = document.getElementById('my-bank-info'), r = document.getElementById('req-bank'); if(m && !m.value) m.value = savedBankDetails; if(r && !r.value) r.value = savedBankDetails; }
+            if (savedDepartment) { const d = document.getElementById('req-dept'); if (d && !d.disabled && !d.value) d.value = savedDepartment; }
         }
-
-        const clearanceForm = document.getElementById('complex-clearance-form');
-        if (clearanceForm) {
-            clearanceForm.addEventListener('reset', () => {
-                setTimeout(applySavedData, 50);
-            });
-        }
-
+        const clearanceForm = document.getElementById('complex-clearance-form'); if (clearanceForm) clearanceForm.addEventListener('reset', () => setTimeout(applySavedData, 50));
         window.saveProfileBank = async function() {
-            const btn = document.getElementById('save-bank-btn');
-            const info = document.getElementById('my-bank-info').value;
-            
-            if(!info) return alert("กรุณากรอกข้อมูลบัญชีก่อนกดบันทึก");
-            
-            btn.disabled = true;
-            btn.textContent = "กำลังบันทึก...";
-            
-            try {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                const { error } = await supabaseClient.from('profiles').update({ bank_details: info }).eq('id', user.id);
-                
-                if(error) throw error;
-                
-                alert("✅ บันทึกเลขบัญชีประจำตัวเรียบร้อย");
-                savedBankDetails = info; 
-                document.getElementById('req-bank').value = info; 
-                
-            } catch (err) {
-                alert("เกิดข้อผิดพลาด: " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "💾 บันทึก";
-            }
+            const btn = document.getElementById('save-bank-btn'), info = document.getElementById('my-bank-info').value;
+            if(!info) return alert("กรุณากรอกข้อมูลบัญชี"); btn.disabled = true; btn.textContent = "กำลังบันทึก...";
+            try { const { data: { user } } = await supabaseClient.auth.getUser(); await supabaseClient.from('profiles').update({ bank_details: info }).eq('id', user.id); alert("✅ บันทึกเลขบัญชีเรียบร้อย"); savedBankDetails = info; document.getElementById('req-bank').value = info; } catch (err) { alert("เกิดข้อผิดพลาด: " + err.message); } finally { btn.disabled = false; btn.textContent = "💾 บันทึก"; }
         };
     </script>
 
-    <div id="howto-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box; backdrop-filter: blur(3px);">
-        <div style="background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <button onclick="document.getElementById('howto-modal').style.display='none'" style="position: absolute; top: 15px; right: 15px; background: #f1f5f9; border: none; font-size: 18px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: gray;">✖</button>
-            <h3 style="margin-top: 0; color: var(--primary); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">📖 คู่มือการใช้งานระบบ</h3>
-            <img src="1.jpg" alt="คู่มือหน้า 1" style="width: 100%; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0;">
-            <img src="2.jpg" alt="คู่มือหน้า 2" style="width: 100%; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0;">
-            <img src="3.jpg" alt="คู่มือหน้า 3" style="width: 100%; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0;">
-            <img src="4.jpg" alt="คู่มือหน้า 4" style="width: 100%; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0;">
-            <img src="5.jpg" alt="คู่มือหน้า 5" style="width: 100%; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
-            <button onclick="document.getElementById('howto-modal').style.display='none'" class="btn btn-primary" style="width: 100%; font-size: 16px; padding: 12px;">เข้าใจแล้ว!</button>
-        </div>
-    </div>
-
-    <div id="flowchart-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box; backdrop-filter: blur(3px);">
-        <div style="background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <button onclick="document.getElementById('flowchart-modal').style.display='none'" style="position: absolute; top: 15px; right: 15px; background: #f1f5f9; border: none; font-size: 18px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: gray;">✖</button>
-            <h3 style="margin-top: 0; color: var(--info); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">🔄 Flowchart ขั้นตอนการเบิกเงิน</h3>
-            <img src="flowchart.jpg" alt="Flowchart" style="width: 100%; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
-            <button onclick="document.getElementById('flowchart-modal').style.display='none'" class="btn btn-info" style="width: 100%; font-size: 16px; padding: 12px;">ปิดหน้าต่าง</button>
-        </div>
-    </div>
-
-    <div id="select-coworker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2050; padding: 15px; box-sizing: border-box;">
-        <div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; position: relative; max-height: 85vh; display: flex; flex-direction: column;">
-            <h3 style="margin-top: 0; color: var(--primary); flex-shrink: 0;">👥 เลือกผู้ร่วมเบิก</h3>
-            <div id="select-coworker-list" style="overflow-y: auto; padding: 5px; margin-bottom: 15px; flex: 1;">
-                <span style="color:gray; font-size:13px;">กำลังโหลดรายชื่อ...</span>
-            </div>
-            <div style="flex-shrink: 0;">
-                <button type="button" onclick="confirmCoWorkerSelection()" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 15px;">✅ ยืนยันรายชื่อ</button>
-                <button type="button" onclick="document.getElementById('select-coworker-modal').style.display='none'" class="btn btn-outline" style="width: 100%; margin-top: 10px; padding: 10px;">ยกเลิก</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="view-clearance-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;">
-        <div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 800px; position: relative; max-height: 85vh; display: flex; flex-direction: column;">
-            <button onclick="document.getElementById('view-clearance-modal').style.display='none'" style="position: absolute; top: 15px; right: 15px; background: #f1f5f9; border: none; font-size: 18px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: gray; z-index: 10;">✖</button>
-            <h3 style="margin-top: 0; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-shrink: 0;">📄 รายละเอียดบิล</h3>
-            <div id="view-clearance-content" style="overflow-y: auto; flex: 1; padding-right: 5px;"></div>
-        </div>
-    </div>
-
-    <div id="coworker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;">
-        <div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; position: relative; display: flex; flex-direction: column; max-height: 85vh;">
-            <h3 style="margin-top: 0; color: var(--primary); flex-shrink: 0;">👥 เพิ่ม Co-Worker</h3>
-            <input type="hidden" id="cw-edit-id">
-            <div id="cw-edit-list" style="overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 15px; background: #f8fafc; flex: 1;"></div>
-            <div style="flex-shrink: 0;">
-                <button onclick="saveCoWorkersQuick()" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 15px;">💾 บันทึกรายชื่อ</button>
-                <button onclick="document.getElementById('coworker-modal').style.display='none'" class="btn btn-outline" style="width: 100%; margin-top: 10px; padding: 10px;">ยกเลิก</button>
-            </div>
-        </div>
-    </div>
-
+    <div id="howto-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; z-index:2000; padding:15px; box-sizing:border-box;"><div style="background:white; padding:25px; border-radius:12px; width:100%; max-width:600px; max-height:90vh; overflow-y:auto; position:relative;"><button onclick="document.getElementById('howto-modal').style.display='none'" style="position:absolute; top:15px; right:15px; background:#f1f5f9; border:none; font-size:18px; width:32px; height:32px; border-radius:50%; cursor:pointer;">✖</button><h3 style="margin-top:0; color:var(--primary);">📖 คู่มือการใช้งานระบบ</h3><img src="1.jpg" style="width:100%; border-radius:8px; margin-bottom:10px;"><img src="2.jpg" style="width:100%; border-radius:8px; margin-bottom:10px;"><img src="3.jpg" style="width:100%; border-radius:8px; margin-bottom:10px;"><img src="4.jpg" style="width:100%; border-radius:8px; margin-bottom:10px;"><img src="5.jpg" style="width:100%; border-radius:8px; margin-bottom:20px;"><button onclick="document.getElementById('howto-modal').style.display='none'" class="btn btn-primary" style="width:100%; padding:12px;">เข้าใจแล้ว!</button></div></div>
+    <div id="flowchart-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; z-index:2000; padding:15px; box-sizing:border-box;"><div style="background:white; padding:25px; border-radius:12px; width:100%; max-width:600px; max-height:90vh; overflow-y:auto; position:relative;"><button onclick="document.getElementById('flowchart-modal').style.display='none'" style="position:absolute; top:15px; right:15px; background:#f1f5f9; border:none; font-size:18px; width:32px; height:32px; border-radius:50%; cursor:pointer;">✖</button><h3 style="margin-top:0; color:var(--info);">🔄 Flowchart ขั้นตอนการเบิกเงิน</h3><img src="flowchart.jpg" style="width:100%; border-radius:8px; margin-bottom:20px;"><button onclick="document.getElementById('flowchart-modal').style.display='none'" class="btn btn-info" style="width:100%; padding:12px;">ปิดหน้าต่าง</button></div></div>
+    <div id="select-coworker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2050; padding: 15px; box-sizing: border-box;"><div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; position: relative; max-height: 85vh; display: flex; flex-direction: column;"><h3 style="margin-top: 0; color: var(--primary); flex-shrink: 0;">👥 เลือกผู้ร่วมเบิก</h3><div id="select-coworker-list" style="overflow-y: auto; padding: 5px; margin-bottom: 15px; flex: 1;"><span style="color:gray; font-size:13px;">กำลังโหลดรายชื่อ...</span></div><div style="flex-shrink: 0;"><button type="button" onclick="confirmCoWorkerSelection()" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 15px;">✅ ยืนยันรายชื่อ</button><button type="button" onclick="document.getElementById('select-coworker-modal').style.display='none'" class="btn btn-outline" style="width: 100%; margin-top: 10px; padding: 10px;">ยกเลิก</button></div></div></div>
+    <div id="view-clearance-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;"><div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 800px; position: relative; max-height: 85vh; display: flex; flex-direction: column;"><button onclick="document.getElementById('view-clearance-modal').style.display='none'" style="position: absolute; top: 15px; right: 15px; background: #f1f5f9; border: none; font-size: 18px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: gray; z-index: 10;">✖</button><h3 style="margin-top: 0; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-shrink: 0;">📄 รายละเอียดบิล</h3><div id="view-clearance-content" style="overflow-y: auto; flex: 1; padding-right: 5px;"></div></div></div>
+    <div id="coworker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;"><div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; position: relative; display: flex; flex-direction: column; max-height: 85vh;"><h3 style="margin-top: 0; color: var(--primary); flex-shrink: 0;">👥 เพิ่ม CoWorker</h3><input type="hidden" id="cw-edit-id"><div id="cw-edit-list" style="overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 15px; background: #f8fafc; flex: 1;"></div><div style="flex-shrink: 0;"><button onclick="saveCoWorkersQuick()" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 15px;">💾 บันทึกรายชื่อ</button><button onclick="document.getElementById('coworker-modal').style.display='none'" class="btn btn-outline" style="width: 100%; margin-top: 10px; padding: 10px;">ยกเลิก</button></div></div></div>
 </body>
 </html>
