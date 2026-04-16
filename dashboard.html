@@ -63,12 +63,14 @@
                 border-bottom: 1px solid var(--border);
             }
             
+            /* 🌟 ให้ส่วนขวาของหัวเว็บ (ชื่อ+ปุ่ม) ปัดบรรทัดได้ถ้าที่แคบไป */
             header > div { width: 100%; }
             header > div:last-child { flex-wrap: wrap; justify-content: flex-start; gap: 12px; }
             
             .container, .card, .widget { padding: 15px; margin-bottom: 15px; }
             .form-row, .flex-row { flex-direction: column; gap: 10px; }
             
+            /* 🌟 ปุ่มทั่วไปกว้าง 100% แต่ 'ยกเว้น' ปุ่มบนหัวเว็บให้กว้างพอดีตัวอักษร */
             .btn { width: 100%; padding: 12px; margin-bottom: 5px; }
             header .btn { width: auto; padding: 6px 12px; margin-bottom: 0; }
             
@@ -83,10 +85,10 @@
         #action-modal > div,
         #edit-req-modal > div,
         #coworker-modal > div {
-            max-height: 85vh !important; 
-            overflow-y: auto !important; 
-            -webkit-overflow-scrolling: touch !important; 
-            margin-top: 20px; 
+            max-height: 85vh !important; /* บังคับความสูงไม่เกิน 85% ของหน้าจอ */
+            overflow-y: auto !important; /* ถ้าเนื้อหายาวกว่ากล่อง ให้โชว์แถบเลื่อน */
+            -webkit-overflow-scrolling: touch !important; /* ทำให้เลื่อนบน iPhone/iPad ได้ลื่นๆ (Smooth Scrolling) */
+            margin-top: 20px; /* เว้นระยะด้านบนนิดนึงให้กดปิดง่าย */
             margin-bottom: 20px;
         }
     </style>
@@ -325,13 +327,13 @@
 
                     <p id="modal-amount-display" style="font-size: 16px; margin-bottom: 15px;"></p>
 
-                    <div id="admin-slip-section" style="margin-bottom: 15px;">
-                        <label>เลือกบัญชีที่ใช้โอน / รับเงิน</label>
-                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                            <select id="admin-bank-select" required style="flex:1; padding: 8px; border-radius: 6px;"></select>
-                            <select id="admin-fund-select" required style="flex:1; padding: 8px; border-radius: 6px;"></select>
-                        </div>
-                        <label>แนบสลิปโอนเงิน (ถ้าต้องโอน)</label>
+                    <div id="admin-bank-fund-wrapper" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;"><label>เลือกบัญชี</label><select id="admin-bank-select" required></select></div>
+                        <div style="flex: 1; min-width: 150px;"><label>เลือกกองทุน</label><select id="admin-fund-select" required></select></div>
+                    </div>
+
+                    <div id="admin-slip-section" class="form-group" style="margin-bottom: 15px;">
+                        <label>แนบสลิปโอนเงิน (เหรัญญิกบันทึก)</label>
                         <input type="file" id="admin-slip" accept="image/*" style="width: 100%; padding: 8px;">
                     </div>
 
@@ -348,60 +350,25 @@
             <h3 style="margin-top: 0; color: var(--warning); flex-shrink: 0;">✏️ แก้ไขข้อมูลคำขอเบิกเงิน</h3>
             <div style="overflow-y: auto; flex: 1; padding-right: 5px;">
                 <form id="edit-req-form">
-                    <input type="hidden" id="edit-req-id">
-                    <input type="hidden" id="edit-req-type">
-                    <input type="hidden" id="edit-is-substitute" value="false">
-                    
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label>ฝ่าย / แผนก</label>
+                    <input type="hidden" id="edit-req-id"><input type="hidden" id="edit-req-type"><input type="hidden" id="edit-is-substitute" value="false">
+                    <div class="form-group" style="margin-bottom: 10px;"><label>ฝ่าย / แผนก</label>
                         <select id="edit-req-dept" required style="width: 100%; padding: 8px;">
-                            <option value="อำนวยการ">อำนวยการ</option>
-                            <option value="สวัสดิการ">สวัสดิการ</option>
-                            <option value="โครงงาน">โครงงาน</option>
-                            <option value="อุปกรณ์">อุปกรณ์</option>
-                            <option value="สถานที่">สถานที่</option>
-                            <option value="สันทนาการ">สันทนาการ</option>
-                            <option value="เหรัญญิก">เหรัญญิก</option>
-                            <option value="สปอนเซอร์">สปอนเซอร์</option>
-                            <option value="PR">PR</option>
-                            <option value="สัมพันธ์ชาวบ้าน">สัมพันธ์ชาวบ้าน</option>
-                            <option value="อื่นๆ">อื่นๆ</option>
+                            <option value="อำนวยการ">อำนวยการ</option><option value="สวัสดิการ">สวัสดิการ</option><option value="โครงงาน">โครงงาน</option><option value="อุปกรณ์">อุปกรณ์</option><option value="สถานที่">สถานที่</option><option value="สันทนาการ">สันทนาการ</option><option value="เหรัญญิก">เหรัญญิก</option><option value="สปอนเซอร์">สปอนเซอร์</option><option value="PR">PR</option><option value="สัมพันธ์ชาวบ้าน">สัมพันธ์ชาวบ้าน</option><option value="อื่นๆ">อื่นๆ</option>
                         </select>
                     </div>
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label>หัวข้อ / วัตถุประสงค์</label>
-                        <input type="text" id="edit-req-purpose" required style="width: 100%; padding: 8px;">
-                    </div>
-                    
-                    <div id="edit-advance-section" style="display:none; margin-bottom:15px;">
-                        <label>ยอดเงินเบิกล่วงหน้า (฿)</label>
-                        <input type="number" id="edit-req-amount" min="0" step="0.01" style="width: 100%; padding: 8px;">
-                    </div>
-
+                    <div class="form-group" style="margin-bottom: 10px;"><label>หัวข้อ / วัตถุประสงค์</label><input type="text" id="edit-req-purpose" required style="width: 100%; padding: 8px;"></div>
+                    <div id="edit-advance-section" style="display:none; margin-bottom:15px;"><label>ยอดเงินเบิกล่วงหน้า (฿)</label><input type="number" id="edit-req-amount" min="0" step="0.01" style="width: 100%; padding: 8px;"></div>
                     <div id="edit-items-section" style="display:none; margin-bottom:15px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                            <label style="margin:0;">บิลย่อย / สินค้า</label>
-                            <button type="button" id="edit-add-item-btn" class="btn btn-outline" style="padding:4px 8px; font-size:11px;">+ เพิ่ม</button>
-                        </div>
-                        <table style="width:100%; background:#f8fafc; border-radius:6px; font-size: 13px;">
-                            <tbody id="edit-items-tbody"></tbody>
-                        </table>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;"><label style="margin:0;">บิลย่อย / สินค้า</label><button type="button" id="edit-add-item-btn" class="btn btn-outline" style="padding:4px 8px; font-size:11px;">+ เพิ่ม</button></div>
+                        <table style="width:100%; background:#f8fafc; border-radius:6px; font-size: 13px;"><tbody id="edit-items-tbody"></tbody></table>
                         <div style="text-align:right; margin-top:5px; font-weight:bold;">รวม: ฿<span id="edit-total-actual">0</span></div>
                     </div>
-
                     <div id="substitute-file-section" style="display:none; background:#f0f9ff; padding:15px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:15px;">
-                        <label style="color:var(--info);">แนบสลิป / ใบเสร็จ (เคลียร์แทน)</label>
-                        <input type="file" id="substitute-statement" accept="image/*,application/pdf" style="margin-bottom:10px; width: 100%;">
+                        <label style="color:var(--info);">แนบสลิป / ใบเสร็จ (เคลียร์แทน)</label><input type="file" id="substitute-statement" accept="image/*,application/pdf" style="margin-bottom:10px; width: 100%;">
                         <input type="text" id="substitute-password" placeholder="🔑 รหัสผ่าน PDF (ถ้ามี)" style="margin-bottom:10px; width: 100%; padding: 8px;">
-                        <label style="color:var(--danger);">สลิปเงินทอน (ถ้ามี)</label>
-                        <input type="file" id="substitute-return-slip" accept="image/*" style="width: 100%;">
+                        <label style="color:var(--danger);">สลิปเงินทอน (ถ้ามี)</label><input type="file" id="substitute-return-slip" accept="image/*" style="width: 100%;">
                     </div>
-
-                    <div class="form-group" id="edit-reason-container">
-                        <label>เหตุผลในการแก้ไข (บันทึกลง Log)</label>
-                        <input type="text" id="edit-req-reason" placeholder="เช่น แก้ไขยอดเงินตามสลิปจริง" required style="width: 100%; padding: 8px;">
-                    </div>
-                    
+                    <div class="form-group" id="edit-reason-container"><label>เหตุผลในการแก้ไข</label><input type="text" id="edit-req-reason" placeholder="เช่น แก้ไขยอดเงินตามสลิปจริง" required style="width: 100%; padding: 8px;"></div>
                     <button type="submit" id="save-edit-btn" class="btn btn-warning" style="width:100%; padding: 10px;">💾 บันทึกการแก้ไข</button>
                     <div id="edit-msg" style="margin-top:10px; text-align:center;"></div>
                 </form>
@@ -427,7 +394,7 @@
 
     <div id="coworker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;">
         <div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; position: relative; max-height: 85vh; display: flex; flex-direction: column;">
-            <h3 style="margin-top: 0; color: var(--primary); flex-shrink: 0;">👥 จัดการ Co-Worker (แอดมิน)</h3>
+            <h3 style="margin-top: 0; color: var(--primary); flex-shrink: 0;">👥 จัดการคนแท็ก (แอดมิน)</h3>
             <input type="hidden" id="cw-edit-id">
             <div id="cw-edit-list" style="overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 15px; background: #f8fafc; flex: 1;"></div>
             <div style="flex-shrink: 0;">
