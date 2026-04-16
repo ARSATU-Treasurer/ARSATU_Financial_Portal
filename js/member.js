@@ -10,36 +10,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).catch(e => console.log(e));
     };
 
-   // ==========================================
-    // 🌟 ระบบเช็กล็อกอินแบบใจเย็น (รอเบราว์เซอร์ฟื้นความจำ)
-    // ==========================================
     let currentUser = null;
-    
-    // 1. ลองควานหาประวัติการล็อกอินแบบทันทีก่อน
-    let { data: { session } } = await supabaseClient.auth.getSession();
-    
-    // 2. ถ้าหาไม่เจอ (เพราะมือถือโหลดช้า) ให้รอฟังเสียงจาก Supabase ก่อนเตะออก
-    if (!session) {
-        await new Promise((resolve) => {
-            const authListener = supabaseClient.auth.onAuthStateChange((event, newSession) => {
-                if (newSession) {
-                    session = newSession;
-                    resolve();
-                }
-            });
-            // ยืนรอ 1.5 วินาที ถ้าประวัติยังไม่มาอีก ค่อยยอมแพ้
-            setTimeout(() => { resolve(); }, 1500);
-        });
-    }
+    window.isClearingAdvance = false;
 
-    // 3. ถ้าหาจนสุดความสามารถแล้วไม่มีจริงๆ ค่อยส่งกลับไปหน้า LIFF
-    if (!session || !session.user) { 
-        console.warn("ไม่พบ Session ยืนยันการออกจากระบบ");
-        window.location.replace('index-liff.html'); 
+    // ==========================================
+    // 🌟 ระบบตรวจสอบการเข้าสู่ระบบแบบมาตรฐาน (Robust Auth)
+    // ==========================================
+    try {
+        // 1. ลองดึง Session จากเครื่อง (ทำงานไวที่สุด)
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        if (sessionData && sessionData.session) {
+            currentUser = sessionData.session.user;
+        } else {
+            // 2. ถ้าเน็ตมือถือกระตุก หรือหาในเครื่องไม่เจอ ให้ดึงตรงจากเซิร์ฟเวอร์
+            const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+            if (userError || !userData || !userData.user) {
+                throw new Error("No active session.");
+            }
+            currentUser = userData.user;
+        }
+    } catch (err) {
+        console.warn("Auth check failed:", err.message);
+        // ถ้าไม่มีการล็อกอินจริงๆ ค่อยเตะกลับไปหน้า LIFF
+        window.location.replace('index-liff.html');
         return; 
     }
-    
-    currentUser = session.user;
 
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
@@ -57,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const { data, error } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
             if (error) throw error;
+            
             const cwList = document.getElementById('select-coworker-list');
             if (cwList) {
                 cwList.innerHTML = ''; 
@@ -197,7 +195,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (reqType) reqType.dispatchEvent(new Event('change'));
         if (addBtn) addBtn.click();
 
-        // 🌟 แก้ไขให้ปุ่มแสดงกล่องอัปโหลด Google Sheet ทำงาน
         const toggleImportBtn = document.getElementById('toggle-import-btn'); 
         const importSection = document.getElementById('import-section'); 
         const csvUpload = document.getElementById('csv-upload');
@@ -308,8 +305,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return arr;
         }
     }
+    
     setupClearanceUI();
 
+    // ==========================================
+    // 2. ส่งข้อมูลเบิก / เคลียร์บิล
+    // ==========================================
     async function processRequest(isDraft) {
         const msg = document.getElementById('req-msg'); 
         const saveBtn = document.getElementById('save-draft-btn'); 
@@ -347,7 +348,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (nInput && nInput.value.trim() !== '') { 
                 const price = parseFloat(pInput.value) || 0; 
-                items.push({ item_name: nInput.value, quantity: parseFloat(qInput.value)||1, total_price: price }); 
+                items.push({ 
+                    item_name: nInput.value, 
+                    quantity: parseFloat(qInput.value)||1, 
+                    total_price: price 
+                }); 
                 totalActual += price; 
             }
         });
@@ -367,13 +372,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (sFile) {
                 if(msg) msg.textContent = 'กำลังอัปโหลดไฟล์หลักฐาน...';
                 const path = `statement-${Date.now()}.${sFile.name.split('.').pop()}`; 
-                await supabaseClient.storage.from('receipts').upload(path, sFile); 
+                const { error } = await supabaseClient.storage.from('receipts').upload(path, sFile); 
+                if (error) throw error;
                 sUrl = supabaseClient.storage.from('receipts').getPublicUrl(path).data.publicUrl;
             }
+            
             if (rFile) {
                 if(msg) msg.textContent = 'กำลังอัปโหลดสลิปคืนเงินทอน...';
                 const path = `return-${Date.now()}.${rFile.name.split('.').pop()}`; 
-                await supabaseClient.storage.from('slips').upload(path, rFile); 
+                const { error } = await supabaseClient.storage.from('slips').upload(path, rFile); 
+                if (error) throw error;
                 rUrl = supabaseClient.storage.from('slips').getPublicUrl(path).data.publicUrl;
             }
 
@@ -435,10 +443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             const formObj = document.getElementById('complex-clearance-form'); 
-            if (formObj) { 
-                formObj.reset(); 
-                formObj.dispatchEvent(new Event('reset')); 
-            }
+            if (formObj) { formObj.reset(); formObj.dispatchEvent(new Event('reset')); }
             
             document.getElementById('current-draft-id').value = ''; 
             document.getElementById('req-type').disabled = false; 
@@ -451,7 +456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             document.querySelectorAll('.co-worker-cb-create').forEach(cb => cb.checked = false); 
             window.confirmCoWorkerSelection();
-            
+
             document.getElementById('submit-req-btn').innerHTML = '🚀 ส่งคำขอ'; 
             window.isClearingAdvance = false;
 
@@ -462,7 +467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (typeof window.loadData === 'function') window.loadData(); 
             setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
-            
+
         } catch (err) { 
             console.error(err); 
             if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'ผิดพลาด: ' + err.message; } 
@@ -475,6 +480,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('save-draft-btn')?.addEventListener('click', () => processRequest(true));
     document.getElementById('submit-req-btn')?.addEventListener('click', () => processRequest(false));
 
+    // ==========================================
+    // 3. ฟังก์ชันดึงแบบร่าง / ยอดเบิกล่วงหน้ามาแก้ไข
+    // ==========================================
     window.clearAdvance = async function(id) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active')); 
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -557,7 +565,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // 🌟 ฟังก์ชันลบแบบร่างของ Member (ใหม่)
+    // 🌟 ฟังก์ชันลบแบบร่าง
     window.deleteDraft = async function(id) {
         if(!confirm('⚠️ ยืนยันการลบ "แบบร่าง" นี้ทิ้งถาวร?')) return;
         try {
@@ -571,7 +579,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 5. แจ้งยอดรับบริจาค / อื่นๆ
+    // 4. แจ้งยอดรับบริจาค / รายรับรายจ่ายอื่นๆ
     // ==========================================
     async function handleTransactionForm(formId, prefix) {
         const form = document.getElementById(formId); 
@@ -637,14 +645,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+    
     handleTransactionForm('donation-form', 'don'); 
     handleTransactionForm('other-trans-form', 'other');
 
     // ==========================================
-    // 6. โหลดข้อมูลตารางและประวัติ
+    // 5. โหลดข้อมูลตารางและประวัติ
     // ==========================================
     window.loadData = async function() {
         if (!currentUser) return; 
+        
+        // โหลดข้อมูลธนาคาร
         try {
             const { data: banks } = await supabaseClient.from('bank_accounts').select('bank_name, balance'); 
             const bBody = document.querySelector('#member-bank-table tbody');
@@ -653,6 +664,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch(e) {}
 
+        // โหลดข้อมูลงบกองทุน
         try {
             const { data: funds } = await supabaseClient.from('funds').select('fund_name, remaining_budget'); 
             const fBody = document.querySelector('#member-fund-table tbody');
@@ -661,6 +673,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch(e) {}
 
+        // โหลดประวัติบิล
         try {
             const tbody = document.querySelector('#member-history-table tbody'); 
             if (!tbody) return;
@@ -677,7 +690,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 let stat = '', btn = '-';
                 
-                // 🌟 เพิ่มปุ่มลบแบบร่างให้โชว์คู่กับปุ่มแก้ไข
                 if (req.status === 'draft') { 
                     stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">📝 ร่าง</span>'; 
                     btn = `
@@ -719,6 +731,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch(e) { console.error(e); }
     };
 
+    // ==========================================
+    // 🌟 ระบบดูบิลย่อย และ จัดการ Co-worker ย้อนหลัง
+    // ==========================================
     window.viewClearance = async function(id) {
         document.getElementById('view-clearance-modal').style.display = 'flex'; 
         const content = document.getElementById('view-clearance-content'); 
@@ -733,7 +748,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itemsHtml = `
                     <table style="width:100%; background:#f8fafc; border-radius:6px; margin-top:10px;">
                         <thead>
-                            <tr><th style="padding:8px;">รายการ</th><th style="text-align:center;">จำนวน</th><th style="text-align:right; padding-right:8px;">ราคารวม</th></tr>
+                            <tr>
+                                <th style="padding:8px;">รายการ</th>
+                                <th style="text-align:center;">จำนวน</th>
+                                <th style="text-align:right; padding-right:8px;">ราคารวม</th>
+                            </tr>
                         </thead>
                         <tbody>
                             ${items.map(it => `
@@ -792,7 +811,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('cw-edit-id').value = id; 
         const listDiv = document.getElementById('cw-edit-list'); 
         listDiv.innerHTML = '⏳ กำลังโหลด...';
-        
+
         try {
             const { data: c } = await supabaseClient.from('clearances').select('co_worker_ids, member_id').eq('id', id).single();
             const existingIds = c.co_worker_ids || [];
@@ -828,7 +847,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.saveCoWorkersQuick = async function() {
         const id = document.getElementById('cw-edit-id').value; 
-        const coWorkerIds = []; 
+        const coWorkerIds = [];
         document.querySelectorAll('.cw-quick-cb:checked').forEach(cb => coWorkerIds.push(cb.value));
         
         const btn = document.querySelector('#coworker-modal .btn-primary'); 
@@ -848,19 +867,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    // ==========================================
+    // 🌟 ระบบ Profile & Noti
+    // ==========================================
     window.loadUserProfileAndNoti = async function() {
         if (!currentUser) return;
         try {
             const { data: profile } = await supabaseClient.from('profiles').select('full_name, role').eq('id', currentUser.id).single();
             if (profile) {
                 document.getElementById('current-user-name').textContent = profile.full_name || 'Member';
-                if (profile.role === 'admin') { 
+                if (profile.role === 'admin') {
                     document.getElementById('switch-role-btn').style.display = 'block'; 
                     document.getElementById('current-user-role').textContent = 'ผู้ดูแลระบบ (โหมดจำลอง)'; 
-                    document.getElementById('current-user-role').style.color = 'var(--success)'; 
+                    document.getElementById('current-user-role').style.color = 'var(--success)';
                 }
             }
-            
+
             const { count } = await supabaseClient.from('clearances').select('*', { count: 'exact', head: true }).eq('member_id', currentUser.id).eq('status', 'advance_transferred');
             const badge = document.getElementById('noti-badge');
             
@@ -877,17 +899,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
+    // โหลดข้อมูลทุกอย่างตอนเริ่มต้น
     window.loadUserProfileAndNoti();
     window.loadData();
     window.loadCoWorkers();
 
+    // คู่มือ
     setTimeout(() => {
-        if (!localStorage.getItem('hasSeenFlowchart')) { 
+        if (!localStorage.getItem('hasSeenFlowchart')) {
             const howToModal = document.getElementById('howto-modal'); 
             if (howToModal) { 
                 howToModal.style.display = 'flex'; 
                 localStorage.setItem('hasSeenFlowchart', 'true'); 
-            } 
+            }
         }
     }, 1000);
 });

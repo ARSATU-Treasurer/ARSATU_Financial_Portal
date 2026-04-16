@@ -13,43 +13,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).catch(e => console.log(e));
     };
 
-    // ==========================================
-    // 🌟 ระบบเช็กล็อกอินแบบใจเย็น (รอเบราว์เซอร์ฟื้นความจำ)
-    // ==========================================
     let currentUser = null;
-    
-    // 1. ลองควานหาประวัติการล็อกอินแบบทันทีก่อน
-    let { data: { session } } = await supabaseClient.auth.getSession();
-    
-    // 2. ถ้าหาไม่เจอ (เพราะมือถือโหลดช้า) ให้รอฟังเสียงจาก Supabase ก่อนเตะออก
-    if (!session) {
-        await new Promise((resolve) => {
-            const authListener = supabaseClient.auth.onAuthStateChange((event, newSession) => {
-                if (newSession) {
-                    session = newSession;
-                    resolve();
-                }
-            });
-            // ยืนรอ 1.5 วินาที ถ้าประวัติยังไม่มาอีก ค่อยยอมแพ้
-            setTimeout(() => { resolve(); }, 1500);
-        });
-    }
 
-    // 3. ถ้าหาจนสุดความสามารถแล้วไม่มีจริงๆ ค่อยส่งกลับไปหน้า LIFF
-    if (!session || !session.user) { 
-        console.warn("ไม่พบ Session ยืนยันการออกจากระบบ");
+    // ==========================================
+    // 🌟 เช็กล็อกอิน
+    // ==========================================
+    try {
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+        if (error || !user) { 
+            window.location.replace('index-liff.html'); 
+            return; 
+        }
+        currentUser = user;
+    } catch (err) { 
         window.location.replace('index-liff.html'); 
         return; 
     }
-    
-    currentUser = session.user;
 
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             await supabaseClient.auth.signOut();
             localStorage.removeItem('loginSource');
-            window.location.replace('index-liff.html');
+            window.location.replace('index-liff.html'); 
         });
     }
 
