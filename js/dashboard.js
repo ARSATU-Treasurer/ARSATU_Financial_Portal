@@ -31,9 +31,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ==========================================
-    // 1. โหลดข้อมูลภาพรวม Dashboard
-    // ==========================================
     window.loadDashboardWidgets = async function() {
         try {
             const { data: banks } = await supabaseClient.from('bank_accounts').select('*');
@@ -73,9 +70,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { console.error("Widget Error:", e); }
     };
 
-    // ==========================================
-    // 2. โหลดรายการรออนุมัติรับเงิน
-    // ==========================================
     window.loadPendingDonations = async function() {
         const tbody = document.querySelector('#pending-donations-table tbody');
         if (!tbody) return;
@@ -145,7 +139,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 alert("✅ อนุมัติเรียบร้อย"); 
 
-                // --- 🌟 แจ้งเตือน LINE (แอดมินอนุมัติเงินเข้า) ---
                 const alertMsg = `✅ อนุมัติรายการเข้าบัญชีแล้ว\n\n💰 ยอดเงิน: ฿${parseFloat(amount).toLocaleString()}\n🏷️ ประเภท: ${type === 'expense' ? 'รายจ่าย' : 'รายรับ/บริจาค'}\n\nระบบบันทึกลงสมุดบัญชีและอัปเดตยอดกองทุนเรียบร้อยแล้วครับ!`;
                 if (window.sendLineMessage) window.sendLineMessage(alertMsg);
 
@@ -161,7 +154,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#requests-table tbody');
         if (!tbody) return;
         try {
-            // 🌟 แก้ไขตรงนี้: ชี้เป้าไปที่ profiles!member_id(full_name) 
             const { data, error } = await supabaseClient.from('clearances')
                 .select(`*, profiles!member_id(full_name)`)
                 .in('status', ['pending_advance', 'pending_clearance'])
@@ -191,6 +183,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 const editBtn = `<button onclick="openEditModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--warning); color:var(--warning); width:100%;">✏️ แก้ไข</button>`;
+                
+                // 🌟 ปุ่มแอดมินแท็กเพื่อน
+                const cwBtn = `<button onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; margin-top:5px; border-color:var(--primary); color:var(--primary); width:100%;">👥 แท็กผู้ร่วมเบิก</button>`;
+
                 const deptBadge = req.department && req.department !== '-' ? `<br><small style="color:var(--primary); background:#e0e7ff; padding:2px 6px; border-radius:4px; font-size:11px;">📂 ${req.department}</small>` : '';
 
                 return `
@@ -205,6 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div style="display:flex; flex-direction:column;">
                                 ${btnL}
                                 ${editBtn}
+                                ${cwBtn}
                             </div>
                         </td>
                     </tr>`;
@@ -212,9 +209,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { console.error(e); }
     };
 
-    // ==========================================
-    // 🌟 V.4.0 & V.5.4: ระบบแก้ไขข้อมูล & แอดมินเคลียร์แทน (Edit Modal)
-    // ==========================================
     window.openEditModal = async function(id) {
         document.getElementById('edit-req-modal').style.display = 'flex';
         document.getElementById('edit-msg').textContent = 'กำลังโหลดข้อมูล...';
@@ -427,7 +421,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 🌟 ฟังก์ชันพิเศษ V5.4: เปิด Modal แอดมินเคลียร์บิลแทน
     window.openSubstituteClearance = async function(id) {
         await window.openEditModal(id); 
 
@@ -445,10 +438,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-
-    // ==========================================
-    // 4. ระบบ Modal อนุมัติ (เพิ่ม Guardrail จับ Error 100%)
-    // ==========================================
     const actionModal = document.getElementById('action-modal');
     window.openModal = async function(id) {
         if(actionModal) actionModal.style.display = 'flex';
@@ -567,7 +556,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const title = document.getElementById('modal-title');
         const slipSec = document.getElementById('admin-slip-section');
         
-        // 🌟 โค้ดโชว์เลขบัญชี
         const bankDiv = document.getElementById('modal-member-bank');
         const bankText = document.getElementById('modal-bank-text');
         if(bankDiv && bankText) {
@@ -688,7 +676,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ดำเนินการสำเร็จ'; }
 
-                // --- 🌟 แจ้งเตือน LINE (แอดมินจัดการบิลเบิก/เคลียร์) ---
                 const reqPurpose = window.currentClearance?.purpose || '-';
                 const actionText = newStat === 'advance_transferred' ? '💸 แอดมินโอนเงินล่วงหน้าให้แล้ว' : '✅ แอดมินอนุมัติเคลียร์บิลสำเร็จ';
                 const alertMsg = `${actionText}\n\n📌 หัวข้อ: ${reqPurpose}\n💰 ยอดอนุมัติ: ฿${finalTotal.toLocaleString()}\n\n(บันทึกลงสมุดบัญชีเรียบร้อย)`;
@@ -705,7 +692,121 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // 5. โหลดสมุดบัญชีรายรับ-รายจ่าย (Ledger)
+    // 6. โหลดประวัติคำขอเบิกเงิน (แอดมิน)
+    // ==========================================
+    window.loadClearanceHistory = async function() {
+        const tbody = document.querySelector('#clearance-history-table tbody');
+        if (!tbody) return;
+        try {
+            const { data, error } = await supabaseClient.from('clearances').select('*, profiles!member_id(full_name)').order('created_at', { ascending: false }); 
+            if (error) throw error;
+            if (!data || data.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">ไม่มีประวัติ</td></tr>`; 
+                return; 
+            }
+            tbody.innerHTML = data.map(req => {
+                const date = new Date(req.created_at).toLocaleDateString('th-TH');
+                const name = req.profiles ? req.profiles.full_name : 'Unknown';
+                const typeLabel = req.request_type === 'advance' ? 'เบิกล่วงหน้า' : 'สำรองจ่าย';
+                const amt = req.total_actual_amount > 0 ? req.total_actual_amount : req.requested_amount;
+                
+                let stat = ''; 
+                let btn = `<button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:12px; width:100%;">🔍 ดูบิลย่อย</button>`;
+
+                if (req.status === 'draft') stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">📝 ร่าง</span>';
+                else if (req.status === 'pending_advance') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอโอนตั้งต้น</span>';
+                else if (req.status === 'pending_clearance') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจบิล</span>';
+                else if (req.status === 'advance_transferred') {
+                    stat = '<span class="status-badge" style="background:#dbeafe; color:#2563eb;">💸 รอ Member เคลียร์</span>';
+                    btn = `<div style="display:flex; gap:5px; justify-content:center; flex-direction:column;">
+                             <button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:12px;">🔍 ดู</button>
+                             <button type="button" onclick="openSubstituteClearance('${req.id}')" class="btn btn-warning" style="padding:4px 8px; font-size:12px; color:white;">📝 เคลียร์แทน</button>
+                           </div>`;
+                }
+                else if (req.status === 'cleared') stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>';
+
+                // 🌟 ปุ่มแอดมินแท็กเพื่อนเพิ่ม
+                const cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการคนแท็ก</button>`;
+
+                return `
+                    <tr>
+                        <td>${date}</td>
+                        <td>${name}</td>
+                        <td>${typeLabel}</td>
+                        <td>${req.purpose}</td>
+                        <td style="font-weight:600;">฿${parseFloat(amt).toLocaleString()}</td>
+                        <td>${stat}</td>
+                        <td style="text-align:center;">
+                            <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
+                                ${btn}
+                                ${cwBtn}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch(e) { console.error(e); }
+    };
+
+    // ==========================================
+    // 🌟 V.7.1 ฟังก์ชัน Modal จัดการผู้ร่วมเบิกย้อนหลัง (แอดมิน)
+    // ==========================================
+    window.openCoWorkerModal = async function(id) {
+        document.getElementById('coworker-modal').style.display = 'flex';
+        document.getElementById('cw-edit-id').value = id;
+        const listDiv = document.getElementById('cw-edit-list');
+        listDiv.innerHTML = '⏳ กำลังโหลด...';
+
+        try {
+            const { data: c } = await supabaseClient.from('clearances').select('co_worker_ids, member_id').eq('id', id).single();
+            const existingIds = c.co_worker_ids || [];
+
+            // แอดมินดึงมาทุกคน ยกเว้นคนที่สร้างบิล
+            const { data: users } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', c.member_id);
+            
+            listDiv.innerHTML = '';
+            if (users && users.length > 0) {
+                users.forEach(user => {
+                    const isChecked = existingIds.includes(user.id) ? 'checked' : '';
+                    const lbl = document.createElement('label');
+                    lbl.style.display = 'block';
+                    lbl.style.marginBottom = '8px';
+                    lbl.style.cursor = 'pointer';
+                    lbl.innerHTML = `<input type="checkbox" class="cw-quick-cb" value="${user.id}" ${isChecked} style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || '-'})</span>`;
+                    listDiv.appendChild(lbl);
+                });
+            } else {
+                listDiv.innerHTML = '<span style="color:gray; font-size:13px;">ไม่มีรายชื่อผู้ใช้งานคนอื่นในระบบ</span>';
+            }
+        } catch(e) { listDiv.innerHTML = '❌ โหลดข้อมูลไม่สำเร็จ'; }
+    };
+
+    window.saveCoWorkersQuick = async function() {
+        const id = document.getElementById('cw-edit-id').value;
+        const coWorkerIds = [];
+        document.querySelectorAll('.cw-quick-cb:checked').forEach(cb => coWorkerIds.push(cb.value));
+
+        const btn = document.querySelector('#coworker-modal .btn-primary');
+        btn.disabled = true;
+        btn.textContent = 'กำลังบันทึก...';
+
+        try {
+            const { error } = await supabaseClient.from('clearances').update({ co_worker_ids: coWorkerIds }).eq('id', id);
+            if (error) throw error;
+            alert('✅ อัปเดตรายชื่อเพื่อนสำเร็จ!');
+            document.getElementById('coworker-modal').style.display = 'none';
+            window.loadClearanceHistory();
+            window.loadPendingRequests(); 
+        } catch(e) { 
+            alert('❌ เกิดข้อผิดพลาด: ' + e.message); 
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '💾 บันทึกรายชื่อ';
+        }
+    };
+
+    // ==========================================
+    // 7. โหลดสมุดบัญชีรายรับ-รายจ่าย (Ledger)
     // ==========================================
     window.loadLedger = async function() {
         try {
@@ -818,240 +919,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // 6. โหลดประวัติคำขอเบิกเงิน
-    // ==========================================
-    window.loadClearanceHistory = async function() {
-        const tbody = document.querySelector('#clearance-history-table tbody');
-        if (!tbody) return;
-        try {
-            // 🌟 แก้ไขตรงนี้: ชี้เป้าไปที่ profiles!member_id(full_name)
-            const { data, error } = await supabaseClient.from('clearances')
-                .select('*, profiles!member_id(full_name)')
-                .order('created_at', { ascending: false }); 
-                
-            if (error) throw error;
-            if (!data || data.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">ไม่มีประวัติ</td></tr>`; 
-                return; 
-            }
-            tbody.innerHTML = data.map(req => {
-                const date = new Date(req.created_at).toLocaleDateString('th-TH');
-                const name = req.profiles ? req.profiles.full_name : 'Unknown';
-                const typeLabel = req.request_type === 'advance' ? 'เบิกล่วงหน้า' : 'สำรองจ่าย';
-                const amt = req.total_actual_amount > 0 ? req.total_actual_amount : req.requested_amount;
-                
-                let stat = ''; 
-                let btn = `<button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:12px;">🔍 ดูบิลย่อย</button>`;
-
-                if (req.status === 'draft') stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">📝 ร่าง</span>';
-                else if (req.status === 'pending_advance') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอโอนตั้งต้น</span>';
-                else if (req.status === 'pending_clearance') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจบิล</span>';
-                else if (req.status === 'advance_transferred') {
-                    stat = '<span class="status-badge" style="background:#dbeafe; color:#2563eb;">💸 รอ Member เคลียร์</span>';
-                    btn = `<div style="display:flex; gap:5px; justify-content:center;">
-                             <button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:12px;">🔍 ดู</button>
-                             <button type="button" onclick="openSubstituteClearance('${req.id}')" class="btn btn-warning" style="padding:4px 8px; font-size:12px; color:white;">📝 เคลียร์แทน</button>
-                           </div>`;
-                }
-                else if (req.status === 'cleared') stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>';
-
-                return `
-                    <tr>
-                        <td>${date}</td>
-                        <td>${name}</td>
-                        <td>${typeLabel}</td>
-                        <td>${req.purpose}</td>
-                        <td style="font-weight:600;">฿${parseFloat(amt).toLocaleString()}</td>
-                        <td>${stat}</td>
-                        <td style="text-align:center; white-space:nowrap;">${btn}</td>
-                    </tr>
-                `;
-            }).join('');
-        } catch(e) { console.error(e); }
-    };
-
-    // ==========================================
-    // 7. หน้าตั้งค่าระบบ (Settings)
-    // ==========================================
-    window.loadSettingsData = async function() {
-        const { data: banks } = await supabaseClient.from('bank_accounts').select('*');
-        const bTbody = document.querySelector('#manage-bank-table tbody');
-        if(bTbody) bTbody.innerHTML = banks.map(b => `<tr><td>${b.bank_name}</td><td>฿${b.balance.toLocaleString()}</td><td style="text-align:center;"><button onclick="deleteBank('${b.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
-
-        const { data: funds } = await supabaseClient.from('funds').select('*');
-        const fTbody = document.querySelector('#manage-fund-table tbody');
-        if(fTbody) fTbody.innerHTML = funds.map(f => `<tr><td>${f.fund_name}</td><td>฿${f.remaining_budget.toLocaleString()}</td><td style="text-align:center;"><button onclick="deleteFund('${f.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
-    };
-
-   window.addBank = async function() {
-        const name = document.getElementById('add-bank-name').value;
-        const bal = parseFloat(document.getElementById('add-bank-bal').value);
-        if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
-
-        const subBtn = event.target;
-        subBtn.disabled = true;
-        subBtn.textContent = "กำลังเพิ่ม...";
-
-        try {
-            const { error } = await supabaseClient.from('bank_accounts').insert([{ bank_name: name, balance: bal }]);
-            if (error) throw error;
-            
-            document.getElementById('add-bank-name').value = ''; 
-            document.getElementById('add-bank-bal').value = '';
-            alert("✅ เพิ่มบัญชีสำเร็จ!");
-            window.loadAllAdminData(); 
-        } catch (err) {
-            alert("❌ ไม่สามารถเพิ่มบัญชีได้: " + err.message);
-        } finally {
-            subBtn.disabled = false;
-            subBtn.textContent = "+ เพิ่มบัญชี";
-        }
-    };
-
-    window.deleteBank = async function(id) {
-        if(confirm("ยืนยันการลบบัญชีนี้? (ยอดเงินจะถูกลบไปด้วย แต่ประวัติสมุดบัญชียังอยู่)")) {
-            try {
-                const { error } = await supabaseClient.from('bank_accounts').delete().eq('id', id);
-                if (error) throw error;
-                window.loadAllAdminData(); 
-            } catch (err) {
-                alert("❌ ไม่สามารถลบได้: " + err.message);
-            }
-        }
-    };
-
-    window.addFund = async function() {
-        const name = document.getElementById('add-fund-name').value;
-        const bal = parseFloat(document.getElementById('add-fund-bal').value);
-        if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
-
-        const subBtn = event.target;
-        subBtn.disabled = true;
-        subBtn.textContent = "กำลังเพิ่ม...";
-
-        try {
-            const { error } = await supabaseClient.from('funds').insert([{ fund_name: name, remaining_budget: bal }]);
-            if (error) throw error;
-
-            document.getElementById('add-fund-name').value = ''; 
-            document.getElementById('add-fund-bal').value = '';
-            alert("✅ เพิ่มกองทุนสำเร็จ!");
-            window.loadAllAdminData(); 
-        } catch (err) {
-            alert("❌ ไม่สามารถเพิ่มกองทุนได้: " + err.message);
-        } finally {
-            subBtn.disabled = false;
-            subBtn.textContent = "+ เพิ่มกองทุน";
-        }
-    };
-
-    window.deleteFund = async function(id) {
-        if(confirm("ยืนยันการลบกองทุนนี้?")) {
-            try {
-                const { error } = await supabaseClient.from('funds').delete().eq('id', id);
-                if (error) throw error;
-                window.loadAllAdminData(); 
-            } catch (err) {
-                alert("❌ ไม่สามารถลบได้: " + err.message);
-            }
-        }
-    };
-
-    // ==========================================
-    // 8. ฟังก์ชันเรียกดูข้อมูลย้อนหลัง (Read-Only)
-    // ==========================================
-    window.viewTransaction = async function(id) {
-        document.getElementById('view-tx-modal').style.display = 'flex';
-        const content = document.getElementById('view-tx-content');
-        content.innerHTML = 'กำลังโหลดข้อมูล...';
-
-        try {
-            const { data: tx } = await supabaseClient.from('transactions').select(`*, profiles!transactions_created_by_fkey(full_name), bank_accounts(bank_name), funds(fund_name)`).eq('id', id).single();
-            if (!tx) throw new Error("ไม่พบข้อมูล");
-
-            const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
-            const imgHtml = tx.slip_url ? `<div style="margin-top:15px; text-align:center;"><img src="${tx.slip_url}" style="max-width:100%; max-height:300px; border-radius:8px; border:1px solid #ccc; cursor:pointer;" onclick="window.open(this.src, '_blank')"></div>` : `<div style="margin-top:15px; padding:20px; text-align:center; background:#f4f6f9; color:gray; border-radius:8px;">ไม่มีรูปหลักฐาน</div>`;
-
-            content.innerHTML = `
-                <table style="width:100%; font-size:14px;">
-                    <tr><td style="padding:5px 0; color:gray; width:30%;">วันที่:</td><td style="font-weight:bold;">${date}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">รายละเอียด:</td><td>${tx.description || '-'}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">ฝ่าย / แผนก:</td><td style="color:var(--primary);">${tx.department || 'ส่วนกลาง'}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">สถานที่:</td><td>${tx.location || '-'}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">ยอดเงิน:</td><td style="font-weight:bold; color:var(--primary);">฿${parseFloat(tx.amount).toLocaleString()}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">บัญชี / กองทุน:</td><td>🏦 ${tx.bank_accounts?.bank_name||'-'} <br> 💼 ${tx.funds?.fund_name||'-'}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">ผู้บันทึก:</td><td>${tx.profiles?.full_name || 'แอดมิน'}</td></tr>
-                </table>
-                ${imgHtml}
-                
-                <div style="margin-top:20px; padding-top:15px; border-top:1px dashed #ccc; display:flex; justify-content:center;">
-                    <button onclick="undoTransaction('${tx.id}')" class="btn btn-danger" style="width:100%; padding:10px; font-size:14px;">🗑️ ยกเลิกรายการนี้ (Undo & คืนเงิน)</button>
-                </div>
-            `;
-        } catch (err) { content.innerHTML = '<span style="color:red;">โหลดข้อมูลไม่สำเร็จ</span>'; }
-    };
-
-    window.viewClearance = async function(id) {
-        document.getElementById('view-clearance-modal').style.display = 'flex';
-        const content = document.getElementById('view-clearance-content');
-        content.innerHTML = 'กำลังโหลดข้อมูล...';
-
-        try {
-            // 🌟 แก้ไขตรงนี้: ชี้เป้าไปที่ profiles!member_id(full_name)
-            const { data: c } = await supabaseClient.from('clearances').select(`*, profiles!member_id(full_name)`).eq('id', id).single(); 
-            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
-
-            let itemsHtml = '<div style="padding:15px; text-align:center; color:gray; background:#f4f6f9; border-radius:6px;">ไม่มีรายการย่อย</div>';
-            if (items && items.length > 0) {
-                itemsHtml = `
-                    <table style="width:100%; background:#f8fafc; border-radius:6px; margin-top:10px;">
-                        <thead><tr><th style="padding:8px;">รายการ</th><th style="text-align:center;">จำนวน</th><th style="text-align:right; padding-right:8px;">ราคารวม</th></tr></thead>
-                        <tbody>
-                            ${items.map(it => `<tr><td style="padding:8px; border-bottom:1px solid #eee;">${it.item_name}</td><td style="text-align:center; border-bottom:1px solid #eee;">${it.quantity}</td><td style="text-align:right; padding-right:8px; border-bottom:1px solid #eee;">฿${parseFloat(it.total_price).toLocaleString()}</td></tr>`).join('')}
-                        </tbody>
-                    </table>
-                `;
-            }
-
-            const imgList = [];
-            let pwdHtml = c.statement_password ? `<p style="margin:5px 0 0 0; color:var(--danger); font-size:12px; font-weight:bold; background:#fee2e2; padding:3px 6px; border-radius:4px; display:inline-block;">🔑 รหัส: ${c.statement_password}</p>` : '';
-            
-            if(c.statement_url) {
-                if (c.statement_url.toLowerCase().includes('.pdf')) {
-                    imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><a href="${c.statement_url}" target="_blank" class="btn btn-outline" style="display:inline-block; padding:10px 15px; text-decoration:none;">📄 ดู PDF</a><br>${pwdHtml}</div>`);
-                } else {
-                    imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><img src="${c.statement_url}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"><br>${pwdHtml}</div>`);
-                }
-            }
-            if(c.member_return_slip) imgList.push(`<div><p style="margin:0 0 5px 0; color:var(--warning); font-size:12px;">สลิปเงินทอน (คืนค่าย):</p><img src="${c.member_return_slip}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
-            if(c.admin_transfer_slip) imgList.push(`<div><p style="margin:0 0 5px 0; color:var(--danger); font-size:12px;">สลิปโอนเงิน (ออกค่าย):</p><img src="${c.admin_transfer_slip}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
-            
-            const imgsHtml = imgList.length > 0 ? `<div style="display:flex; gap:10px; margin-top:15px; overflow-x:auto; padding-bottom:10px;">${imgList.join('')}</div>` : `<div style="margin-top:15px; padding:15px; text-align:center; background:#f4f6f9; color:gray; border-radius:8px;">ไม่มีรูปหลักฐานแนบไว้เลย</div>`;
-
-            content.innerHTML = `
-                <div style="display:flex; gap:20px; flex-wrap:wrap;">
-                    <div style="flex:1; min-width:300px;">
-                        <table style="width:100%; font-size:14px;">
-                            <tr><td style="padding:4px 0; color:gray; width:35%;">ผู้เบิก:</td><td style="font-weight:bold;">${c.profiles?.full_name||'-'}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">ฝ่าย / แผนก:</td><td style="color:var(--primary);">${c.department || '-'}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">หัวข้อ:</td><td>${c.purpose}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">ยอดขอเบิกล่วงหน้า:</td><td>฿${parseFloat(c.requested_amount).toLocaleString()}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">ยอดใช้จ่ายจริง:</td><td style="font-weight:bold; color:var(--success);">฿${parseFloat(c.total_actual_amount).toLocaleString()}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">บัญชีรับเงิน (Member):</td><td>${c.member_bank_details || '-'}</td></tr>
-                        </table>
-                        ${imgsHtml}
-                    </div>
-                    <div style="flex:1.2; min-width:300px;">
-                        <h4 style="margin:0 0 5px 0; color:var(--primary);">🛒 รายการสินค้า / บิลย่อย</h4>
-                        ${itemsHtml}
-                    </div>
-                </div>
-            `;
-        } catch (err) { content.innerHTML = '<span style="color:red;">โหลดข้อมูลไม่สำเร็จ</span>'; }
-    };
-
-    // ==========================================
-    // 9. ฟังก์ชัน Export Excel
+    // 8. ฟังก์ชันอื่นๆ (Export, Approve Users, Undo)
     // ==========================================
     window.exportLedgerToCSV = async function() {
         const btn = document.querySelector('button[onclick="exportLedgerToCSV()"]');
@@ -1064,9 +932,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .eq('status', 'approved')
                 .order('created_at', { ascending: false });
 
-            if (selectedDept) {
-                query = query.eq('department', selectedDept);
-            }
+            if (selectedDept) query = query.eq('department', selectedDept);
 
             const { data: txs, error: exportErr } = await query;
             if (exportErr) throw exportErr;
@@ -1125,25 +991,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // ==========================================
-    // 🌟 V.5.3: โหลดรายชื่อผู้ใช้ที่รออนุมัติ
-    // ==========================================
     window.loadPendingUsers = async function() {
         const tbody = document.querySelector('#pending-users-table tbody');
         if (!tbody) return;
         try {
-            const { data, error } = await supabaseClient.from('profiles')
-                .select('*')
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false });
-                
+            const { data, error } = await supabaseClient.from('profiles').select('*').eq('status', 'pending').order('created_at', { ascending: false });
             if (error) throw error;
-            
-            if (!data || data.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">✅ ไม่มีผู้ใช้งานรออนุมัติ</td></tr>`; 
-                return; 
-            }
-
+            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">✅ ไม่มีผู้ใช้งานรออนุมัติ</td></tr>`; return; }
             tbody.innerHTML = data.map(user => {
                 const date = user.created_at ? new Date(user.created_at).toLocaleDateString('th-TH') : '-';
                 return `
@@ -1152,15 +1006,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style="font-weight:bold; color:var(--text-main);">${user.full_name || 'ไม่มีชื่อ'}</td>
                         <td style="color:var(--primary);"><span style="background:#e0e7ff; padding:4px 8px; border-radius:6px; font-size:12px;">📂 ${user.department || '-'}</span></td>
                         <td><span class="status-badge" style="background:#fef3c7; color:#d97706;">รออนุมัติ</span></td>
-                        <td>
-                            <button onclick="approveUser('${user.id}', '${user.full_name}')" class="btn btn-primary" style="padding:6px 12px; font-size:12px;">✅ อนุมัติผู้ใช้</button>
-                        </td>
+                        <td><button onclick="approveUser('${user.id}', '${user.full_name}')" class="btn btn-primary" style="padding:6px 12px; font-size:12px;">✅ อนุมัติผู้ใช้</button></td>
                     </tr>`;
             }).join('');
-        } catch (e) { 
-            console.error("Load Pending Users Error:", e);
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล: ${e.message}</td></tr>`;
-        }
+        } catch (e) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`; }
     };
 
     window.approveUser = async function(id, currentName) {
@@ -1171,45 +1020,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         const finalRole = isSetAsAdmin ? 'admin' : 'member';
 
         try {
-            const { error } = await supabaseClient.from('profiles').update({ 
-                status: 'approved', 
-                role: finalRole, 
-                full_name: finalName 
-            }).eq('id', id);
-
+            const { error } = await supabaseClient.from('profiles').update({ status: 'approved', role: finalRole, full_name: finalName }).eq('id', id);
             if (error) throw error;
             alert(`🎉 อนุมัติคุณ ${finalName} (สิทธิ์: ${finalRole}) เรียบร้อยแล้ว!`);
             window.loadPendingUsers(); 
-        } catch (err) {
-            alert("❌ เกิดข้อผิดพลาด: " + err.message);
-        }
+        } catch (err) { alert("❌ เกิดข้อผิดพลาด: " + err.message); }
     };
 
-    // ==========================================
-    // 🌟 ฟังก์ชันยกเลิกรายการ (Undo / Revert) อัตโนมัติ
-    // ==========================================
     window.undoTransaction = async function(txId) {
         if(!confirm('⚠️ ยืนยันการ "ยกเลิก (Undo)" รายการนี้ใช่ไหม?\n\nระบบจะทำการ:\n1. ดึงยอดเงินกลับอัตโนมัติ\n2. ตีกลับบิลไปสถานะรอตรวจสอบใหม่')) return;
-
         try {
             const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', txId).single();
             if (!tx) throw new Error("ไม่พบข้อมูลรายการนี้");
-
             document.getElementById('view-tx-content').innerHTML = '<div style="text-align:center; padding:20px; color:var(--info);">⏳ กำลังดึงเงินกลับและถอยสถานะ...</div>';
 
             const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', tx.bank_account_id).single();
             const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', tx.fund_id).single();
-
-            let nBal = parseFloat(bData.balance || 0);
-            let nFun = parseFloat(fData.remaining_budget || 0);
+            let nBal = parseFloat(bData.balance || 0), nFun = parseFloat(fData.remaining_budget || 0);
             const amt = parseFloat(tx.amount || 0);
 
-            const isIncome = ['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type);
-            if (isIncome) {
-                nBal -= amt; nFun -= amt;
-            } else {
-                nBal += amt; nFun += amt;
-            }
+            if (['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type)) { nBal -= amt; nFun -= amt; } 
+            else { nBal += amt; nFun += amt; }
 
             await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', tx.bank_account_id);
             await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', tx.fund_id);
@@ -1217,24 +1048,68 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (tx.clearance_id) {
                 let revertStatus = 'pending_clearance';
                 if (tx.description.includes('[โอนตั้งต้น]')) revertStatus = 'pending_advance';
-                
                 await supabaseClient.from('clearances').update({ status: revertStatus }).eq('id', tx.clearance_id);
                 await supabaseClient.from('transactions').delete().eq('id', txId);
             } else {
-                if (tx.transaction_type === 'income' || tx.transaction_type === 'expense') {
-                    await supabaseClient.from('transactions').delete().eq('id', txId);
-                } else {
-                    await supabaseClient.from('transactions').update({ status: 'pending' }).eq('id', txId);
-                }
+                if (tx.transaction_type === 'income' || tx.transaction_type === 'expense') await supabaseClient.from('transactions').delete().eq('id', txId);
+                else await supabaseClient.from('transactions').update({ status: 'pending' }).eq('id', txId);
             }
-
             alert("✅ ยกเลิกรายการและคืนยอดเงินเรียบร้อย");
             document.getElementById('view-tx-modal').style.display = 'none';
             window.loadAllAdminData(); 
-
         } catch (err) {
             alert("❌ ผิดพลาด: " + err.message);
             document.getElementById('view-tx-modal').style.display = 'none';
+        }
+    };
+
+    window.loadSettingsData = async function() {
+        const { data: banks } = await supabaseClient.from('bank_accounts').select('*');
+        const bTbody = document.querySelector('#manage-bank-table tbody');
+        if(bTbody) bTbody.innerHTML = banks.map(b => `<tr><td>${b.bank_name}</td><td>฿${b.balance.toLocaleString()}</td><td style="text-align:center;"><button onclick="deleteBank('${b.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
+
+        const { data: funds } = await supabaseClient.from('funds').select('*');
+        const fTbody = document.querySelector('#manage-fund-table tbody');
+        if(fTbody) fTbody.innerHTML = funds.map(f => `<tr><td>${f.fund_name}</td><td>฿${f.remaining_budget.toLocaleString()}</td><td style="text-align:center;"><button onclick="deleteFund('${f.id}')" style="background:none; border:none; color:red; cursor:pointer;">🗑️</button></td></tr>`).join('');
+    };
+
+    window.addBank = async function() {
+        const name = document.getElementById('add-bank-name').value;
+        const bal = parseFloat(document.getElementById('add-bank-bal').value);
+        if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
+        const subBtn = event.target; subBtn.disabled = true; subBtn.textContent = "กำลังเพิ่ม...";
+        try {
+            const { error } = await supabaseClient.from('bank_accounts').insert([{ bank_name: name, balance: bal }]);
+            if (error) throw error;
+            document.getElementById('add-bank-name').value = ''; document.getElementById('add-bank-bal').value = '';
+            alert("✅ เพิ่มบัญชีสำเร็จ!"); window.loadAllAdminData(); 
+        } catch (err) { alert("❌ ผิดพลาด: " + err.message); } finally { subBtn.disabled = false; subBtn.textContent = "+ เพิ่มบัญชี"; }
+    };
+
+    window.deleteBank = async function(id) {
+        if(confirm("ยืนยันการลบบัญชีนี้?")) {
+            try { const { error } = await supabaseClient.from('bank_accounts').delete().eq('id', id); if (error) throw error; window.loadAllAdminData(); } 
+            catch (err) { alert("❌ ผิดพลาด: " + err.message); }
+        }
+    };
+
+    window.addFund = async function() {
+        const name = document.getElementById('add-fund-name').value;
+        const bal = parseFloat(document.getElementById('add-fund-bal').value);
+        if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
+        const subBtn = event.target; subBtn.disabled = true; subBtn.textContent = "กำลังเพิ่ม...";
+        try {
+            const { error } = await supabaseClient.from('funds').insert([{ fund_name: name, remaining_budget: bal }]);
+            if (error) throw error;
+            document.getElementById('add-fund-name').value = ''; document.getElementById('add-fund-bal').value = '';
+            alert("✅ เพิ่มกองทุนสำเร็จ!"); window.loadAllAdminData(); 
+        } catch (err) { alert("❌ ผิดพลาด: " + err.message); } finally { subBtn.disabled = false; subBtn.textContent = "+ เพิ่มกองทุน"; }
+    };
+
+    window.deleteFund = async function(id) {
+        if(confirm("ยืนยันการลบกองทุนนี้?")) {
+            try { const { error } = await supabaseClient.from('funds').delete().eq('id', id); if (error) throw error; window.loadAllAdminData(); } 
+            catch (err) { alert("❌ ผิดพลาด: " + err.message); }
         }
     };
 

@@ -2,31 +2,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 🌟 ฟังก์ชันผู้ช่วยส่ง LINE
     window.sendLineMessage = function(msg) {
-        const gasUrl = '[https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec](https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec)'; 
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; 
         fetch(gasUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'notify_admin', message: msg }) }).catch(e => console.log(e));
     };
 
     let currentUser = null;
     window.isClearingAdvance = false;
 
-    // 🌟 V.7.1 โหลดรายชื่อเป็น Checkbox
+    // 🌟 V.7.1 โหลดรายชื่อเป็น Checkbox (แก้ไขการค้าง)
     window.loadCoWorkers = async function() {
         try {
-            const { data } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
+            const { data, error } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
+            if (error) throw error;
+            
             const cwList = document.getElementById('req-co-worker-list');
-            if (cwList && data) {
+            if (cwList) {
                 cwList.innerHTML = ''; 
-                data.forEach(user => {
-                    const lbl = document.createElement('label');
-                    lbl.style.display = 'block';
-                    lbl.style.marginBottom = '8px';
-                    lbl.style.cursor = 'pointer';
-                    lbl.style.fontSize = '14px';
-                    lbl.innerHTML = `<input type="checkbox" class="co-worker-cb" value="${user.id}" style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || 'ส่วนกลาง'})</span>`;
-                    cwList.appendChild(lbl);
-                });
+                if (data && data.length > 0) {
+                    data.forEach(user => {
+                        const lbl = document.createElement('label');
+                        lbl.style.display = 'block';
+                        lbl.style.marginBottom = '8px';
+                        lbl.style.cursor = 'pointer';
+                        lbl.style.fontSize = '14px';
+                        lbl.innerHTML = `<input type="checkbox" class="co-worker-cb" value="${user.id}" style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || 'ส่วนกลาง'})</span>`;
+                        cwList.appendChild(lbl);
+                    });
+                } else {
+                    cwList.innerHTML = '<span style="color:gray; font-size:13px;">ไม่มีรายชื่อผู้ใช้งานคนอื่นในระบบ</span>';
+                }
             }
-        } catch(e) { console.error("โหลดรายชื่อเพื่อนไม่สำเร็จ:", e); }
+        } catch(e) { 
+            console.error("โหลดรายชื่อเพื่อนไม่สำเร็จ:", e); 
+            const cwList = document.getElementById('req-co-worker-list');
+            if (cwList) cwList.innerHTML = '<span style="color:red; font-size:13px;">โหลดรายชื่อไม่สำเร็จ</span>';
+        }
     };
 
     try {
@@ -329,13 +339,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             let clearanceId = draftId;
             const stmtPwd = document.getElementById('req-statement-password')?.value || null;
 
-            // 🌟 รวบรวม ID เพื่อนแบบหลายคน (Array)
             const coWorkerIds = [];
             document.querySelectorAll('.co-worker-cb:checked').forEach(cb => coWorkerIds.push(cb.value));
 
             const clearanceData = { 
                 member_id: currentUser.id, 
-                co_worker_ids: coWorkerIds.length > 0 ? coWorkerIds : null, // ส่งเป็น Array
+                co_worker_ids: coWorkerIds.length > 0 ? coWorkerIds : null, 
                 request_type: typeVal, 
                 purpose: purposeVal, 
                 requested_amount: reqAmtVal, 
@@ -460,7 +469,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             amtInput.value = c.requested_amount || 0; 
             if (deptSelect && c.department) deptSelect.value = c.department;
 
-            // 🌟 ดึงเพื่อนที่แท็กไว้กลับมาโชว์ (และอนุญาตให้แก้ได้ตลอดเวลา)
             document.querySelectorAll('.co-worker-cb').forEach(cb => {
                 cb.checked = c.co_worker_ids && c.co_worker_ids.includes(cb.value);
                 cb.disabled = false; 
@@ -621,7 +629,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tbody = document.querySelector('#member-history-table tbody');
             if (!tbody) return;
             
-            // 🌟 ดึงบิลที่ตัวเองสร้าง หรือบิลที่เพื่อนแท็กชื่อเราไว้
             const { data, error } = await supabaseClient.from('clearances')
                 .select('*, profiles!member_id(full_name)')
                 .or(`member_id.eq.${currentUser.id},co_worker_ids.cs.{${currentUser.id}}`) 
@@ -647,11 +654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 else if (req.status === 'cleared') { stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>'; }
                 
-                // 🌟 เพิ่มปุ่มให้คนสร้างกด "แท็กเพื่อนเพิ่ม" ได้ตลอดเวลา
-                let cwBtn = '';
-                if (req.member_id === currentUser.id) {
-                     cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 แท็กเพื่อนเพิ่ม</button>`;
-                }
+                let cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการคนแท็ก</button>`;
 
                 return `
                     <tr>
@@ -673,7 +676,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 🌟 V.7.1 ฟังก์ชัน Modal จัดการผู้ร่วมเบิกย้อนหลัง
+    // 🌟 V.7.1 ฟังก์ชัน Modal จัดการผู้ร่วมเบิกย้อนหลัง (Member)
     // ==========================================
     window.openCoWorkerModal = async function(id) {
         document.getElementById('coworker-modal').style.display = 'flex';
@@ -682,21 +685,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         listDiv.innerHTML = '⏳ กำลังโหลด...';
 
         try {
-            const { data: c } = await supabaseClient.from('clearances').select('co_worker_ids').eq('id', id).single();
+            const { data: c } = await supabaseClient.from('clearances').select('co_worker_ids, member_id').eq('id', id).single();
             const existingIds = c.co_worker_ids || [];
 
-            const { data: users } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
+            // ดึงมาทุกคน ยกเว้นคนที่สร้างบิล
+            const { data: users } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', c.member_id);
             
             listDiv.innerHTML = '';
-            users.forEach(user => {
-                const isChecked = existingIds.includes(user.id) ? 'checked' : '';
-                const lbl = document.createElement('label');
-                lbl.style.display = 'block';
-                lbl.style.marginBottom = '8px';
-                lbl.style.cursor = 'pointer';
-                lbl.innerHTML = `<input type="checkbox" class="cw-quick-cb" value="${user.id}" ${isChecked} style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || '-'})</span>`;
-                listDiv.appendChild(lbl);
-            });
+            if (users && users.length > 0) {
+                users.forEach(user => {
+                    const isChecked = existingIds.includes(user.id) ? 'checked' : '';
+                    const lbl = document.createElement('label');
+                    lbl.style.display = 'block';
+                    lbl.style.marginBottom = '8px';
+                    lbl.style.cursor = 'pointer';
+                    lbl.innerHTML = `<input type="checkbox" class="cw-quick-cb" value="${user.id}" ${isChecked} style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || '-'})</span>`;
+                    listDiv.appendChild(lbl);
+                });
+            } else {
+                listDiv.innerHTML = '<span style="color:gray; font-size:13px;">ไม่มีรายชื่อผู้ใช้งานคนอื่นในระบบ</span>';
+            }
         } catch(e) { listDiv.innerHTML = '❌ โหลดข้อมูลไม่สำเร็จ'; }
     };
 
@@ -712,7 +720,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const { error } = await supabaseClient.from('clearances').update({ co_worker_ids: coWorkerIds }).eq('id', id);
             if (error) throw error;
-            alert('✅ แท็กรายชื่อเพื่อนสำเร็จ!');
+            alert('✅ อัปเดตรายชื่อเพื่อนสำเร็จ!');
             document.getElementById('coworker-modal').style.display = 'none';
             window.loadData();
         } catch(e) { 

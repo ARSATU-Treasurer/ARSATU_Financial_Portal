@@ -465,5 +465,15 @@
             evt.currentTarget.classList.add('active');
         }
     </script>
+
+    <div id="coworker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;">
+        <div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; position: relative;">
+            <h3 style="margin-top: 0; color: var(--primary);">👥 จัดการแท็กเพื่อน (แอดมิน)</h3>
+            <input type="hidden" id="cw-edit-id">
+            <div id="cw-edit-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 15px; background: #f8fafc;"></div>
+            <button onclick="saveCoWorkersQuick()" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 15px;">💾 บันทึกรายชื่อ</button>
+            <button onclick="document.getElementById('coworker-modal').style.display='none'" class="btn btn-outline" style="width: 100%; margin-top: 10px; padding: 10px;">ยกเลิก</button>
+        </div>
+    </div>
 </body>
 </html>
