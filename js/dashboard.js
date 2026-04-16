@@ -161,8 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#requests-table tbody');
         if (!tbody) return;
         try {
-            const { data, error } = await supabaseClient.from('clearances').select(`*, profiles (full_name)`).in('status', ['pending_advance', 'pending_clearance']).order('created_at', { ascending: false });
-            if (error) throw error;
+            const { data, error } = await supabaseClient.from('clearances').select(`*, profiles!clearances_member_id_fkey (full_name)`).in('status', ['pending_advance', 'pending_clearance']).order('created_at', { ascending: false });            if (error) throw error;
             
             if (!data || data.length === 0) { 
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">🎉 ไม่มีรายการค้างตรวจสอบ</td></tr>`; 
@@ -819,8 +818,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#clearance-history-table tbody');
         if (!tbody) return;
         try {
-            const { data, error } = await supabaseClient.from('clearances').select('*, profiles(full_name)').order('created_at', { ascending: false });
-            if (error) throw error;
+            const { data, error } = await supabaseClient.from('clearances').select('*, profiles!clearances_member_id_fkey(full_name)').order('created_at', { ascending: false });            if (error) throw error;
             if (!data || data.length === 0) { 
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">ไม่มีประวัติ</td></tr>`; 
                 return; 
@@ -988,8 +986,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         content.innerHTML = 'กำลังโหลดข้อมูล...';
 
         try {
-            const { data: c } = await supabaseClient.from('clearances').select(`*, profiles(full_name)`).eq('id', id).single();
-            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
+        const { data: c } = await supabaseClient.from('clearances').select(`*, profiles!clearances_member_id_fkey(full_name)`).eq('id', id).single();            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
 
             let itemsHtml = '<div style="padding:15px; text-align:center; color:gray; background:#f4f6f9; border-radius:6px;">ไม่มีรายการย่อย</div>';
             if (items && items.length > 0) {
