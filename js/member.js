@@ -571,6 +571,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     btn = `<button type="button" onclick="clearAdvance('${req.id}')" class="btn btn-primary" style="padding:4px 8px; font-size:12px; width:100%;">📝 เคลียร์บิล</button>`;
                 }
                 else if (req.status === 'cleared') { stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>'; }
+                // 🌟 เพิ่มบรรทัดนี้ลงไป
+                else if (req.status === 'cancelled') { stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ยกเลิก/ไม่อนุมัติ</span>'; }
                 
                 let cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการ Co-Worker</button>`;
                 

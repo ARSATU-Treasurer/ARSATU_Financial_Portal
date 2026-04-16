@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 🌟 ฟังก์ชันช่วยดึงรายชื่อ ป้องกัน Supabase สับสน
     async function getProfileMap() {
         const { data } = await supabaseClient.from('profiles').select('id, full_name, department');
         const map = {};
@@ -162,6 +161,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 const editBtn = `<button onclick="openEditModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--warning); color:var(--warning); width:100%;">✏️ แก้ไข</button>`;
+                // 🌟 V.8.0 เพิ่มปุ่มยกเลิก/ตีกลับบิล
+                const rejectBtn = `<button onclick="rejectRequest('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--danger); color:var(--danger); width:100%; margin-top:5px;">❌ ยกเลิก/ตีกลับ</button>`;
+                
                 const deptBadge = req.department && req.department !== '-' ? `<br><small style="color:var(--primary); background:#e0e7ff; padding:2px 6px; border-radius:4px; font-size:11px;">📂 ${req.department}</small>` : '';
                 const uName = pMap[req.member_id]?.full_name || '-';
 
@@ -173,10 +175,50 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td>${req.purpose}</td>
                         <td style="font-weight:bold;">฿${amt.toLocaleString()}</td>
                         <td>${statL}</td>
-                        <td><div style="display:flex; flex-direction:column;">${btnL}${editBtn}</div></td>
+                        <td><div style="display:flex; flex-direction:column;">${btnL}${editBtn}${rejectBtn}</div></td>
                     </tr>`;
             }).join('');
         } catch (e) { console.error(e); }
+    };
+
+    // 🌟 V.8.0 ฟังก์ชันยกเลิก / ตีกลับบิล
+    window.rejectRequest = async function(id) {
+        const reason = prompt('⚠️ ระบุเหตุผลที่ต้องการ "ยกเลิก หรือ ตีกลับ" รายการนี้:\n(ระบบจะบันทึกเหตุผลลงในประวัติการแก้ไข Audit Log)');
+        if (reason === null) return; 
+        if (reason.trim() === '') return alert('กรุณาระบุเหตุผลด้วยครับ');
+
+        try {
+            const { data: c } = await supabaseClient.from('clearances').select('request_type, status').eq('id', id).single();
+            
+            let newStatus = 'cancelled';
+            let actionType = 'reject_clearance';
+            let alertText = '✅ ยกเลิกรายการสำเร็จ';
+
+            // ถ้าเป็นการ "เคลียร์บิล" ของเงินล่วงหน้า (Advance) -> ตีกลับไปเป็นสถานะรอเคลียร์บิลเหมือนเดิม
+            if (c.request_type === 'advance' && c.status === 'pending_clearance') {
+                newStatus = 'advance_transferred';
+                actionType = 'return_clearance';
+                alertText = '✅ ตีกลับบิลให้ Member แก้ไขสำเร็จ';
+            }
+
+            await supabaseClient.from('clearances').update({ status: newStatus }).eq('id', id);
+
+            await supabaseClient.from('audit_logs').insert([{
+                clearance_id: id,
+                admin_id: currentUser.id,
+                action_type: actionType,
+                old_value: `สถานะเดิม: ${c.status}`,
+                new_value: newStatus === 'cancelled' ? 'ยกเลิกบิลทิ้ง' : 'ตีกลับบิลให้แก้ไขใหม่',
+                edit_reason: reason
+            }]);
+
+            alert(alertText);
+            window.loadPendingRequests();
+            window.loadClearanceHistory();
+            if (typeof window.loadAuditLogs === 'function') window.loadAuditLogs();
+        } catch (err) {
+            alert('❌ เกิดข้อผิดพลาด: ' + err.message);
+        }
     };
 
     window.openEditModal = async function(id) {
@@ -294,7 +336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await supabaseClient.from('audit_logs').insert([{ clearance_id: reqId, admin_id: currentUser.id, action_type: isSubstitute ? 'substitute_clearance' : 'admin_edit', old_value: `ฝ่าย: ${oldData.department||'-'}, หัวข้อ: ${oldData.purpose}`, new_value: logDetails, edit_reason: reason }]);
 
                 if (msg) { msg.style.color = 'var(--success)'; msg.innerHTML = isSubstitute ? '✅ ส่งเคลียร์บิลแทนเรียบร้อย!' : '✅ บันทึกการแก้ไขสำเร็จ!'; }
-                setTimeout(() => { window.closeEditModal(); window.loadPendingRequests(); window.loadClearanceHistory(); }, 1500);
+                setTimeout(() => { window.closeEditModal(); window.loadPendingRequests(); window.loadClearanceHistory(); if (typeof window.loadAuditLogs === 'function') window.loadAuditLogs(); }, 1500);
 
             } catch (err) { if (msg) msg.innerHTML = `<span style="color:red;">ผิดพลาด: ${err.message}</span>`; } finally { btn.disabled = false; }
         });
@@ -351,7 +393,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('admin-action-form')?.reset();
     };
 
-    // 🌟 แก้ปัญหาปุ่มค้างจาก required ที่ถูกซ่อน
     window.recalculateAdminTotal = function() {
         const c = window.currentClearance; if(!c) return;
         let totalAppr = 0, isEdited = false;
@@ -384,7 +425,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bankDiv = document.getElementById('modal-member-bank');
         const bankText = document.getElementById('modal-bank-text');
 
-        // ปลดล็อก Required ก่อน เพื่อไม่ให้เบราว์เซอร์แอบบล็อก
         if (bankSel) bankSel.required = false;
         if (fundSel) fundSel.required = false;
 
@@ -404,8 +444,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (actionDir === 'receive') { 
             if(amtP) amtP.innerHTML = `📥 ชุมนุมได้รับเงินทอน: <strong style="color:var(--success); font-size:20px;">${processAmt.toLocaleString()}</strong> บาท`; 
             if(title) title.textContent = '📥 ยืนยันรับเงินทอนเคลียร์บิล'; 
-            if(slipSec) slipSec.style.display = 'none';  // ไม่โชว์อัปโหลดสลิป
-            if(bankFundWrapper) bankFundWrapper.style.display = 'flex'; // แต่โชว์ให้เลือกบัญชีเก็บเงิน
+            if(slipSec) slipSec.style.display = 'none';  
+            if(bankFundWrapper) bankFundWrapper.style.display = 'flex'; 
             if (bankSel) bankSel.required = true;
             if (fundSel) fundSel.required = true;
         } 
@@ -564,7 +604,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 🌟 ดึงข้อมูลด้วย ProfileMap ป้องกัน Supabase Join พัง
+    // 🌟 V.8.0 จัดการประวัติเบิกเงิน พร้อมป้ายสถานะ "ยกเลิก"
     window.loadClearanceHistory = async function() {
         const tbody = document.querySelector('#clearance-history-table tbody');
         if (!tbody) return;
@@ -592,12 +632,52 @@ document.addEventListener('DOMContentLoaded', async () => {
                     btn = `<div style="display:flex; gap:5px; justify-content:center; flex-direction:column;"><button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:12px;">🔍 ดู</button><button type="button" onclick="openSubstituteClearance('${req.id}')" class="btn btn-warning" style="padding:4px 8px; font-size:12px; color:white;">📝 เคลียร์แทน</button></div>`;
                 }
                 else if (req.status === 'cleared') stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>';
+                else if (req.status === 'cancelled') stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ยกเลิก/ไม่อนุมัติ</span>';
 
                 const cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการคนแท็ก</button>`;
 
                 return `<tr><td>${date}</td><td>${name}</td><td>${typeLabel}</td><td>${req.purpose}</td><td style="font-weight:600;">฿${parseFloat(amt).toLocaleString()}</td><td>${stat}</td><td style="text-align:center;"><div style="display:flex; flex-direction:column; gap:5px; align-items:center;">${btn}${cwBtn}</div></td></tr>`;
             }).join('');
         } catch(e) { console.error(e); }
+    };
+
+    // 🌟 V.8.0 โหลดตาราง Audit Log
+    window.loadAuditLogs = async function() {
+        const tbody = document.querySelector('#audit-log-table tbody');
+        if (!tbody) return;
+        try {
+            const { data, error } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
+            if (error) throw error;
+            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">ไม่มีประวัติการแก้ไข / ยกเลิก</td></tr>`; return; }
+
+            const pMap = await getProfileMap();
+            const { data: cData } = await supabaseClient.from('clearances').select('id, purpose');
+            const cMap = {};
+            if(cData) cData.forEach(c => cMap[c.id] = c.purpose);
+
+            tbody.innerHTML = data.map(log => {
+                const date = new Date(log.created_at).toLocaleString('th-TH');
+                const adminName = pMap[log.admin_id]?.full_name || 'Admin';
+                const purpose = cMap[log.clearance_id] || 'บิลถูกลบไปแล้ว';
+                
+                let actionBadge = '';
+                if (log.action_type === 'reject_clearance') actionBadge = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ยกเลิกบิล</span>';
+                else if (log.action_type === 'return_clearance') actionBadge = '<span class="status-badge" style="background:#ffedd5; color:#b45309;">🔙 ตีกลับบิล</span>';
+                else if (log.action_type === 'substitute_clearance') actionBadge = '<span class="status-badge" style="background:#e0e7ff; color:#4f46e5;">👑 เคลียร์แทน</span>';
+                else actionBadge = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">✏️ แก้ไขข้อมูล</span>';
+
+                return `
+                    <tr>
+                        <td style="font-size:12px;">${date}</td>
+                        <td style="font-weight:bold;">${adminName}</td>
+                        <td>${actionBadge}</td>
+                        <td>${purpose}</td>
+                        <td style="color:var(--danger); font-weight:500;">${log.edit_reason || '-'}</td>
+                        <td style="font-size:12px; color:gray;">${log.new_value || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (e) { console.error(e); }
     };
 
     window.openCoWorkerModal = async function(id) {
@@ -660,7 +740,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteFund = async function(id) { if(confirm("ยืนยันการลบกองทุนนี้?")) { try { await supabaseClient.from('funds').delete().eq('id', id); window.loadAllAdminData(); } catch (err) { alert("❌ ไม่สามารถลบได้: " + err.message); } } };
 
-    // 🌟 ดึงข้อมูลด้วย ProfileMap 
     window.viewTransaction = async function(id) {
         document.getElementById('view-tx-modal').style.display = 'flex';
         const content = document.getElementById('view-tx-content'); content.innerHTML = 'กำลังโหลดข้อมูล...';
@@ -733,84 +812,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) { content.innerHTML = '<span style="color:red;">โหลดข้อมูลไม่สำเร็จ</span>'; }
     };
 
-    window.exportLedgerToCSV = async function() {
-        const btn = document.querySelector('button[onclick="exportLedgerToCSV()"]'); if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังดึงข้อมูล...'; }
-        try {
-            const selectedDept = document.getElementById('filter-dept')?.value;
-            let query = supabaseClient.from('transactions').select(`*`).eq('status', 'approved').order('created_at', { ascending: false });
-            if (selectedDept) query = query.eq('department', selectedDept);
-            const { data: txs, error: exportErr } = await query; if (exportErr) throw exportErr;
-            const { data: cItems } = await supabaseClient.from('clearance_items').select('*');
-            if (!txs || txs.length === 0) { alert(`ไม่มีข้อมูลในสมุดบัญชีสำหรับ Export`); return; }
-
-            const pMap = await getProfileMap();
-            const { data: bData } = await supabaseClient.from('bank_accounts').select('*'); const bankMap = {}; bData?.forEach(b => bankMap[b.id] = b.bank_name);
-            const { data: fData } = await supabaseClient.from('funds').select('*'); const fundMap = {}; fData?.forEach(f => fundMap[f.id] = f.fund_name);
-
-            let csvContent = "\uFEFFวันที่,ฝ่าย,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n";
-            txs.forEach(tx => {
-                const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
-                const desc = (tx.description || '-') + (tx.location ? ` (ส: ${tx.location})` : '');
-                const bankFund = `[บ] ${bankMap[tx.bank_account_id]||'-'} / [ก] ${fundMap[tx.fund_id]||'-'}`;
-                const amt = parseFloat(tx.amount) || 0; let inc = '', exp = ''; if (tx.transaction_type === 'expense') exp = amt; else inc = amt;
-                
-                csvContent += `"${date}","${tx.department || 'ส่วนกลาง'}","${desc}","${bankFund}","${inc}","${exp}","${pMap[tx.created_by]?.full_name || 'แอดมิน'}"\n`;
-                const match = desc.match(/(?:รหัส |\()([a-zA-Z0-9]{6})/);
-                if (match) {
-                    const shortId = match[1]; const items = cItems.filter(i => i.clearance_id && i.clearance_id.startsWith(shortId));
-                    if (items.length > 0) { items.forEach(it => { csvContent += `"","","   ↳ ${it.item_name} (จำนวน: ${it.quantity}) = ฿${parseFloat(it.total_price).toLocaleString()}","","","",""\n`; }); }
-                }
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.setAttribute("href", url);
-            link.setAttribute("download", `ARSATU_Ledger_${new Date().toISOString().split('T')[0]}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); } finally { if (btn) { btn.disabled = false; btn.innerHTML = '📥 Export Excel'; } }
-    };
-
-    window.loadPendingUsers = async function() {
-        const tbody = document.querySelector('#pending-users-table tbody'); if (!tbody) return;
-        try {
-            const { data, error } = await supabaseClient.from('profiles').select('*').eq('status', 'pending').order('created_at', { ascending: false });
-            if (error) throw error; if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">✅ ไม่มีผู้ใช้งานรออนุมัติ</td></tr>`; return; }
-            tbody.innerHTML = data.map(user => { return `<tr><td>${user.created_at ? new Date(user.created_at).toLocaleDateString('th-TH') : '-'}</td><td style="font-weight:bold; color:var(--text-main);">${user.full_name || 'ไม่มีชื่อ'}</td><td style="color:var(--primary);"><span style="background:#e0e7ff; padding:4px 8px; border-radius:6px; font-size:12px;">📂 ${user.department || '-'}</span></td><td><span class="status-badge" style="background:#fef3c7; color:#d97706;">รออนุมัติ</span></td><td><button onclick="approveUser('${user.id}', '${user.full_name}')" class="btn btn-primary" style="padding:6px 12px; font-size:12px;">✅ อนุมัติผู้ใช้</button></td></tr>`; }).join('');
-        } catch (e) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`; }
-    };
-
-    window.approveUser = async function(id, currentName) {
-        const finalName = prompt('ตรวจสอบ/แก้ไข ชื่อที่จะให้แสดงในระบบ:', currentName); if (!finalName) return; 
-        const isSetAsAdmin = confirm('ต้องการให้สิทธิ์เป็น 👑 Admin (ผู้ดูแลระบบ) หรือไม่?\n\n- กด [OK] = เป็น Admin\n- กด [Cancel] = เป็น Member ทั่วไป');
-        try { await supabaseClient.from('profiles').update({ status: 'approved', role: isSetAsAdmin ? 'admin' : 'member', full_name: finalName }).eq('id', id); alert(`🎉 อนุมัติคุณ ${finalName} เรียบร้อยแล้ว!`); window.loadPendingUsers(); } 
-        catch (err) { alert("❌ เกิดข้อผิดพลาด: " + err.message); }
-    };
-
-    window.undoTransaction = async function(txId) {
-        if(!confirm('⚠️ ยืนยันการ "ยกเลิก (Undo)" รายการนี้ใช่ไหม?\n\nระบบจะทำการ:\n1. ดึงยอดเงินกลับอัตโนมัติ\n2. ตีกลับบิลไปสถานะรอตรวจสอบใหม่')) return;
-        try {
-            const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', txId).single();
-            if (!tx) throw new Error("ไม่พบข้อมูลรายการนี้");
-            document.getElementById('view-tx-content').innerHTML = '<div style="text-align:center; padding:20px; color:var(--info);">⏳ กำลังดึงเงินกลับและถอยสถานะ...</div>';
-
-            const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', tx.bank_account_id).single();
-            const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', tx.fund_id).single();
-            let nBal = parseFloat(bData.balance || 0), nFun = parseFloat(fData.remaining_budget || 0); const amt = parseFloat(tx.amount || 0);
-
-            if (['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type)) { nBal -= amt; nFun -= amt; } else { nBal += amt; nFun += amt; }
-
-            await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', tx.bank_account_id);
-            await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', tx.fund_id);
-
-            if (tx.clearance_id) {
-                let revertStatus = tx.description.includes('[โอนตั้งต้น]') ? 'pending_advance' : 'pending_clearance';
-                await supabaseClient.from('clearances').update({ status: revertStatus }).eq('id', tx.clearance_id);
-                await supabaseClient.from('transactions').delete().eq('id', txId);
-            } else {
-                if (tx.transaction_type === 'income' || tx.transaction_type === 'expense') await supabaseClient.from('transactions').delete().eq('id', txId);
-                else await supabaseClient.from('transactions').update({ status: 'pending' }).eq('id', txId);
-            }
-            alert("✅ ยกเลิกรายการและคืนยอดเงินเรียบร้อย"); document.getElementById('view-tx-modal').style.display = 'none'; window.loadAllAdminData(); 
-        } catch (err) { alert("❌ ผิดพลาด: " + err.message); document.getElementById('view-tx-modal').style.display = 'none'; }
-    };
-
     window.loadAllAdminData = async function() {
         if (!currentUser) return;
         try {
@@ -829,6 +830,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch(e) { console.error(e); }
 
         window.loadDashboardWidgets(); window.loadPendingDonations(); window.loadPendingRequests(); window.loadLedger(); window.loadClearanceHistory(); window.loadSettingsData(); window.loadPendingUsers(); 
+        if (typeof window.loadAuditLogs === 'function') window.loadAuditLogs();
     };
 
     window.loadAllAdminData();
