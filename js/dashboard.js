@@ -19,13 +19,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 🌟 ตรวจสอบ Session และล็อกเอาท์ (อัปเดตชี้ไปหน้า LIFF)
     // ==========================================
     try {
-        const { data, error } = await supabaseClient.auth.getSession();
-        // ถ้าไม่มี Session ให้เด้งไปหน้า LIFF ทันที
-        if (error || !data.session) { 
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+        if (error || !user) { 
             window.location.replace('index-liff.html'); 
             return; 
         }
-        currentUser = data.session.user;
+        currentUser = user;
     } catch (err) { 
         window.location.replace('index-liff.html'); 
         return; 
@@ -36,7 +35,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         logoutBtn.addEventListener('click', async () => {
             await supabaseClient.auth.signOut();
             localStorage.removeItem('loginSource');
-            // กดออกจากระบบ ก็ให้เด้งไปหน้า LIFF ทันที
             window.location.replace('index-liff.html'); 
         });
     }
@@ -235,10 +233,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     btnL = `<button onclick="openModal('${req.id}')" class="btn btn-info" style="padding:6px 12px; font-size:12px; margin-bottom:5px;">🔍 ตรวจบิล</button>`;
                 }
                 
-                const editBtn = `<button onclick="openEditModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--warning); color:var(--warning); width:100%;">✏️ แก้ไข</button>`;
+                const editBtn = `<button onclick="openEditModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--warning); color:var(--warning); width:100%; margin-bottom:5px;">✏️ แก้ไข</button>`;
                 
-                // 🌟 V.8.0 ปุ่มยกเลิก/ตีกลับบิล
-                const rejectBtn = `<button onclick="rejectRequest('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--danger); color:var(--danger); width:100%; margin-top:5px;">❌ ยกเลิก/ตีกลับ</button>`;
+                // 🌟 V.8.0 ปุ่มยกเลิก/ตีกลับบิล และ ปุ่มลบถาวร (เพิ่มให้ในตาราง Pending ด้วย)
+                const rejectBtn = `<button onclick="rejectRequest('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--danger); color:var(--danger); width:100%; margin-bottom:5px;">❌ ตีกลับ/ยกเลิก</button>`;
+                
+                const deleteBtn = `<button onclick="deleteDraft('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:darkred; color:darkred; width:100%;">🗑️ ลบทิ้งถาวร</button>`;
                 
                 const deptBadge = req.department && req.department !== '-' ? `<br><small style="color:var(--primary); background:#e0e7ff; padding:2px 6px; border-radius:4px; font-size:11px;">📂 ${req.department}</small>` : '';
                 const uName = pMap[req.member_id]?.full_name || '-';
@@ -256,6 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 ${btnL}
                                 ${editBtn}
                                 ${rejectBtn}
+                                ${deleteBtn}
                             </div>
                         </td>
                     </tr>`;
@@ -990,6 +991,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    // 🌟 V.8.0 ฟังก์ชันลบบิลถาวร (สำหรับแอดมิน)
+    window.deleteDraft = async function(id) {
+        if(!confirm('⚠️ ยืนยันการ "ลบทิ้งถาวร" ?\nการกระทำนี้ไม่สามารถย้อนกลับได้ครับ')) return;
+        try {
+            await supabaseClient.from('clearance_items').delete().eq('clearance_id', id);
+            await supabaseClient.from('audit_logs').delete().eq('clearance_id', id);
+            await supabaseClient.from('clearances').delete().eq('id', id);
+            
+            alert('✅ ลบรายการเรียบร้อยแล้ว');
+            window.loadClearanceHistory();
+            window.loadPendingRequests();
+        } catch(e) {
+            alert('❌ ลบไม่สำเร็จ: ' + e.message);
+        }
+    };
+
     // ==========================================
     // 8. โหลดตารางประวัติแก้ไข (Audit Log)
     // ==========================================
@@ -1290,22 +1307,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // 🌟 V.8.0 ฟังก์ชันลบบิลถาวร (สำหรับแอดมิน)
-    window.deleteDraft = async function(id) {
-        if(!confirm('⚠️ ยืนยันการ "ลบทิ้งถาวร" ?\nการกระทำนี้ไม่สามารถย้อนกลับได้ครับ')) return;
-        try {
-            await supabaseClient.from('clearance_items').delete().eq('clearance_id', id);
-            await supabaseClient.from('audit_logs').delete().eq('clearance_id', id);
-            await supabaseClient.from('clearances').delete().eq('id', id);
-            
-            alert('✅ ลบรายการเรียบร้อยแล้ว');
-            window.loadClearanceHistory();
-            window.loadPendingRequests();
-        } catch(e) {
-            alert('❌ ลบไม่สำเร็จ: ' + e.message);
-        }
-    };
-
     // ==========================================
     // 🌟 แก้ไข: ดัก Error Export CSV และป้องกันบั๊กเบราว์เซอร์บล็อกการดาวน์โหลด
     // ==========================================
@@ -1337,11 +1338,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const fundMap = {}; 
             fData?.forEach(f => fundMap[f.id] = f.fund_name);
 
+            // \uFEFF เพื่อให้ Excel แสดงผลภาษาไทยได้ถูกต้อง
             let csvContent = "\uFEFFวันที่,ฝ่าย,รายการ,บัญชี/กองทุน,รายรับ (฿),รายจ่าย (฿),ผู้บันทึก\n";
             
             txs.forEach(tx => {
                 const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
                 
+                // 🌟 กันพังเวลาผู้ใช้พิมพ์เครื่องหมายคำพูดในชื่อ
                 let desc = (tx.description || '-') + (tx.location ? ` (ส: ${tx.location})` : '');
                 desc = desc.replace(/"/g, '""'); 
                 
@@ -1365,6 +1368,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
+            // สร้างไฟล์และดาวน์โหลด (ใช้ Blob ป้องกันเบราว์เซอร์บล็อก)
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); 
             const url = URL.createObjectURL(blob); 
             const link = document.createElement("a"); 
