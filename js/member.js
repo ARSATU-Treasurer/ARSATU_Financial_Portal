@@ -11,38 +11,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
    // ==========================================
-    // 🌟 ระบบเช็กล็อกอินแบบใจเย็น (Bulletproof Auth)
+    // 🌟 ระบบเช็กล็อกอินแบบใจเย็น (รอเบราว์เซอร์ฟื้นความจำ)
     // ==========================================
     let currentUser = null;
-    try {
-        // 1. เช็กจากความจำเครื่องก่อน (เร็วสุด)
-        let { data: { session } } = await supabaseClient.auth.getSession();
-        
-        // 2. ถ้าไม่เจอความจำ ให้ลองดึงจากเซิร์ฟเวอร์อีกรอบ (เผื่อเน็ตสะดุด)
-        if (!session) {
-            const { data } = await supabaseClient.auth.getUser();
-            if (data && data.user) {
-                currentUser = data.user;
-            }
-        } else {
-            currentUser = session.user;
-        }
-
-        // 3. ถ้าหาทุกวิถีทางแล้วไม่เจอจริงๆ ค่อยเด้งกลับไปหน้าล็อกอิน
-        if (!currentUser) {
-            window.location.replace('index-liff.html');
-            return;
-        }
-    } catch (err) {
-        console.error("Auth Error:", err);
-        // ไม่สั่งเตะออกทันที เผื่อเป็นแค่เน็ตมือถือกระตุก
+    
+    // 1. ลองควานหาประวัติการล็อกอินแบบทันทีก่อน
+    let { data: { session } } = await supabaseClient.auth.getSession();
+    
+    // 2. ถ้าหาไม่เจอ (เพราะมือถือโหลดช้า) ให้รอฟังเสียงจาก Supabase ก่อนเตะออก
+    if (!session) {
+        await new Promise((resolve) => {
+            const authListener = supabaseClient.auth.onAuthStateChange((event, newSession) => {
+                if (newSession) {
+                    session = newSession;
+                    resolve();
+                }
+            });
+            // ยืนรอ 1.5 วินาที ถ้าประวัติยังไม่มาอีก ค่อยยอมแพ้
+            setTimeout(() => { resolve(); }, 1500);
+        });
     }
+
+    // 3. ถ้าหาจนสุดความสามารถแล้วไม่มีจริงๆ ค่อยส่งกลับไปหน้า LIFF
+    if (!session || !session.user) { 
+        console.warn("ไม่พบ Session ยืนยันการออกจากระบบ");
+        window.location.replace('index-liff.html'); 
+        return; 
+    }
+    
+    currentUser = session.user;
 
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
-            await supabaseClient.auth.signOut(); 
-            localStorage.removeItem('loginSource'); 
+            await supabaseClient.auth.signOut();
+            localStorage.removeItem('loginSource');
             window.location.replace('index-liff.html');
         });
     }
