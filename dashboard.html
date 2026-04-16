@@ -76,6 +76,22 @@
             
             .hide-mobile { display: none !important; }
         }
+
+        /* ========================================= */
+        /* 🌟 แก้ไข Pop-up ทุกอันให้เลื่อนขึ้นลงได้บนมือถือ */
+        /* ========================================= */
+        #view-tx-modal > div,
+        #view-clearance-modal > div,
+        #action-modal > div,
+        #edit-req-modal > div,
+        #howto-modal > div,
+        #flowchart-modal > div {
+            max-height: 85vh !important; /* บังคับความสูงไม่เกิน 85% ของหน้าจอ */
+            overflow-y: auto !important; /* ถ้าเนื้อหายาวกว่ากล่อง ให้โชว์แถบเลื่อน */
+            -webkit-overflow-scrolling: touch !important; /* ทำให้เลื่อนบน iPhone/iPad ได้ลื่นๆ (Smooth Scrolling) */
+            margin-top: 20px; /* เว้นระยะด้านบนนิดนึงให้กดปิดง่าย */
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
