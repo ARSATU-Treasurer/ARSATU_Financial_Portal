@@ -2,25 +2,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 🌟 ฟังก์ชันผู้ช่วยส่ง LINE
     window.sendLineMessage = function(msg) {
-        const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; 
+        const gasUrl = '[https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec](https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec)'; 
         fetch(gasUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'notify_admin', message: msg }) }).catch(e => console.log(e));
     };
 
     let currentUser = null;
     window.isClearingAdvance = false;
 
-    // 🌟 ฟังก์ชันโหลดรายชื่อเพื่อนร่วมค่าย (มาใส่ใน Dropdown)
+    // 🌟 V.7.1 โหลดรายชื่อเป็น Checkbox
     window.loadCoWorkers = async function() {
         try {
-            // ดึงรายชื่อคนที่อนุมัติแล้ว และไม่ใช่ตัวเอง
             const { data } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
-            const cwSelect = document.getElementById('req-co-worker');
-            if (cwSelect && data) {
+            const cwList = document.getElementById('req-co-worker-list');
+            if (cwList && data) {
+                cwList.innerHTML = ''; 
                 data.forEach(user => {
-                    const opt = document.createElement('option');
-                    opt.value = user.id;
-                    opt.textContent = `${user.full_name} (${user.department || 'ส่วนกลาง'})`;
-                    cwSelect.appendChild(opt);
+                    const lbl = document.createElement('label');
+                    lbl.style.display = 'block';
+                    lbl.style.marginBottom = '8px';
+                    lbl.style.cursor = 'pointer';
+                    lbl.style.fontSize = '14px';
+                    lbl.innerHTML = `<input type="checkbox" class="co-worker-cb" value="${user.id}" style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || 'ส่วนกลาง'})</span>`;
+                    cwList.appendChild(lbl);
                 });
             }
         } catch(e) { console.error("โหลดรายชื่อเพื่อนไม่สำเร็จ:", e); }
@@ -326,12 +329,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             let clearanceId = draftId;
             const stmtPwd = document.getElementById('req-statement-password')?.value || null;
 
-            // 🌟 ดึงค่าไอดีเพื่อนร่วมเบิก (ถ้าเลือกไว้)
-            const coWorkerVal = document.getElementById('req-co-worker')?.value || null;
+            // 🌟 รวบรวม ID เพื่อนแบบหลายคน (Array)
+            const coWorkerIds = [];
+            document.querySelectorAll('.co-worker-cb:checked').forEach(cb => coWorkerIds.push(cb.value));
 
             const clearanceData = { 
                 member_id: currentUser.id, 
-                co_worker_id: coWorkerVal, // 👈 เพิ่มบรรทัดนี้ส่งไปบันทึก
+                co_worker_ids: coWorkerIds.length > 0 ? coWorkerIds : null, // ส่งเป็น Array
                 request_type: typeVal, 
                 purpose: purposeVal, 
                 requested_amount: reqAmtVal, 
@@ -374,9 +378,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 msg.textContent = isDraft ? '💾 บันทึกแบบร่างเรียบร้อย' : '✅ ส่งคำขอเรียบร้อย'; 
             }
 
-            // ==========================================
-            // 🌟 V.6.0 แจ้งเตือนเข้ากลุ่มแอดมิน
-            // ==========================================
             if (!isDraft) {
                 const typeLabel = typeVal === 'advance' ? 'ขอเบิกล่วงหน้า (Advance)' : 'เคลียร์บิล / สำรองจ่าย';
                 let memberName = document.getElementById('current-user-name')?.textContent || 'สมาชิกค่าย';
@@ -402,6 +403,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const deptSelect = document.getElementById('req-dept');
             if(deptSelect) deptSelect.disabled = false;
+
+            document.querySelectorAll('.co-worker-cb').forEach(cb => cb.checked = false);
 
             document.getElementById('submit-req-btn').innerHTML = '🚀 ส่งคำขอ';
             window.isClearingAdvance = false;
@@ -457,9 +460,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             amtInput.value = c.requested_amount || 0; 
             if (deptSelect && c.department) deptSelect.value = c.department;
 
-            // 🌟 ดึงชื่อ Co-worker กลับมาแสดงสำหรับรายการเก่า
-            const cwSelect = document.getElementById('req-co-worker');
-            if (cwSelect) cwSelect.value = c.co_worker_id || '';
+            // 🌟 ดึงเพื่อนที่แท็กไว้กลับมาโชว์ (และอนุญาตให้แก้ได้ตลอดเวลา)
+            document.querySelectorAll('.co-worker-cb').forEach(cb => {
+                cb.checked = c.co_worker_ids && c.co_worker_ids.includes(cb.value);
+                cb.disabled = false; 
+            });
 
             if (c.status === 'draft') {
                 window.isClearingAdvance = false; 
@@ -515,7 +520,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ==========================================
-    // 4. แจ้งยอดบริจาค & รายรับ (มี LINE Notify)
+    // 4. แจ้งยอดบริจาค & รายรับ
     // ==========================================
     async function handleTransactionForm(formId, prefix) {
         const form = document.getElementById(formId);
@@ -560,7 +565,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งรายการเพื่อตรวจสอบเรียบร้อย'; }
 
-                // 🌟 แจ้งเตือน LINE (ส่งยอดบริจาค/อื่นๆ)
                 let typeLabel = 'รายการ';
                 if (type === 'donation_cash') typeLabel = 'รับบริจาค (เงินสด)';
                 else if (type === 'donation_transfer') typeLabel = 'รับบริจาค (โอน)';
@@ -617,10 +621,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tbody = document.querySelector('#member-history-table tbody');
             if (!tbody) return;
             
-            // 🌟 แก้ไขตรงนี้: ชี้เป้าไปที่ profiles!member_id(full_name)
+            // 🌟 ดึงบิลที่ตัวเองสร้าง หรือบิลที่เพื่อนแท็กชื่อเราไว้
             const { data, error } = await supabaseClient.from('clearances')
                 .select('*, profiles!member_id(full_name)')
-                .or(`member_id.eq.${currentUser.id},co_worker_id.eq.${currentUser.id}`) 
+                .or(`member_id.eq.${currentUser.id},co_worker_ids.cs.{${currentUser.id}}`) 
                 .order('created_at', { ascending: false });
             
             tbody.innerHTML = data.map(req => {
@@ -633,16 +637,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (req.status === 'draft') { 
                     stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">📝 ร่าง</span>'; 
-                    btn = `<button type="button" onclick="clearAdvance('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:12px;">✏️ แก้ไข</button>`;
+                    btn = `<button type="button" onclick="clearAdvance('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:12px; width:100%;">✏️ แก้ไข</button>`;
                 }
                 else if (req.status === 'pending_advance') { stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอโอนตั้งต้น</span>'; }
                 else if (req.status === 'pending_clearance') { stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจบิล</span>'; }
                 else if (req.status === 'advance_transferred') {
-                    stat = '<span class="status-badge" style="background:#dbeafe; color:#2563eb;">💸 ได้รับเงินแล้ว (รอเคลียร์)</span>';
-                    btn = `<button type="button" onclick="clearAdvance('${req.id}')" class="btn btn-primary" style="padding:4px 8px; font-size:12px;">📝 เคลียร์บิล</button>`;
+                    stat = '<span class="status-badge" style="background:#dbeafe; color:#2563eb;">💸 รอเคลียร์บิล</span>';
+                    btn = `<button type="button" onclick="clearAdvance('${req.id}')" class="btn btn-primary" style="padding:4px 8px; font-size:12px; width:100%;">📝 เคลียร์บิล</button>`;
                 }
                 else if (req.status === 'cleared') { stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>'; }
                 
+                // 🌟 เพิ่มปุ่มให้คนสร้างกด "แท็กเพื่อนเพิ่ม" ได้ตลอดเวลา
+                let cwBtn = '';
+                if (req.member_id === currentUser.id) {
+                     cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 แท็กเพื่อนเพิ่ม</button>`;
+                }
+
                 return `
                     <tr>
                         <td>${date}</td>
@@ -650,14 +660,69 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td>${req.purpose}</td>
                         <td style="font-weight:600;">฿${parseFloat(amt).toLocaleString()}</td>
                         <td>${stat}</td>
-                        <td style="text-align:center;">${btn}</td>
+                        <td style="text-align:center;">
+                            <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
+                                ${btn}
+                                ${cwBtn}
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join('');
         } catch(e) { console.error(e); }
     };
 
-    window.loadData();
+    // ==========================================
+    // 🌟 V.7.1 ฟังก์ชัน Modal จัดการผู้ร่วมเบิกย้อนหลัง
+    // ==========================================
+    window.openCoWorkerModal = async function(id) {
+        document.getElementById('coworker-modal').style.display = 'flex';
+        document.getElementById('cw-edit-id').value = id;
+        const listDiv = document.getElementById('cw-edit-list');
+        listDiv.innerHTML = '⏳ กำลังโหลด...';
+
+        try {
+            const { data: c } = await supabaseClient.from('clearances').select('co_worker_ids').eq('id', id).single();
+            const existingIds = c.co_worker_ids || [];
+
+            const { data: users } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
+            
+            listDiv.innerHTML = '';
+            users.forEach(user => {
+                const isChecked = existingIds.includes(user.id) ? 'checked' : '';
+                const lbl = document.createElement('label');
+                lbl.style.display = 'block';
+                lbl.style.marginBottom = '8px';
+                lbl.style.cursor = 'pointer';
+                lbl.innerHTML = `<input type="checkbox" class="cw-quick-cb" value="${user.id}" ${isChecked} style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || '-'})</span>`;
+                listDiv.appendChild(lbl);
+            });
+        } catch(e) { listDiv.innerHTML = '❌ โหลดข้อมูลไม่สำเร็จ'; }
+    };
+
+    window.saveCoWorkersQuick = async function() {
+        const id = document.getElementById('cw-edit-id').value;
+        const coWorkerIds = [];
+        document.querySelectorAll('.cw-quick-cb:checked').forEach(cb => coWorkerIds.push(cb.value));
+
+        const btn = document.querySelector('#coworker-modal .btn-primary');
+        btn.disabled = true;
+        btn.textContent = 'กำลังบันทึก...';
+
+        try {
+            const { error } = await supabaseClient.from('clearances').update({ co_worker_ids: coWorkerIds }).eq('id', id);
+            if (error) throw error;
+            alert('✅ แท็กรายชื่อเพื่อนสำเร็จ!');
+            document.getElementById('coworker-modal').style.display = 'none';
+            window.loadData();
+        } catch(e) { 
+            alert('❌ เกิดข้อผิดพลาด: ' + e.message); 
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '💾 บันทึกรายชื่อ';
+        }
+    };
+
 
     // ==========================================
     // V.3.2: โหลดชื่อผู้ใช้, สลับหน้า Admin, และกระดิ่งแจ้งเตือน
@@ -689,7 +754,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
     window.loadUserProfileAndNoti();
-    window.loadCoWorkers(); // 🌟 เรียกใช้ฟังก์ชันตอนโหลดหน้าเว็บ
+    window.loadData();
+    window.loadCoWorkers();
 
     // 🌟 โชว์ Pop-up คู่มือครั้งแรกที่เข้าใช้งาน
     setTimeout(() => {
