@@ -16,17 +16,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUser = null;
 
     // ==========================================
-    // 🌟 เช็กล็อกอิน
+    // 🌟 ตรวจสอบ Session และล็อกเอาท์ (อัปเดตชี้ไปหน้า LIFF)
     // ==========================================
     try {
         const { data, error } = await supabaseClient.auth.getSession();
+        // ถ้าไม่มี Session ให้เด้งไปหน้า LIFF ทันที
         if (error || !data.session) { 
-            window.location.replace('index.html'); 
+            window.location.replace('index-liff.html'); 
             return; 
         }
         currentUser = data.session.user;
     } catch (err) { 
-        window.location.replace('index.html'); 
+        window.location.replace('index-liff.html'); 
         return; 
     }
 
@@ -35,7 +36,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         logoutBtn.addEventListener('click', async () => {
             await supabaseClient.auth.signOut();
             localStorage.removeItem('loginSource');
-            window.location.replace('index.html');
+            // กดออกจากระบบ ก็ให้เด้งไปหน้า LIFF ทันที
+            window.location.replace('index-liff.html'); 
         });
     }
 
