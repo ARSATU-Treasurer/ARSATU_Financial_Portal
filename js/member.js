@@ -9,23 +9,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUser = null;
     window.isClearingAdvance = false;
 
-    // 🌟 V.7.1 โหลดรายชื่อเป็น Checkbox (แก้ไขการค้าง)
+    // ==========================================
+    // 🌟 V.7.2 โหลดรายชื่อใส่ Pop-up ใหม่
+    // ==========================================
     window.loadCoWorkers = async function() {
         try {
             const { data, error } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
             if (error) throw error;
             
-            const cwList = document.getElementById('req-co-worker-list');
+            const cwList = document.getElementById('select-coworker-list');
             if (cwList) {
                 cwList.innerHTML = ''; 
                 if (data && data.length > 0) {
                     data.forEach(user => {
                         const lbl = document.createElement('label');
                         lbl.style.display = 'block';
-                        lbl.style.marginBottom = '8px';
+                        lbl.style.marginBottom = '10px';
                         lbl.style.cursor = 'pointer';
                         lbl.style.fontSize = '14px';
-                        lbl.innerHTML = `<input type="checkbox" class="co-worker-cb" value="${user.id}" style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || 'ส่วนกลาง'})</span>`;
+                        lbl.style.padding = '10px';
+                        lbl.style.background = '#f8fafc';
+                        lbl.style.border = '1px solid #e2e8f0';
+                        lbl.style.borderRadius = '8px';
+                        
+                        lbl.innerHTML = `<input type="checkbox" class="co-worker-cb-create" value="${user.id}" data-name="${user.full_name}" style="margin-right:10px; transform: scale(1.3);"> <strong style="color:var(--text-main);">${user.full_name}</strong> <br><span style="color:gray; font-size:12px; margin-left: 26px;">ฝ่าย: ${user.department || 'ส่วนกลาง'}</span>`;
                         cwList.appendChild(lbl);
                     });
                 } else {
@@ -34,9 +41,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch(e) { 
             console.error("โหลดรายชื่อเพื่อนไม่สำเร็จ:", e); 
-            const cwList = document.getElementById('req-co-worker-list');
-            if (cwList) cwList.innerHTML = '<span style="color:red; font-size:13px;">โหลดรายชื่อไม่สำเร็จ</span>';
         }
+    };
+
+    // เปิดหน้าต่างเลือกชื่อ
+    window.openSelectCoWorkerModal = function() {
+        document.getElementById('select-coworker-modal').style.display = 'flex';
+    };
+
+    // ยืนยันการเลือกและโชว์สรุปในกล่องหน้าฟอร์ม
+    window.confirmCoWorkerSelection = function() {
+        const checkboxes = document.querySelectorAll('.co-worker-cb-create:checked');
+        const summary = document.getElementById('coworker-summary');
+        
+        if (checkboxes.length === 0) {
+            summary.innerHTML = 'ไม่มีผู้ร่วมเบิก (ทำรายการของตัวเอง)';
+            summary.style.color = 'var(--text-muted)';
+        } else {
+            const names = Array.from(checkboxes).map(cb => cb.getAttribute('data-name'));
+            let text = names.length > 2 ? `${names[0]}, ${names[1]} และอีก ${names.length - 2} คน` : names.join(', ');
+            summary.innerHTML = `✅ แท็กแล้ว <strong style="font-size:15px;">${checkboxes.length}</strong> คน: <br><span style="font-size:12px; color:var(--text-main); font-weight:normal;">${text}</span>`;
+            summary.style.color = 'var(--success)';
+        }
+        document.getElementById('select-coworker-modal').style.display = 'none';
     };
 
     try {
@@ -149,107 +176,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (reqAmt) reqAmt.addEventListener('input', window.calculateTotal);
         if (reqType) reqType.dispatchEvent(new Event('change'));
         if (addBtn) addBtn.click();
-
-        const toggleImportBtn = document.getElementById('toggle-import-btn');
-        const importSection = document.getElementById('import-section');
-        const csvUpload = document.getElementById('csv-upload');
-
-        if (toggleImportBtn) {
-            toggleImportBtn.addEventListener('click', () => {
-                importSection.style.display = importSection.style.display === 'none' ? 'block' : 'none';
-            });
-        }
-
-        if (csvUpload) {
-            csvUpload.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                if (!file.name.endsWith('.csv')) {
-                    alert('กรุณาอัปโหลดไฟล์นามสกุล .csv เท่านั้น');
-                    csvUpload.value = '';
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const text = event.target.result;
-                    processCSV(text);
-                    csvUpload.value = ''; 
-                };
-                reader.readAsText(file, 'UTF-8');
-            });
-        }
-
-        function processCSV(csvText) {
-            const rows = csvText.split('\n');
-            let addedCount = 0;
-            const tbody = document.getElementById('items-tbody');
-            
-            if(tbody && tbody.children.length === 1) {
-                const firstRow = tbody.querySelector('tr');
-                const itemName = firstRow.querySelector('.item-name')?.value;
-                if(!itemName) tbody.innerHTML = ''; 
-            }
-
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i].trim();
-                if (!row) continue;
-                
-                const cols = parseCSVRow(row);
-                
-                if (cols.length >= 3) {
-                    const name = cols[1] ? cols[1].trim() : '';
-                    if (!name || name === 'รวม') continue; 
-
-                    let qtyStr = cols[3] ? cols[3].replace(/,/g, '') : '1';
-                    const qty = parseFloat(qtyStr) || 1;
-                    
-                    let totalStr = cols[4] ? cols[4].replace(/,/g, '') : '0';
-                    let total = parseFloat(totalStr);
-                    
-                    if (isNaN(total) || total === 0) {
-                        let priceUnitStr = cols[2] ? cols[2].replace(/,/g, '') : '0';
-                        total = (parseFloat(priceUnitStr) || 0) * qty;
-                    }
-                    
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><input type="text" class="item-name" value="${name}" required></td>
-                        <td><input type="number" class="item-qty" min="1" value="${qty}" required></td>
-                        <td><input type="number" class="item-price" min="0" step="0.01" value="${total}" required></td>
-                        <td style="text-align: center;"><button type="button" class="btn btn-danger del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
-                    `;
-                    tbody.appendChild(tr);
-                    tr.querySelectorAll('input').forEach(input => input.addEventListener('input', window.calculateTotal));
-                    tr.querySelector('.del-btn')?.addEventListener('click', () => { tr.remove(); window.calculateTotal(); });
-                    addedCount++;
-                }
-            }
-            
-            window.calculateTotal();
-            if(addedCount > 0) {
-                alert(`✅ นำเข้ารายการสำเร็จ ${addedCount} รายการ\nกรุณาตรวจสอบความถูกต้องและยอดเงินรวมอีกครั้ง`);
-                if (importSection) importSection.style.display = 'none'; 
-            } else {
-                alert('❌ ไม่พบข้อมูล หรือรูปแบบไฟล์ CSV ไม่ถูกต้อง');
-            }
-        }
-
-        function parseCSVRow(str) {
-            const arr = [];
-            let quote = false;
-            let col = '';
-            for (let i = 0; i < str.length; i++) {
-                let cc = str[i], nc = str[i+1];
-                if (cc === '"' && quote && nc === '"') { col += '"'; i++; continue; }
-                if (cc === '"') { quote = !quote; continue; }
-                if (cc === ',' && !quote) { arr.push(col); col = ''; continue; }
-                col += cc;
-            }
-            arr.push(col);
-            return arr;
-        }
     }
     setupClearanceUI();
 
@@ -302,17 +228,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let finalStatus;
         if (isDraft) {
-            if (window.isClearingAdvance) {
-                finalStatus = 'advance_transferred';
-            } else {
-                finalStatus = 'draft';
-            }
+            finalStatus = window.isClearingAdvance ? 'advance_transferred' : 'draft';
         } else {
-            if (window.isClearingAdvance) {
-                finalStatus = 'pending_clearance'; 
-            } else {
-                finalStatus = (typeVal === 'advance') ? 'pending_advance' : 'pending_clearance';
-            }
+            finalStatus = window.isClearingAdvance ? 'pending_clearance' : (typeVal === 'advance' ? 'pending_advance' : 'pending_clearance');
         }
 
         const sFile = document.getElementById('req-statement')?.files[0];
@@ -339,8 +257,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             let clearanceId = draftId;
             const stmtPwd = document.getElementById('req-statement-password')?.value || null;
 
+            // 🌟 รวบรวมรายชื่อแท็กเพื่อนแบบใหม่
             const coWorkerIds = [];
-            document.querySelectorAll('.co-worker-cb:checked').forEach(cb => coWorkerIds.push(cb.value));
+            document.querySelectorAll('.co-worker-cb-create:checked').forEach(cb => coWorkerIds.push(cb.value));
 
             const clearanceData = { 
                 member_id: currentUser.id, 
@@ -391,9 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const typeLabel = typeVal === 'advance' ? 'ขอเบิกล่วงหน้า (Advance)' : 'เคลียร์บิล / สำรองจ่าย';
                 let memberName = document.getElementById('current-user-name')?.textContent || 'สมาชิกค่าย';
                 if (memberName === 'กำลังโหลด...' || !memberName) memberName = 'สมาชิกค่าย';
-                
                 const finalAmt = reqAmtVal > 0 && typeVal === 'advance' && !window.isClearingAdvance ? reqAmtVal : totalActual;
-
                 const alertMessage = `🚨 มีรายการเบิกเงินใหม่ 🚨\n\n👤 ผู้เบิก: ${memberName}\n📁 ฝ่าย: ${deptVal || '-'}\n📌 หัวข้อ: ${purposeVal}\n💰 ยอดเงิน: ฿${finalAmt.toLocaleString()}\n🏷️ ประเภท: ${typeLabel}\n\n🙏 เหรัญญิกตรวจสอบได้ที่ Admin Dashboard ครับ`;
                 if (window.sendLineMessage) window.sendLineMessage(alertMessage);
             }
@@ -413,7 +330,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const deptSelect = document.getElementById('req-dept');
             if(deptSelect) deptSelect.disabled = false;
 
-            document.querySelectorAll('.co-worker-cb').forEach(cb => cb.checked = false);
+            // รีเซ็ตค่าการแท็กเพื่อน
+            document.querySelectorAll('.co-worker-cb-create').forEach(cb => cb.checked = false);
+            window.confirmCoWorkerSelection();
 
             document.getElementById('submit-req-btn').innerHTML = '🚀 ส่งคำขอ';
             window.isClearingAdvance = false;
@@ -469,10 +388,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             amtInput.value = c.requested_amount || 0; 
             if (deptSelect && c.department) deptSelect.value = c.department;
 
-            document.querySelectorAll('.co-worker-cb').forEach(cb => {
+            // 🌟 ดึงเพื่อนที่เคยแท็กไว้กลับมา และสรุปในกล่อง
+            document.querySelectorAll('.co-worker-cb-create').forEach(cb => {
                 cb.checked = c.co_worker_ids && c.co_worker_ids.includes(cb.value);
-                cb.disabled = false; 
             });
+            window.confirmCoWorkerSelection();
 
             if (c.status === 'draft') {
                 window.isClearingAdvance = false; 
@@ -481,9 +401,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 amtInput.disabled = false;
                 amtInput.readOnly = false;
                 if (deptSelect) deptSelect.disabled = false;
-                
                 submitBtn.innerHTML = '🚀 ส่งคำขอ';
-                if (msg) msg.textContent = '✏️ โหมดแก้ไขแบบร่าง (สามารถแก้ไขข้อมูลได้ทุกช่อง)';
+                if (msg) msg.textContent = '✏️ โหมดแก้ไขแบบร่าง';
             } else {
                 window.isClearingAdvance = true; 
                 typeSelect.disabled = true;
@@ -491,7 +410,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 amtInput.disabled = true;
                 amtInput.readOnly = true;
                 if (deptSelect) deptSelect.disabled = true;
-                
                 submitBtn.innerHTML = '🚀 ส่งบิลเคลียร์เงิน';
                 if (msg) msg.textContent = '📝 โหมดเคลียร์บิล: กรุณาแก้ไขราคาตามจริงและแนบสลิป';
             }
@@ -655,6 +573,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else if (req.status === 'cleared') { stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติเคลียร์แล้ว</span>'; }
                 
                 let cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการคนแท็ก</button>`;
+                
+                // 🌟 เพิ่มปุ่มให้ดูบิลย่อยได้ในหน้า Member แล้ว!
+                let viewBtn = `<button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%;">🔍 ดูบิลย่อย</button>`;
 
                 return `
                     <tr>
@@ -666,6 +587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style="text-align:center;">
                             <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
                                 ${btn}
+                                ${viewBtn}
                                 ${cwBtn}
                             </div>
                         </td>
@@ -676,8 +598,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 🌟 V.7.1 ฟังก์ชัน Modal จัดการผู้ร่วมเบิกย้อนหลัง (Member)
+    // 🌟 V.7.1 ฟังก์ชัน Modal ดูบิลย่อย & จัดการผู้ร่วมเบิกย้อนหลัง (Member)
     // ==========================================
+    
+    // ฟังก์ชันดูรายละเอียดบิล (เคยอยู่ใน dashboard.js ตัวเดียว ตอนนี้เรียกใช้ได้แล้ว!)
+    window.viewClearance = async function(id) {
+        document.getElementById('view-clearance-modal').style.display = 'flex';
+        const content = document.getElementById('view-clearance-content');
+        content.innerHTML = 'กำลังโหลดข้อมูล...';
+
+        try {
+            const { data: c } = await supabaseClient.from('clearances').select(`*, profiles!member_id(full_name)`).eq('id', id).single(); 
+            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
+
+            let itemsHtml = '<div style="padding:15px; text-align:center; color:gray; background:#f4f6f9; border-radius:6px;">ไม่มีรายการย่อย</div>';
+            if (items && items.length > 0) {
+                itemsHtml = `
+                    <table style="width:100%; background:#f8fafc; border-radius:6px; margin-top:10px;">
+                        <thead><tr><th style="padding:8px;">รายการ</th><th style="text-align:center;">จำนวน</th><th style="text-align:right; padding-right:8px;">ราคารวม</th></tr></thead>
+                        <tbody>
+                            ${items.map(it => `<tr><td style="padding:8px; border-bottom:1px solid #eee;">${it.item_name}</td><td style="text-align:center; border-bottom:1px solid #eee;">${it.quantity}</td><td style="text-align:right; padding-right:8px; border-bottom:1px solid #eee;">฿${parseFloat(it.total_price).toLocaleString()}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            const imgList = [];
+            let pwdHtml = c.statement_password ? `<p style="margin:5px 0 0 0; color:var(--danger); font-size:12px; font-weight:bold; background:#fee2e2; padding:3px 6px; border-radius:4px; display:inline-block;">🔑 รหัส: ${c.statement_password}</p>` : '';
+            
+            if(c.statement_url) {
+                if (c.statement_url.toLowerCase().includes('.pdf')) {
+                    imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><a href="${c.statement_url}" target="_blank" class="btn btn-outline" style="display:inline-block; padding:10px 15px; text-decoration:none;">📄 ดู PDF</a><br>${pwdHtml}</div>`);
+                } else {
+                    imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><img src="${c.statement_url}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"><br>${pwdHtml}</div>`);
+                }
+            }
+            if(c.member_return_slip) imgList.push(`<div><p style="margin:0 0 5px 0; color:var(--warning); font-size:12px;">สลิปเงินทอน (คืนค่าย):</p><img src="${c.member_return_slip}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
+            if(c.admin_transfer_slip) imgList.push(`<div><p style="margin:0 0 5px 0; color:var(--danger); font-size:12px;">สลิปโอนเงิน (ออกค่าย):</p><img src="${c.admin_transfer_slip}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
+            
+            const imgsHtml = imgList.length > 0 ? `<div style="display:flex; gap:10px; margin-top:15px; overflow-x:auto; padding-bottom:10px;">${imgList.join('')}</div>` : `<div style="margin-top:15px; padding:15px; text-align:center; background:#f4f6f9; color:gray; border-radius:8px;">ไม่มีรูปหลักฐานแนบไว้เลย</div>`;
+
+            content.innerHTML = `
+                <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:300px;">
+                        <table style="width:100%; font-size:14px;">
+                            <tr><td style="padding:4px 0; color:gray; width:35%;">ผู้เบิก:</td><td style="font-weight:bold;">${c.profiles?.full_name||'-'}</td></tr>
+                            <tr><td style="padding:4px 0; color:gray;">ฝ่าย / แผนก:</td><td style="color:var(--primary);">${c.department || '-'}</td></tr>
+                            <tr><td style="padding:4px 0; color:gray;">หัวข้อ:</td><td>${c.purpose}</td></tr>
+                            <tr><td style="padding:4px 0; color:gray;">ยอดขอเบิกล่วงหน้า:</td><td>฿${parseFloat(c.requested_amount).toLocaleString()}</td></tr>
+                            <tr><td style="padding:4px 0; color:gray;">ยอดใช้จ่ายจริง:</td><td style="font-weight:bold; color:var(--success);">฿${parseFloat(c.total_actual_amount).toLocaleString()}</td></tr>
+                            <tr><td style="padding:4px 0; color:gray;">บัญชีรับเงิน (Member):</td><td>${c.member_bank_details || '-'}</td></tr>
+                        </table>
+                        ${imgsHtml}
+                    </div>
+                    <div style="flex:1.2; min-width:300px;">
+                        <h4 style="margin:0 0 5px 0; color:var(--primary);">🛒 รายการสินค้า / บิลย่อย</h4>
+                        ${itemsHtml}
+                    </div>
+                </div>
+            `;
+        } catch (err) { content.innerHTML = '<span style="color:red;">โหลดข้อมูลไม่สำเร็จ</span>'; }
+    };
+
     window.openCoWorkerModal = async function(id) {
         document.getElementById('coworker-modal').style.display = 'flex';
         document.getElementById('cw-edit-id').value = id;
@@ -688,7 +670,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { data: c } = await supabaseClient.from('clearances').select('co_worker_ids, member_id').eq('id', id).single();
             const existingIds = c.co_worker_ids || [];
 
-            // ดึงมาทุกคน ยกเว้นคนที่สร้างบิล
             const { data: users } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', c.member_id);
             
             listDiv.innerHTML = '';
@@ -699,7 +680,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     lbl.style.display = 'block';
                     lbl.style.marginBottom = '8px';
                     lbl.style.cursor = 'pointer';
-                    lbl.innerHTML = `<input type="checkbox" class="cw-quick-cb" value="${user.id}" ${isChecked} style="margin-right:8px; transform: scale(1.2);"> ${user.full_name} <span style="color:gray; font-size:12px;">(${user.department || '-'})</span>`;
+                    lbl.style.padding = '8px';
+                    lbl.style.background = 'white';
+                    lbl.style.border = '1px solid #e2e8f0';
+                    lbl.style.borderRadius = '6px';
+                    lbl.innerHTML = `<input type="checkbox" class="cw-quick-cb" value="${user.id}" ${isChecked} style="margin-right:8px; transform: scale(1.2);"> <strong>${user.full_name}</strong> <span style="color:gray; font-size:12px;">(${user.department || '-'})</span>`;
                     listDiv.appendChild(lbl);
                 });
             } else {
