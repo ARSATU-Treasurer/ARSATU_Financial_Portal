@@ -189,7 +189,7 @@ try {
         const fundId = document.getElementById(`fund-for-${id}`)?.value;
         
         if (!bankId || !fundId) { 
-            showToast("⚠️ กรุณาเลือกบัญชีและกองทุนให้ครบ", "warning");
+            showToast("กรุณาเลือกบัญชีและกองทุนให้ครบ", "warning");
             return; 
         }
         
@@ -1055,12 +1055,12 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
         
         try {
             await supabaseClient.from('clearances').update({ co_worker_ids: coWorkerIds }).eq('id', id);
-            showToast("✅ อัปเดตรายชื่อ Co-Worker สำเร็จ!","success"); 
+            showToast("อัปเดตรายชื่อ Co-Worker สำเร็จ","success"); 
             document.getElementById('coworker-modal').style.display = 'none'; 
             window.loadClearanceHistory(); 
             window.loadPendingRequests(); 
         } catch(e) { 
-            showToast("❌ เกิดข้อผิดพลาด: " + e.message, "error"); 
+            showToast("เกิดข้อผิดพลาด: " + e.message, "error"); 
         } finally { 
             btn.disabled = false; 
             btn.textContent = '💾 บันทึกรายชื่อ'; 
@@ -1097,10 +1097,10 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             await supabaseClient.from('bank_accounts').insert([{ bank_name: name, balance: bal }]); 
             document.getElementById('add-bank-name').value = ''; 
             document.getElementById('add-bank-bal').value = ''; 
-            showToast("✅ เพิ่มบัญชีสำเร็จ!", "success"); 
+            showToast("เพิ่มบัญชีสำเร็จ!", "success"); 
             window.loadAllAdminData(); 
         } catch (err) { 
-            showToast("❌ ไม่สามารถเพิ่มบัญชีได้: " + err.message, "error"); 
+            showToast("ไม่สามารถเพิ่มบัญชีได้: " + err.message, "error"); 
         } finally { 
             subBtn.disabled = false; 
             subBtn.textContent = "+ เพิ่มบัญชี"; 
@@ -1113,7 +1113,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                 await supabaseClient.from('bank_accounts').delete().eq('id', id); 
                 window.loadAllAdminData(); 
             } catch (err) { 
-                showToast("❌ ไม่สามารถลบได้: " + err.message, "error"); 
+                showToast("ไม่สามารถลบได้: " + err.message, "error"); 
             } 
         } 
     };
@@ -1131,10 +1131,10 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             await supabaseClient.from('funds').insert([{ fund_name: name, remaining_budget: bal }]); 
             document.getElementById('add-fund-name').value = ''; 
             document.getElementById('add-fund-bal').value = ''; 
-            showToast("✅ เพิ่มกองทุนสำเร็จ!", "success"); 
+            showToast("เพิ่มกองทุนสำเร็จ", "success"); 
             window.loadAllAdminData(); 
         } catch (err) { 
-            showToast("❌ ไม่สามารถเพิ่มกองทุนได้: " + err.message, "error"); 
+            showToast("ไม่สามารถเพิ่มกองทุนได้: " + err.message, "error"); 
         } finally { 
             subBtn.disabled = false; 
             subBtn.textContent = "+ เพิ่มกองทุน"; 
@@ -1147,7 +1147,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                 await supabaseClient.from('funds').delete().eq('id', id); 
                 window.loadAllAdminData(); 
             } catch (err) { 
-                showToast("❌ ไม่สามารถลบได้: " + err.message, "error"); 
+                showToast("ไม่สามารถลบได้: " + err.message, "error"); 
             } 
         } 
     };
@@ -1366,7 +1366,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
         
         try { 
             await supabaseClient.from('profiles').update({ status: 'approved', role: isSetAsAdmin ? 'admin' : 'member', full_name: finalName }).eq('id', id); 
-            showToast("อนุมัติคุณ ${finalName} เรียบร้อยแล้ว!", "success"); 
+            showToast(`อนุมัติคุณ ${finalName} เรียบร้อยแล้ว!`, "success"); 
             window.loadPendingUsers(); 
         } catch (err) { 
             showToast("เกิดข้อผิดพลาด: " + err.message, "error"); 
@@ -1409,11 +1409,11 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                 }
             }
             
-            showToast("✅ ยกเลิกรายการและคืนยอดเงินเรียบร้อย"); 
+            showToast("ยกเลิกรายการและคืนยอดเงินเรียบร้อย", "success"); 
             document.getElementById('view-tx-modal').style.display = 'none'; 
             window.loadAllAdminData(); 
         } catch (err) { 
-            showToast("❌ ผิดพลาด: " + err.message, "error"); 
+            showToast("ผิดพลาด: " + err.message, "error"); 
             document.getElementById('view-tx-modal').style.display = 'none'; 
         }
     };
@@ -1436,10 +1436,10 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                 if (totalPending > 0) { 
                     badge.textContent = totalPending; 
                     badge.style.display = 'inline-block'; 
-                    document.getElementById('noti-bell').onclick = () => showToast(`🚨 มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการ`, "warning"); 
+                    document.getElementById('noti-bell').onclick = () => showToast(`มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการ`, "warning"); 
                 } else { 
                     badge.style.display = 'none'; 
-                    document.getElementById('noti-bell').onclick = () => showToast(`✅ ไม่มีรายการค้างตรวจสอบ`, "success"); 
+                    document.getElementById('noti-bell').onclick = () => showToast(`ไม่มีรายการค้างตรวจสอบ`, "success"); 
                 } 
             }
         } catch(e) { 
@@ -1454,6 +1454,67 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
         window.loadSettingsData(); 
         window.loadPendingUsers(); 
         if (typeof window.loadAuditLogs === 'function') window.loadAuditLogs();
+    };
+
+    // ==========================================
+    // 🌟 ระบบยกเลิกรายการและเก็บประวัติ (Soft Delete + Audit Log)
+    // ==========================================
+    window.cancelRecord = async function(recordId, tableName) {
+        // 1. ถามเหตุผลด้วย SweetAlert2 แบบบังคับกรอก
+        const { value: reason } = await Swal.fire({
+            title: 'ยืนยันการยกเลิก?',
+            text: "รายการนี้จะถูกยกเลิก และระบบจะบันทึกประวัติการทำรายการนี้ไว้",
+            icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'พิมพ์เหตุผลที่ต้องการยกเลิก (เช่น คีย์เลขผิด, บิลซ้ำ)...',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: '🗑️ ใช่, ยกเลิกรายการ',
+            cancelButtonText: 'ปิด',
+            inputValidator: (value) => {
+                if (!value) return 'กรุณาระบุเหตุผล';
+            }
+        });
+
+        // 2. ถ้าระบุเหตุผลและกดตกลง
+        if (reason) {
+            try {
+                // โชว์แจ้งเตือนกำลังโหลด
+                Swal.fire({ title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+                // 2.1 อัปเดตสถานะในตารางหลักให้เป็น 'cancelled'
+                const { error: updateErr } = await supabaseClient
+                    .from(tableName)
+                    .update({ status: 'cancelled' })
+                    .eq('id', recordId);
+                
+                if (updateErr) throw updateErr;
+
+                // 2.2 บันทึกประวัติลงตาราง audit_logs
+                const { error: logErr } = await supabaseClient
+                    .from('audit_logs')
+                    .insert([{
+                        table_name: tableName,
+                        record_id: recordId,
+                        action: 'CANCEL',
+                        performed_by: currentUser.id,
+                        reason: reason
+                    }]);
+                
+                if (logErr) throw logErr;
+
+                showToast("ยกเลิกรายการและบันทึกประวัติเรียบร้อย", "success");
+                
+                // 2.3 สั่งให้ตารางโหลดข้อมูลใหม่เพื่อแสดงผลอัปเดต
+                if (typeof window.loadData === 'function') window.loadData();
+                if (typeof window.loadAllAdminData === 'function') window.loadAllAdminData();
+                
+            } catch (err) {
+                showToast("เกิดข้อผิดพลาด: " + err.message, "error");
+                console.error("Cancel Error:", err);
+            }
+        }
     };
 
     window.loadAllAdminData();

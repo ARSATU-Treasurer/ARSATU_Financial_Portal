@@ -679,9 +679,28 @@ if (items.length > 0) {
                 
                 let cwBtn = `<button type="button" onclick="openCoWorkerModal('${req.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; border-color:var(--primary); color:var(--primary);">👥 จัดการ Co-Worker</button>`;
                 let viewBtn = `<button type="button" onclick="viewClearance('${req.id}')" class="btn btn-info" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%;">🔍 ดูบิลย่อย</button>`;
+                
+                // 👇 เพิ่มเงื่อนไขปุ่มยกเลิก: ให้กดได้เฉพาะบิลที่ยังไม่เสร็จสิ้น
+                let cancelBtn = '';
+                if (['draft', 'pending_advance', 'pending_clearance'].includes(req.status)) {
+                    cancelBtn = `<button type="button" onclick="cancelRecord('${req.id}', 'clearances')" class="btn btn-danger" style="padding:4px 8px; font-size:11px; display:block; margin-top:5px; width:100%; background: #ef4444; color:white; border:none;">🗑️ ยกเลิก</button>`;
+                }
 
                 return `
                     <tr>
+                        <td>${date}</td>
+                        <td>${typeLabel}</td>
+                        <td>${req.purpose}</td>
+                        <td style="font-weight:600;">฿${parseFloat(amt).toLocaleString()}</td>
+                        <td>${stat}</td>
+                        <td style="text-align:center;">
+                            <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
+                                ${btn}
+                                ${viewBtn}
+                                ${cwBtn}
+                                ${cancelBtn} </div>
+                        </td>
+                    </tr>
                         <td>${date}</td>
                         <td>${typeLabel}</td>
                         <td>${req.purpose}</td>
@@ -875,4 +894,65 @@ if (items.length > 0) {
             }
         }
     }, 1000);
+
+    // ==========================================
+    // 🌟 ระบบยกเลิกรายการและเก็บประวัติ (Soft Delete + Audit Log)
+    // ==========================================
+    window.cancelRecord = async function(recordId, tableName) {
+        // 1. ถามเหตุผลด้วย SweetAlert2 แบบบังคับกรอก
+        const { value: reason } = await Swal.fire({
+            title: 'ยืนยันการยกเลิก?',
+            text: "รายการนี้จะถูกยกเลิก และระบบจะบันทึกประวัติการทำรายการนี้ไว้",
+            icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'พิมพ์เหตุผลที่ต้องการยกเลิก (เช่น คีย์เลขผิด, บิลซ้ำ)...',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: '🗑️ ใช่, ยกเลิกรายการ',
+            cancelButtonText: 'ปิด',
+            inputValidator: (value) => {
+                if (!value) return 'กรุณาระบุเหตุผล';
+            }
+        });
+
+        // 2. ถ้าระบุเหตุผลและกดตกลง
+        if (reason) {
+            try {
+                // โชว์แจ้งเตือนกำลังโหลด
+                Swal.fire({ title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+                // 2.1 อัปเดตสถานะในตารางหลักให้เป็น 'cancelled'
+                const { error: updateErr } = await supabaseClient
+                    .from(tableName)
+                    .update({ status: 'cancelled' })
+                    .eq('id', recordId);
+                
+                if (updateErr) throw updateErr;
+
+                // 2.2 บันทึกประวัติลงตาราง audit_logs
+                const { error: logErr } = await supabaseClient
+                    .from('audit_logs')
+                    .insert([{
+                        table_name: tableName,
+                        record_id: recordId,
+                        action: 'CANCEL',
+                        performed_by: currentUser.id,
+                        reason: reason
+                    }]);
+                
+                if (logErr) throw logErr;
+
+                showToast("ยกเลิกรายการและบันทึกประวัติเรียบร้อย", "success");
+                
+                // 2.3 สั่งให้ตารางโหลดข้อมูลใหม่เพื่อแสดงผลอัปเดต
+                if (typeof window.loadData === 'function') window.loadData();
+                if (typeof window.loadAllAdminData === 'function') window.loadAllAdminData();
+                
+            } catch (err) {
+                showToast("เกิดข้อผิดพลาด: " + err.message, "error");
+                console.error("Cancel Error:", err);
+            }
+        }
+    };
 });
