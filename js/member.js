@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 🌟 ระบบเพิ่มรายการเบิก (ลบระบบ CSV ออก กลับไปใช้แบบแมนนวล)
+    // 🌟 ระบบเพิ่มรายการเบิก (อัปเกรด: รองรับการ Import CSV)
     // ==========================================
     function setupClearanceUI() {
         const reqType = document.getElementById('req-type'); 
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const returnSlip = document.getElementById('return-slip-section');
 
         window.calculateTotal = () => {
-            try { // ✅ เพิ่ม try ครอบไว้ตรงนี้
+            try {
                 let total = 0;
                 if (itemsTbody) { 
                     itemsTbody.querySelectorAll('tr').forEach(tr => { 
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }); 
                 }
                 
-                // ✅ แก้ไขเรื่องทศนิยมตามที่แนะนำไปก่อนหน้า
+                // ปัดเศษทศนิยมเพื่อความแม่นยำ
                 total = Math.round(total * 100) / 100;
                 
                 if (totalSpan) totalSpan.textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -205,9 +205,70 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (reqAmt) reqAmt.addEventListener('input', window.calculateTotal);
         if (reqType) reqType.dispatchEvent(new Event('change'));
         if (addBtn) addBtn.click();
+
+        // --- ส่วนที่เพิ่มใหม่: ระบบเปิด-ปิดเมนู และอ่านไฟล์ CSV ---
+        const toggleImportBtn = document.getElementById('toggle-import-btn');
+        const importSection = document.getElementById('import-section');
+        
+        if (toggleImportBtn && importSection) {
+            toggleImportBtn.addEventListener('click', () => {
+                importSection.style.display = importSection.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+
+        const csvUpload = document.getElementById('csv-upload');
+        if (csvUpload) {
+            csvUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const text = event.target.result;
+                        const rows = text.split('\n');
+                        const tbody = document.getElementById('items-tbody');
+
+                        let count = 0;
+                        // เริ่มอ่านข้อมูลจากแถวที่ 2 เป็นต้นไป (ข้ามหัวตาราง)
+                        for (let i = 1; i < rows.length; i++) {
+                            const row = rows[i].trim();
+                            if (!row) continue;
+
+                            const cols = row.split(',');
+                            if (cols.length >= 3) {
+                                const itemName = cols[0].replace(/^"|"$/g, '').trim();
+                                const qty = parseFloat(cols[1].replace(/^"|"$/g, '').trim()) || 1;
+                                const price = parseFloat(cols[2].replace(/^"|"$/g, '').trim()) || 0;
+
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td><input type="text" class="item-name" value="${itemName}" required></td>
+                                    <td><input type="number" class="item-qty" min="1" value="${qty}" required></td>
+                                    <td><input type="number" class="item-price" min="0" step="0.01" value="${price}" required></td>
+                                    <td style="text-align: center;"><button type="button" class="btn btn-danger del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
+                                `;
+                                tbody.appendChild(tr);
+                                
+                                tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', window.calculateTotal));
+                                tr.querySelector('.del-btn')?.addEventListener('click', () => { tr.remove(); window.calculateTotal(); });
+                                count++;
+                            }
+                        }
+                        
+                        window.calculateTotal();
+                        showToast(`ดึงข้อมูลสำเร็จ ${count} รายการ!`, 'success');
+                        importSection.style.display = 'none'; // พับเก็บเมนูเมื่อเสร็จสิ้น
+                        
+                    } catch (err) {
+                        showToast('รูปแบบไฟล์ CSV ไม่ถูกต้อง', 'error');
+                    }
+                    e.target.value = ''; // รีเซ็ต input
+                };
+                reader.readAsText(file);
+            });
+        }
     }
-    
-    setupClearanceUI();
 
     // ==========================================
     // 🌟 ระบบส่งข้อมูล / บันทึกร่าง
@@ -767,7 +828,7 @@ if (items.length > 0) {
             if (count > 0 && badge) { 
                 badge.textContent = count; 
                 badge.style.display = 'inline-block'; 
-                document.getElementById('noti-bell').onclick = () => showToast("คุณมีเงินเบิกล่วงหน้าที่ต้องเคลียร์บิล จำนวน ${count} รายการ","warning"); 
+                document.getElementById('noti-bell').onclick = () => showToast('คุณมีเงินเบิกล่วงหน้าที่ต้องเคลียร์บิล จำนวน ${count} รายการ',"warning"); 
             } else if (badge) { 
                 badge.style.display = 'none'; 
                 document.getElementById('noti-bell').onclick = () => showToast("คุณไม่มีบิลค้างเคลียร์", "info"); 
