@@ -110,16 +110,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const returnSlip = document.getElementById('return-slip-section');
 
         window.calculateTotal = () => {
-            try {
-            let total = 0;
-if (itemsTbody) { 
-    itemsTbody.querySelectorAll('tr').forEach(tr => { 
-        const priceInput = tr.querySelector('.item-price'); 
-        if (priceInput) total += (parseFloat(priceInput.value) || 0); 
-    }); 
-}
-// ปัดเศษให้เหลือ 2 ตำแหน่งเป๊ะๆ ป้องกันบั๊กทศนิยม
-total = Math.round(total * 100) / 100;
+            try { // ✅ เพิ่ม try ครอบไว้ตรงนี้
+                let total = 0;
+                if (itemsTbody) { 
+                    itemsTbody.querySelectorAll('tr').forEach(tr => { 
+                        const priceInput = tr.querySelector('.item-price'); 
+                        if (priceInput) total += (parseFloat(priceInput.value) || 0); 
+                    }); 
+                }
+                
+                // ✅ แก้ไขเรื่องทศนิยมตามที่แนะนำไปก่อนหน้า
+                total = Math.round(total * 100) / 100;
+                
                 if (totalSpan) totalSpan.textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 
                 const amt = parseFloat(reqAmt?.value) || 0;
@@ -151,7 +153,7 @@ total = Math.round(total * 100) / 100;
                     if (returnSlip) returnSlip.style.display = 'none'; 
                 }
             } catch (e) { 
-                console.error(e); 
+                console.error("Calculation Error:", e); 
             }
         };
 

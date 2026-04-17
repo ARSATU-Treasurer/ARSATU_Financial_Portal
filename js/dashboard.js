@@ -348,13 +348,14 @@ if (fundError) throw fundError;
     };
 
     window.calculateEditTotal = function() {
-        let total = 0; 
-        document.querySelectorAll('.edit-item-price').forEach(inp => { 
-            total += parseFloat(inp.value) || 0; 
-        });
-        total = Math.round(total * 100) / 100;
-        document.getElementById('edit-total-actual').textContent = total.toLocaleString();
-    };
+    let total = 0; 
+    document.querySelectorAll('.edit-item-price').forEach(inp => { 
+        total += parseFloat(inp.value) || 0; 
+    });
+    // ✅ เพิ่มบรรทัดนี้เพื่อปัดเศษ
+    total = Math.round(total * 100) / 100;
+    document.getElementById('edit-total-actual').textContent = total.toLocaleString();
+};
 
     document.getElementById('edit-add-item-btn')?.addEventListener('click', () => {
         const tbody = document.getElementById('edit-items-tbody'); 
