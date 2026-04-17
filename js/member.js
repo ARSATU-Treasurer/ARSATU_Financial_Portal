@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             const names = Array.from(checkboxes).map(cb => cb.getAttribute('data-name'));
             let text = names.length > 2 ? `${names[0]}, ${names[1]} และอีก ${names.length - 2} คน` : names.join(', ');
-            summary.innerHTML = `✅ แท็กแล้ว <strong style="font-size:15px;">${checkboxes.length}</strong> คน: <br><span style="font-size:12px; color:var(--text-main); font-weight:normal;">${text}</span>`;
+            summary.innerHTML = `✅ เพิ่มแล้ว <strong style="font-size:15px;">${checkboxes.length}</strong> คน: <br><span style="font-size:12px; color:var(--text-main); font-weight:normal;">${text}</span>`;
             summary.style.color = 'var(--success)';
         }
         document.getElementById('select-coworker-modal').style.display = 'none';
