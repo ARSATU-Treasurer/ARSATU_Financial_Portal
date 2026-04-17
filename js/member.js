@@ -116,6 +116,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     // 🌟 ระบบเพิ่มรายการเบิก (อัปเกรด: รองรับการ Import CSV)
     // ==========================================
+    // ==========================================
+    // 🌟 ระบบเพิ่มรายการเบิก (ลบระบบ CSV ออก กลับไปใช้แบบแมนนวล + CSV)
+    // ==========================================
     function setupClearanceUI() {
         const reqType = document.getElementById('req-type'); 
         const advSec = document.getElementById('advance-section'); 
@@ -127,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const returnSlip = document.getElementById('return-slip-section');
 
         window.calculateTotal = () => {
-            try {
+            try { 
                 let total = 0;
                 if (itemsTbody) { 
                     itemsTbody.querySelectorAll('tr').forEach(tr => { 
@@ -136,7 +139,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }); 
                 }
                 
-                // ปัดเศษทศนิยมเพื่อความแม่นยำ
                 total = Math.round(total * 100) / 100;
                 
                 if (totalSpan) totalSpan.textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -206,13 +208,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (reqType) reqType.dispatchEvent(new Event('change'));
         if (addBtn) addBtn.click();
 
-        // --- ส่วนที่เพิ่มใหม่: ระบบเปิด-ปิดเมนู และอ่านไฟล์ CSV ---
+        // ==========================================
+        // 🌟 ระบบ CSV และปุ่มเปิด-ปิดเมนู
+        // ==========================================
         const toggleImportBtn = document.getElementById('toggle-import-btn');
         const importSection = document.getElementById('import-section');
         
         if (toggleImportBtn && importSection) {
             toggleImportBtn.addEventListener('click', () => {
-                importSection.style.display = importSection.style.display === 'none' ? 'block' : 'none';
+                importSection.style.display = (importSection.style.display === 'none' || importSection.style.display === '') ? 'block' : 'none';
             });
         }
 
@@ -230,7 +234,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const tbody = document.getElementById('items-tbody');
 
                         let count = 0;
-                        // เริ่มอ่านข้อมูลจากแถวที่ 2 เป็นต้นไป (ข้ามหัวตาราง)
                         for (let i = 1; i < rows.length; i++) {
                             const row = rows[i].trim();
                             if (!row) continue;
@@ -257,18 +260,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                         
                         window.calculateTotal();
-                        showToast(`ดึงข้อมูลสำเร็จ ${count} รายการ!`, 'success');
-                        importSection.style.display = 'none'; // พับเก็บเมนูเมื่อเสร็จสิ้น
+                        if(typeof showToast === 'function') {
+                            showToast(`ดึงข้อมูลสำเร็จ ${count} รายการ!`, 'success');
+                        } else {
+                            alert(`ดึงข้อมูลสำเร็จ ${count} รายการ!`);
+                        }
+                        importSection.style.display = 'none'; 
                         
                     } catch (err) {
-                        showToast('รูปแบบไฟล์ CSV ไม่ถูกต้อง', 'error');
+                        if(typeof showToast === 'function') {
+                            showToast('รูปแบบไฟล์ CSV ไม่ถูกต้อง', 'error');
+                        } else {
+                            alert('รูปแบบไฟล์ CSV ไม่ถูกต้อง');
+                        }
                     }
-                    e.target.value = ''; // รีเซ็ต input
+                    e.target.value = ''; 
                 };
                 reader.readAsText(file);
             });
         }
     }
+    
+    setupClearanceUI();
 
     // ==========================================
     // 🌟 ระบบส่งข้อมูล / บันทึกร่าง
