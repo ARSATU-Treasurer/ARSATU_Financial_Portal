@@ -114,26 +114,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 🌟 ระบบเพิ่มรายการเบิก (อัปเกรด: รองรับการ Import CSV)
-    // ==========================================
-    // ==========================================
-    // 🌟 ระบบเพิ่มรายการเบิก (ลบระบบ CSV ออก กลับไปใช้แบบแมนนวล + CSV)
+    // 🌟 ระบบเพิ่มรายการเบิก (อัปเกรด: แมนนวล + CSV ทำงานร่วมกัน 100%)
     // ==========================================
     function setupClearanceUI() {
         const reqType = document.getElementById('req-type'); 
         const advSec = document.getElementById('advance-section'); 
         const reqAmt = document.getElementById('req-amount');
         const itemsTbody = document.getElementById('items-tbody'); 
-        const addBtn = document.getElementById('add-item-btn'); 
         const totalSpan = document.getElementById('total-actual');
         const diffSummary = document.getElementById('diff-summary'); 
         const returnSlip = document.getElementById('return-slip-section');
 
+        // ฟังก์ชันคำนวณเงินรวม
         window.calculateTotal = () => {
             try { 
                 let total = 0;
-                if (itemsTbody) { 
-                    itemsTbody.querySelectorAll('tr').forEach(tr => { 
+                const currentTbody = document.getElementById('items-tbody'); // ดึงใหม่เสมอเพื่อความชัวร์
+                if (currentTbody) { 
+                    currentTbody.querySelectorAll('tr').forEach(tr => { 
                         const priceInput = tr.querySelector('.item-price'); 
                         if (priceInput) total += (parseFloat(priceInput.value) || 0); 
                     }); 
@@ -188,9 +186,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }); 
         }
 
+        // ====================================================
+        // แก้ไขปุ่ม "+ เพิ่มรายการ" (แมนนวล) ให้ดึงตารางแบบ Dynamic
+        // ====================================================
+        const addBtn = document.getElementById('add-item-btn');
         if (addBtn) {
-            addBtn.addEventListener('click', () => {
-                if (!itemsTbody) return; 
+            const newAddBtn = addBtn.cloneNode(true);
+            addBtn.parentNode.replaceChild(newAddBtn, addBtn);
+            
+            newAddBtn.addEventListener('click', () => {
+                const tbody = document.getElementById('items-tbody');
+                if (!tbody) return; 
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><input type="text" class="item-name" placeholder="ชื่อรายการ" required></td>
@@ -198,7 +205,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td><input type="number" class="item-price" min="0" step="0.01" value="0" required></td>
                     <td style="text-align: center;"><button type="button" class="btn btn-danger del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
                 `;
-                itemsTbody.appendChild(tr); 
+                tbody.appendChild(tr); 
+                
                 tr.querySelectorAll('input').forEach(input => input.addEventListener('input', window.calculateTotal)); 
                 tr.querySelector('.del-btn')?.addEventListener('click', () => { tr.remove(); window.calculateTotal(); });
             });
@@ -206,7 +214,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (reqAmt) reqAmt.addEventListener('input', window.calculateTotal);
         if (reqType) reqType.dispatchEvent(new Event('change'));
-        if (addBtn) addBtn.click();
+        
+        // กดปุ่มเพิ่มรายการอัตโนมัติ 1 แถวตอนโหลดหน้า
+        const currentAddBtn = document.getElementById('add-item-btn');
+        if (currentAddBtn) currentAddBtn.click();
 
         // ==========================================
         // 🌟 ระบบ CSV และปุ่มเปิด-ปิดเมนู
@@ -215,14 +226,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const importSection = document.getElementById('import-section');
         
         if (toggleImportBtn && importSection) {
-            toggleImportBtn.addEventListener('click', () => {
+            // ลบ Event เก่าทิ้งก่อนเผื่อค้าง
+            const newToggleBtn = toggleImportBtn.cloneNode(true);
+            toggleImportBtn.parentNode.replaceChild(newToggleBtn, toggleImportBtn);
+
+            newToggleBtn.addEventListener('click', () => {
                 importSection.style.display = (importSection.style.display === 'none' || importSection.style.display === '') ? 'block' : 'none';
             });
         }
 
         const csvUpload = document.getElementById('csv-upload');
         if (csvUpload) {
-            csvUpload.addEventListener('change', function(e) {
+            // โคลนเพื่อล้าง Event ค้าง
+            const newCsvUpload = csvUpload.cloneNode(true);
+            csvUpload.parentNode.replaceChild(newCsvUpload, csvUpload);
+
+            newCsvUpload.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
 
@@ -265,7 +284,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         } else {
                             alert(`ดึงข้อมูลสำเร็จ ${count} รายการ!`);
                         }
-                        importSection.style.display = 'none'; 
+                        
+                        const currentImportSec = document.getElementById('import-section');
+                        if(currentImportSec) currentImportSec.style.display = 'none'; 
                         
                     } catch (err) {
                         if(typeof showToast === 'function') {
@@ -841,7 +862,7 @@ if (items.length > 0) {
             if (count > 0 && badge) { 
                 badge.textContent = count; 
                 badge.style.display = 'inline-block'; 
-                document.getElementById('noti-bell').onclick = () => showToast('คุณมีเงินเบิกล่วงหน้าที่ต้องเคลียร์บิล จำนวน ${count} รายการ',"warning"); 
+                document.getElementById('noti-bell').onclick = () => showToast(`คุณมีเงินเบิกล่วงหน้าที่ต้องเคลียร์บิล จำนวน ${count} รายการ`, "warning"); 
             } else if (badge) { 
                 badge.style.display = 'none'; 
                 document.getElementById('noti-bell').onclick = () => showToast("คุณไม่มีบิลค้างเคลียร์", "info"); 
