@@ -444,7 +444,7 @@ if (fundError) throw fundError;
                     const sFile = document.getElementById('substitute-statement')?.files[0]; 
                     const rFile = document.getElementById('substitute-return-slip')?.files[0];
                     
-                    if (!sFile) throw new Error("กรุณาแนบใบเสร็จ / Statement ด้วยครับ");
+                    if (!sFile) throw new Error("กรุณาแนบใบเสร็จหรือ Statement");
                     
                     if (msg) msg.textContent = 'กำลังอัปโหลดไฟล์หลักฐาน...'; 
                     let sUrl = null, rUrl = null;
@@ -1366,10 +1366,10 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
         
         try { 
             await supabaseClient.from('profiles').update({ status: 'approved', role: isSetAsAdmin ? 'admin' : 'member', full_name: finalName }).eq('id', id); 
-            alert(`🎉 อนุมัติคุณ ${finalName} เรียบร้อยแล้ว!`); 
+            showToast("อนุมัติคุณ ${finalName} เรียบร้อยแล้ว!", "success"); 
             window.loadPendingUsers(); 
         } catch (err) { 
-            alert("❌ เกิดข้อผิดพลาด: " + err.message); 
+            showToast("เกิดข้อผิดพลาด: " + err.message, "error"); 
         }
     };
 
