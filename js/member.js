@@ -874,7 +874,7 @@ if (items.length > 0) {
                 document.getElementById('noti-bell').onclick = () => showToast(`คุณมีเงินเบิกล่วงหน้าที่ต้องเคลียร์บิล จำนวน ${count} รายการ`, "warning"); 
             } else if (badge) { 
                 badge.style.display = 'none'; 
-                document.getElementById('noti-bell').onclick = () => showToast("คุณไม่มีบิลค้างเคลียร์", "info"); 
+                document.getElementById('noti-bell').onclick = () => showToast("คุณไม่มีบิลค้างเคลียร์", "success"); 
             }
         } catch(e) { 
             console.error("Noti Error:", e); 
