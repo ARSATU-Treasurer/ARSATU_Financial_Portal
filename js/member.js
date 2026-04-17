@@ -110,14 +110,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const returnSlip = document.getElementById('return-slip-section');
 
         window.calculateTotal = () => {
-            try {
-                let total = 0;
-                if (itemsTbody) { 
-                    itemsTbody.querySelectorAll('tr').forEach(tr => { 
-                        const priceInput = tr.querySelector('.item-price'); 
-                        if (priceInput) total += (parseFloat(priceInput.value) || 0); 
-                    }); 
-                }
+            let total = 0;
+if (itemsTbody) { 
+    itemsTbody.querySelectorAll('tr').forEach(tr => { 
+        const priceInput = tr.querySelector('.item-price'); 
+        if (priceInput) total += (parseFloat(priceInput.value) || 0); 
+    }); 
+}
+// ปัดเศษให้เหลือ 2 ตำแหน่งเป๊ะๆ ป้องกันบั๊กทศนิยม
+total = Math.round(total * 100) / 100;
                 if (totalSpan) totalSpan.textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 
                 const amt = parseFloat(reqAmt?.value) || 0;
@@ -282,22 +283,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (rUrl) clearanceData.member_return_slip = rUrl;
 
             if (draftId) { 
-                await supabaseClient.from('clearances').update(clearanceData).eq('id', draftId); 
-                await supabaseClient.from('clearance_items').delete().eq('clearance_id', draftId); 
-            } else { 
-                const { data } = await supabaseClient.from('clearances').insert([clearanceData]).select(); 
-                clearanceId = data[0].id; 
-            }
+    const { error: updateErr } = await supabaseClient.from('clearances').update(clearanceData).eq('id', draftId); 
+    if (updateErr) throw new Error("บันทึกบิลหลักไม่สำเร็จ: " + updateErr.message);
+    await supabaseClient.from('clearance_items').delete().eq('clearance_id', draftId); 
+} else { 
+    const { data, error: insertErr } = await supabaseClient.from('clearances').insert([clearanceData]).select(); 
+    if (insertErr) throw new Error("สร้างบิลหลักไม่สำเร็จ: " + insertErr.message);
+    clearanceId = data[0].id; 
+}
 
-            if (items.length > 0) { 
-                const itemsToInsert = items.map(i => ({ 
-                    clearance_id: clearanceId, 
-                    item_name: i.item_name, 
-                    quantity: i.quantity, 
-                    total_price: i.total_price 
-                })); 
-                await supabaseClient.from('clearance_items').insert(itemsToInsert); 
-            }
+// ใช้งาน Manual Rollback
+if (items.length > 0) { 
+    const itemsToInsert = items.map(i => ({ 
+        clearance_id: clearanceId, 
+        item_name: i.item_name, 
+        quantity: i.quantity, 
+        total_price: i.total_price 
+    })); 
+    
+    const { error: itemError } = await supabaseClient.from('clearance_items').insert(itemsToInsert); 
+    
+    // ถ้าเซฟรายการย่อยพัง และไม่ใช่การแก้ดราฟต์ ให้ลบบิลหลักทิ้งทันที
+    if (itemError) {
+        if (!draftId) {
+            await supabaseClient.from('clearances').delete().eq('id', clearanceId);
+        }
+        throw new Error("บันทึกรายการสินค้าไม่สำเร็จ ระบบได้ยกเลิกคำขอนี้แล้ว กรุณาลองใหม่");
+    }
+}
 
             if (msg) { 
                 msg.style.color = 'var(--success)'; 

@@ -14,17 +14,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 🌟 ระบบเช็กล็อกอิน (V7.0 ดั้งเดิม เสถียรที่สุด)
     // ==========================================
     let currentUser = null;
-    try {
-        const { data, error } = await supabaseClient.auth.getSession();
-        if (error || !data.session) { 
-            window.location.replace('index.html'); 
-            return; 
-        }
-        currentUser = data.session.user;
-    } catch (err) { 
+try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) { 
         window.location.replace('index.html'); 
         return; 
     }
+    currentUser = data.session.user;
+
+    // เช็ก Role ต่อทันที
+    const { data: profileData, error: profileErr } = await supabaseClient
+        .from('profiles')
+        .select('role')
+        .eq('id', currentUser.id)
+        .single();
+
+    if (profileErr || !profileData || profileData.role !== 'admin') {
+        alert("⚠️ คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+        window.location.replace('member.html'); // เตะกลับไปหน้า member
+        return;
+    }
+
+} catch (err) { 
+    window.location.replace('index.html'); 
+    return; 
+}
 
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
@@ -164,15 +178,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (confirm(`ยืนยันนำรายการ ฿${amount.toLocaleString()} เข้าบัญชีและกองทุน?`)) {
             try {
-                const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', bankId).single();
-                let nBal = parseFloat(bData.balance); 
-                nBal += (type === 'expense' ? -parseFloat(amount) : parseFloat(amount));
-                await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
+                // คำนวณค่าที่จะบวกเข้าไป (ถ้าเป็นรายจ่ายให้ส่งค่าติดลบ)
+const finalAmount = type === 'expense' ? -parseFloat(amount) : parseFloat(amount);
 
-                const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', fundId).single();
-                let nFun = parseFloat(fData.remaining_budget); 
-                nFun += (type === 'expense' ? -parseFloat(amount) : parseFloat(amount));
-                await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
+// ยิงคำสั่งให้ Database บวกเลขให้โดยตรง หมดปัญหาคนกดพร้อมกัน
+const { error: bankError } = await supabaseClient.rpc('update_bank_balance', { bank_id: bankId, amount: finalAmount });
+if (bankError) throw bankError;
+
+const { error: fundError } = await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: finalAmount });
+if (fundError) throw fundError;
                 
                 await supabaseClient.from('transactions').update({ status: 'approved', bank_account_id: bankId, fund_id: fundId }).eq('id', id);
                 
