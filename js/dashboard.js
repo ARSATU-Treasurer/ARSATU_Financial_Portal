@@ -352,6 +352,7 @@ if (fundError) throw fundError;
         document.querySelectorAll('.edit-item-price').forEach(inp => { 
             total += parseFloat(inp.value) || 0; 
         });
+        total = Math.round(total * 100) / 100;
         document.getElementById('edit-total-actual').textContent = total.toLocaleString();
     };
 
@@ -589,6 +590,7 @@ if (fundError) throw fundError;
                 totalAppr = c.total_actual_amount;
             }
         }
+        totalAppr = Math.round(totalAppr * 100) / 100;
 
         if(document.getElementById('modal-diff-warning')) document.getElementById('modal-diff-warning').style.display = isEdited ? 'block' : 'none';
         if(document.getElementById('modal-recalc-total')) document.getElementById('modal-recalc-total').textContent = totalAppr.toLocaleString();
@@ -705,16 +707,12 @@ if (fundError) throw fundError;
                 }
 
                 if (actionDir !== 'none' && processAmt > 0) {
-                    const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', bankId).single();
-                    const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', fundId).single();
-                    
-                    let nBal = parseFloat(bData.balance), nFun = parseFloat(fData.remaining_budget);
-                    
-                    if (actionDir === 'pay') { nBal -= processAmt; nFun -= processAmt; } 
-                    else { nBal += processAmt; nFun += processAmt; }
-                    
-                    await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
-                    await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
+    // คำนวณค่าที่จะบวก (ถ้าแอดมินจ่ายออกให้ค่าติดลบ ถ้าแอดมินรับเงินทอนให้ค่าเป็นบวก)
+    const finalAmount = actionDir === 'pay' ? -processAmt : processAmt;
+
+    // ใช้ RPC อัปเดตตรงๆ
+    await supabaseClient.rpc('update_bank_balance', { bank_id: bankId, amount: finalAmount });
+    await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: finalAmount });
                     
                     const reqPurpose = window.currentClearance.purpose || '-';
                     const shortId = reqId.substring(0,6);
@@ -844,14 +842,9 @@ if (fundError) throw fundError;
                 const bankId = document.getElementById('direct-bank').value;
                 const fundId = document.getElementById('direct-fund').value;
                 
-                const { data: bData } = await supabaseClient.from('bank_accounts').select('balance').eq('id', bankId).single();
-                const { data: fData } = await supabaseClient.from('funds').select('remaining_budget').eq('id', fundId).single();
-                
-                let nBal = parseFloat(bData.balance), nFun = parseFloat(fData.remaining_budget);
-                if (type === 'income') { nBal += amt; nFun += amt; } else { nBal -= amt; nFun -= amt; }
-                
-                await supabaseClient.from('bank_accounts').update({ balance: nBal }).eq('id', bankId);
-                await supabaseClient.from('funds').update({ remaining_budget: nFun }).eq('id', fundId);
+                const finalAmount = type === 'income' ? amt : -amt;
+await supabaseClient.rpc('update_bank_balance', { bank_id: bankId, amount: finalAmount });
+await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: finalAmount });
                 
                 await supabaseClient.from('transactions').insert([{ 
                     transaction_date: new Date().toISOString().split('T')[0], 

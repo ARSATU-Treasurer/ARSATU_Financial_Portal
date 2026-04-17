@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const returnSlip = document.getElementById('return-slip-section');
 
         window.calculateTotal = () => {
+            try {
             let total = 0;
 if (itemsTbody) { 
     itemsTbody.querySelectorAll('tr').forEach(tr => { 
