@@ -1,4 +1,21 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // ==========================================
+    // 🌟 ระบบ Toast Notification (SweetAlert2)
+    // ==========================================
+    window.showToast = function(title, icon = 'success') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end', // ให้เด้งที่มุมขวาบน
+            icon: icon,          // 'success', 'error', 'warning', 'info'
+            title: title,
+            showConfirmButton: false,
+            timer: 3000,         // โชว์ 3 วินาทีแล้วหายไปเอง
+            timerProgressBar: true,
+            customClass: {
+                popup: 'colored-toast' // (Option) สามารถไปเขียน CSS แต่งเพิ่มทีหลังได้
+            }
+        });
+    };
 
     window.sendLineMessage = function(msg) {
         const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; 
@@ -30,7 +47,7 @@ try {
         .single();
 
     if (profileErr || !profileData || profileData.role !== 'admin') {
-        alert("⚠️ คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+        showToast("คุณไม่มีสิทธิ์เข้าถึงหน้านี้","warning");
         window.location.replace('member.html'); // เตะกลับไปหน้า member
         return;
     }
@@ -172,7 +189,7 @@ try {
         const fundId = document.getElementById(`fund-for-${id}`)?.value;
         
         if (!bankId || !fundId) { 
-            alert("⚠️ กรุณาเลือกบัญชีและกองทุนให้ครบ"); 
+            showToast("⚠️ กรุณาเลือกบัญชีและกองทุนให้ครบ", "warning");
             return; 
         }
         
@@ -190,14 +207,14 @@ if (fundError) throw fundError;
                 
                 await supabaseClient.from('transactions').update({ status: 'approved', bank_account_id: bankId, fund_id: fundId }).eq('id', id);
                 
-                alert("✅ อนุมัติเรียบร้อย"); 
+                showToast("อนุมัติเรียบร้อย", "success");
                 
                 const alertMsg = `✅ อนุมัติรายการเข้าบัญชีแล้ว\n\n💰 ยอดเงิน: ฿${parseFloat(amount).toLocaleString()}\n🏷️ ประเภท: ${type === 'expense' ? 'รายจ่าย' : 'รายรับ/บริจาค'}\n\nระบบบันทึกลงสมุดบัญชีและอัปเดตยอดกองทุนเรียบร้อยแล้วครับ!`;
                 if (window.sendLineMessage) window.sendLineMessage(alertMsg);
 
                 window.loadAllAdminData();
             } catch (err) { 
-                alert("เกิดข้อผิดพลาด: " + err.message); 
+                showToast("เกิดข้อผิดพลาด: " + err.message, "error");
             }
         }
     };
@@ -1038,12 +1055,12 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
         
         try {
             await supabaseClient.from('clearances').update({ co_worker_ids: coWorkerIds }).eq('id', id);
-            alert('✅ อัปเดตรายชื่อ Co-Worker สำเร็จ!'); 
+            showToast("✅ อัปเดตรายชื่อ Co-Worker สำเร็จ!","success"); 
             document.getElementById('coworker-modal').style.display = 'none'; 
             window.loadClearanceHistory(); 
             window.loadPendingRequests(); 
         } catch(e) { 
-            alert('❌ เกิดข้อผิดพลาด: ' + e.message); 
+            showToast("❌ เกิดข้อผิดพลาด: " + e.message, "error"); 
         } finally { 
             btn.disabled = false; 
             btn.textContent = '💾 บันทึกรายชื่อ'; 
@@ -1070,7 +1087,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
     window.addBank = async function() {
         const name = document.getElementById('add-bank-name').value; 
         const bal = parseFloat(document.getElementById('add-bank-bal').value);
-        if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
+        if(!name || isNaN(bal)) return showToast("กรุณากรอกข้อมูลให้ครบ", "warning");
         
         const subBtn = event.target; 
         subBtn.disabled = true; 
@@ -1080,10 +1097,10 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             await supabaseClient.from('bank_accounts').insert([{ bank_name: name, balance: bal }]); 
             document.getElementById('add-bank-name').value = ''; 
             document.getElementById('add-bank-bal').value = ''; 
-            alert("✅ เพิ่มบัญชีสำเร็จ!"); 
+            showToast("✅ เพิ่มบัญชีสำเร็จ!", "success"); 
             window.loadAllAdminData(); 
         } catch (err) { 
-            alert("❌ ไม่สามารถเพิ่มบัญชีได้: " + err.message); 
+            showToast("❌ ไม่สามารถเพิ่มบัญชีได้: " + err.message, "error"); 
         } finally { 
             subBtn.disabled = false; 
             subBtn.textContent = "+ เพิ่มบัญชี"; 
@@ -1096,7 +1113,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                 await supabaseClient.from('bank_accounts').delete().eq('id', id); 
                 window.loadAllAdminData(); 
             } catch (err) { 
-                alert("❌ ไม่สามารถลบได้: " + err.message); 
+                showToast("❌ ไม่สามารถลบได้: " + err.message, "error"); 
             } 
         } 
     };
@@ -1104,7 +1121,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
     window.addFund = async function() {
         const name = document.getElementById('add-fund-name').value; 
         const bal = parseFloat(document.getElementById('add-fund-bal').value);
-        if(!name || isNaN(bal)) return alert("กรุณากรอกข้อมูลให้ครบ");
+        if(!name || isNaN(bal)) return showToast("กรุณากรอกข้อมูลให้ครบ", "warning");
         
         const subBtn = event.target; 
         subBtn.disabled = true; 
@@ -1114,10 +1131,10 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             await supabaseClient.from('funds').insert([{ fund_name: name, remaining_budget: bal }]); 
             document.getElementById('add-fund-name').value = ''; 
             document.getElementById('add-fund-bal').value = ''; 
-            alert("✅ เพิ่มกองทุนสำเร็จ!"); 
+            showToast("✅ เพิ่มกองทุนสำเร็จ!", "success"); 
             window.loadAllAdminData(); 
         } catch (err) { 
-            alert("❌ ไม่สามารถเพิ่มกองทุนได้: " + err.message); 
+            showToast("❌ ไม่สามารถเพิ่มกองทุนได้: " + err.message, "error"); 
         } finally { 
             subBtn.disabled = false; 
             subBtn.textContent = "+ เพิ่มกองทุน"; 
@@ -1130,7 +1147,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                 await supabaseClient.from('funds').delete().eq('id', id); 
                 window.loadAllAdminData(); 
             } catch (err) { 
-                alert("❌ ไม่สามารถลบได้: " + err.message); 
+                showToast("❌ ไม่สามารถลบได้: " + err.message, "error"); 
             } 
         } 
     };
@@ -1255,7 +1272,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             const { data: cItems } = await supabaseClient.from('clearance_items').select('*');
             
             if (!txs || txs.length === 0) { 
-                alert(`ไม่มีข้อมูลในสมุดบัญชีสำหรับ Export`); 
+                showToast(`ไม่มีข้อมูลในสมุดบัญชีสำหรับ Export`, "warning"); 
                 return; 
             }
 
@@ -1306,7 +1323,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             document.body.removeChild(link);
 
         } catch (e) { 
-            alert("เกิดข้อผิดพลาดในการ Export: " + e.message); 
+            showToast("เกิดข้อผิดพลาดในการ Export: " + e.message, "error"); 
         } finally { 
             if (btn) { btn.disabled = false; btn.innerHTML = '📥 Export Excel'; } 
         }
@@ -1392,11 +1409,11 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                 }
             }
             
-            alert("✅ ยกเลิกรายการและคืนยอดเงินเรียบร้อย"); 
+            showToast("✅ ยกเลิกรายการและคืนยอดเงินเรียบร้อย"); 
             document.getElementById('view-tx-modal').style.display = 'none'; 
             window.loadAllAdminData(); 
         } catch (err) { 
-            alert("❌ ผิดพลาด: " + err.message); 
+            showToast("❌ ผิดพลาด: " + err.message, "error"); 
             document.getElementById('view-tx-modal').style.display = 'none'; 
         }
     };
@@ -1419,10 +1436,10 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                 if (totalPending > 0) { 
                     badge.textContent = totalPending; 
                     badge.style.display = 'inline-block'; 
-                    document.getElementById('noti-bell').onclick = () => alert(`🚨 มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการ`); 
+                    document.getElementById('noti-bell').onclick = () => showToast(`🚨 มีรายการรอตรวจสอบทั้งหมด ${totalPending} รายการ`, "warning"); 
                 } else { 
                     badge.style.display = 'none'; 
-                    document.getElementById('noti-bell').onclick = () => alert(`✅ ไม่มีรายการค้างตรวจสอบ`); 
+                    document.getElementById('noti-bell').onclick = () => showToast(`✅ ไม่มีรายการค้างตรวจสอบ`, "success"); 
                 } 
             }
         } catch(e) { 

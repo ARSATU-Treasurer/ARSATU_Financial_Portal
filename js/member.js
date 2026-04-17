@@ -1,4 +1,21 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // ==========================================
+    // 🌟 ระบบ Toast Notification (SweetAlert2)
+    // ==========================================
+    window.showToast = function(title, icon = 'success') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end', // ให้เด้งที่มุมขวาบน
+            icon: icon,          // 'success', 'error', 'warning', 'info'
+            title: title,
+            showConfirmButton: false,
+            timer: 3000,         // โชว์ 3 วินาทีแล้วหายไปเอง
+            timerProgressBar: true,
+            customClass: {
+                popup: 'colored-toast' // (Option) สามารถไปเขียน CSS แต่งเพิ่มทีหลังได้
+            }
+        });
+    };
 
     window.sendLineMessage = function(msg) {
         const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; 
@@ -720,11 +737,11 @@ if (items.length > 0) {
         
         try {
             await supabaseClient.from('clearances').update({ co_worker_ids: coWorkerIds }).eq('id', id);
-            alert('✅ อัปเดตรายชื่อ Co-Worker สำเร็จ!'); 
+            showToast("อัปเดตรายชื่อ Co-Worker สำเร็จ", "success"); 
             document.getElementById('coworker-modal').style.display = 'none'; 
             window.loadData();
         } catch(e) { 
-            alert('❌ เกิดข้อผิดพลาด: ' + e.message); 
+            showToast("เกิดข้อผิดพลาด: " + e.message, "error"); 
         } finally { 
             btn.disabled = false; 
             btn.textContent = '💾 บันทึก'; 
@@ -750,10 +767,10 @@ if (items.length > 0) {
             if (count > 0 && badge) { 
                 badge.textContent = count; 
                 badge.style.display = 'inline-block'; 
-                document.getElementById('noti-bell').onclick = () => alert(`🚨 คุณมีเงินเบิกล่วงหน้าที่ต้อง "เคลียร์บิล" จำนวน ${count} รายการ`); 
+                document.getElementById('noti-bell').onclick = () => showToast("คุณมีเงินเบิกล่วงหน้าที่ต้องเคลียร์บิล จำนวน ${count} รายการ","warning"); 
             } else if (badge) { 
                 badge.style.display = 'none'; 
-                document.getElementById('noti-bell').onclick = () => alert(`✅ คุณไม่มีบิลค้างเคลียร์`); 
+                document.getElementById('noti-bell').onclick = () => showToast("คุณไม่มีบิลค้างเคลียร์", "info"); 
             }
         } catch(e) { 
             console.error("Noti Error:", e); 
