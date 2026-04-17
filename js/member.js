@@ -114,24 +114,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 🌟 ระบบเพิ่มรายการเบิก (อัปเกรด: แมนนวล + CSV ทำงานร่วมกัน 100%)
+    // 🌟 ระบบเพิ่มรายการเบิก (อัปเกรด: แมนนวล + CSV ฉบับเสถียรที่สุด)
     // ==========================================
     function setupClearanceUI() {
-        const reqType = document.getElementById('req-type'); 
-        const advSec = document.getElementById('advance-section'); 
-        const reqAmt = document.getElementById('req-amount');
-        const itemsTbody = document.getElementById('items-tbody'); 
-        const totalSpan = document.getElementById('total-actual');
-        const diffSummary = document.getElementById('diff-summary'); 
-        const returnSlip = document.getElementById('return-slip-section');
-
-        // ฟังก์ชันคำนวณเงินรวม
+        // 1. สร้างฟังก์ชันคำนวณเงินรวม
         window.calculateTotal = () => {
             try { 
                 let total = 0;
-                const currentTbody = document.getElementById('items-tbody'); // ดึงใหม่เสมอเพื่อความชัวร์
-                if (currentTbody) { 
-                    currentTbody.querySelectorAll('tr').forEach(tr => { 
+                const tbody = document.getElementById('items-tbody'); // ดึงตารางสดๆ
+                if (tbody) { 
+                    tbody.querySelectorAll('tr').forEach(tr => { 
                         const priceInput = tr.querySelector('.item-price'); 
                         if (priceInput) total += (parseFloat(priceInput.value) || 0); 
                     }); 
@@ -139,13 +131,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 total = Math.round(total * 100) / 100;
                 
+                const totalSpan = document.getElementById('total-actual');
                 if (totalSpan) totalSpan.textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                const reqType = document.getElementById('req-type');
+                const reqAmt = document.getElementById('req-amount');
+                const diffSummary = document.getElementById('diff-summary'); 
+                const returnSlip = document.getElementById('return-slip-section');
                 
                 const amt = parseFloat(reqAmt?.value) || 0;
                 if (reqType?.value === 'advance' && window.isClearingAdvance === true) {
                     if (diffSummary) diffSummary.style.display = 'block'; 
                     const diff = amt - total;
-                    
                     if (diff > 0) {
                         if (diffSummary) { 
                             diffSummary.innerHTML = `🚨 มีเงินเหลือทอนชุมนุม: <br><span style="font-size:18px;">${diff.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</span>`; 
@@ -174,27 +171,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
-        if (reqType) { 
-            reqType.addEventListener('change', () => { 
-                if (reqType.value === 'advance') { 
-                    if (advSec) advSec.style.display = 'block'; 
-                } else { 
-                    if (advSec) advSec.style.display = 'none'; 
-                    if (reqAmt && !window.isClearingAdvance) reqAmt.value = 0; 
-                } 
-                window.calculateTotal(); 
-            }); 
+        // 2. ตรวจจับการเปลี่ยนประเภท (เบิกล่วงหน้า/สำรองจ่าย)
+        const reqType = document.getElementById('req-type');
+        if (reqType) {
+            reqType.onchange = () => {
+                const advSec = document.getElementById('advance-section');
+                const reqAmt = document.getElementById('req-amount');
+                if (reqType.value === 'advance') {
+                    if (advSec) advSec.style.display = 'block';
+                } else {
+                    if (advSec) advSec.style.display = 'none';
+                    if (reqAmt && !window.isClearingAdvance) reqAmt.value = 0;
+                }
+                window.calculateTotal();
+            };
         }
 
-        // ====================================================
-        // แก้ไขปุ่ม "+ เพิ่มรายการ" (แมนนวล) ให้ดึงตารางแบบ Dynamic
-        // ====================================================
+        // 3. จัดการปุ่ม "เพิ่มรายการ" (แมนนวล)
         const addBtn = document.getElementById('add-item-btn');
         if (addBtn) {
-            const newAddBtn = addBtn.cloneNode(true);
-            addBtn.parentNode.replaceChild(newAddBtn, addBtn);
-            
-            newAddBtn.addEventListener('click', () => {
+            addBtn.onclick = () => {
                 const tbody = document.getElementById('items-tbody');
                 if (!tbody) return; 
                 
@@ -207,41 +203,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
                 tbody.appendChild(tr); 
                 
-                tr.querySelectorAll('input').forEach(input => input.addEventListener('input', window.calculateTotal)); 
-                tr.querySelector('.del-btn')?.addEventListener('click', () => { tr.remove(); window.calculateTotal(); });
-            });
-        }
-        
-        if (reqAmt) reqAmt.addEventListener('input', window.calculateTotal);
-        if (reqType) reqType.dispatchEvent(new Event('change'));
-        
-        // กดปุ่มเพิ่มรายการอัตโนมัติ 1 แถวตอนโหลดหน้า
-        const currentAddBtn = document.getElementById('add-item-btn');
-        if (currentAddBtn) currentAddBtn.click();
-
-        // ==========================================
-        // 🌟 ระบบ CSV และปุ่มเปิด-ปิดเมนู
-        // ==========================================
-        const toggleImportBtn = document.getElementById('toggle-import-btn');
-        const importSection = document.getElementById('import-section');
-        
-        if (toggleImportBtn && importSection) {
-            // ลบ Event เก่าทิ้งก่อนเผื่อค้าง
-            const newToggleBtn = toggleImportBtn.cloneNode(true);
-            toggleImportBtn.parentNode.replaceChild(newToggleBtn, toggleImportBtn);
-
-            newToggleBtn.addEventListener('click', () => {
-                importSection.style.display = (importSection.style.display === 'none' || importSection.style.display === '') ? 'block' : 'none';
-            });
+                tr.querySelectorAll('input').forEach(input => input.oninput = window.calculateTotal); 
+                const delBtn = tr.querySelector('.del-btn');
+                if (delBtn) delBtn.onclick = () => { tr.remove(); window.calculateTotal(); };
+            };
         }
 
+        // 4. การกรอกยอดเงินตั้งต้น
+        const reqAmt = document.getElementById('req-amount');
+        if (reqAmt) reqAmt.oninput = window.calculateTotal;
+
+        // 5. ปุ่มเปิด-ปิด เมนู CSV
+        const toggleBtn = document.getElementById('toggle-import-btn');
+        if (toggleBtn) {
+            toggleBtn.onclick = () => {
+                const importSec = document.getElementById('import-section');
+                if (importSec) {
+                    importSec.style.display = (importSec.style.display === 'none' || importSec.style.display === '') ? 'block' : 'none';
+                }
+            };
+        }
+
+        // 6. ระบบอัปโหลดและอ่านไฟล์ CSV
         const csvUpload = document.getElementById('csv-upload');
         if (csvUpload) {
-            // โคลนเพื่อล้าง Event ค้าง
-            const newCsvUpload = csvUpload.cloneNode(true);
-            csvUpload.parentNode.replaceChild(newCsvUpload, csvUpload);
-
-            newCsvUpload.addEventListener('change', function(e) {
+            csvUpload.onchange = function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
 
@@ -251,6 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const text = event.target.result;
                         const rows = text.split('\n');
                         const tbody = document.getElementById('items-tbody');
+                        if (!tbody) return;
 
                         let count = 0;
                         for (let i = 1; i < rows.length; i++) {
@@ -272,8 +259,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 `;
                                 tbody.appendChild(tr);
                                 
-                                tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', window.calculateTotal));
-                                tr.querySelector('.del-btn')?.addEventListener('click', () => { tr.remove(); window.calculateTotal(); });
+                                tr.querySelectorAll('input').forEach(inp => inp.oninput = window.calculateTotal);
+                                const delBtn = tr.querySelector('.del-btn');
+                                if (delBtn) delBtn.onclick = () => { tr.remove(); window.calculateTotal(); };
                                 count++;
                             }
                         }
@@ -285,8 +273,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             alert(`ดึงข้อมูลสำเร็จ ${count} รายการ!`);
                         }
                         
-                        const currentImportSec = document.getElementById('import-section');
-                        if(currentImportSec) currentImportSec.style.display = 'none'; 
+                        const importSec = document.getElementById('import-section');
+                        if(importSec) importSec.style.display = 'none'; 
                         
                     } catch (err) {
                         if(typeof showToast === 'function') {
@@ -298,8 +286,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     e.target.value = ''; 
                 };
                 reader.readAsText(file);
-            });
+            };
         }
+
+        // เริ่มต้นการทำงาน (Initial Setup)
+        if (reqType) reqType.dispatchEvent(new Event('change'));
+        if (addBtn) addBtn.onclick(); // สร้างช่องว่างไว้ 1 ช่องเสมอตอนโหลดหน้า
     }
     
     setupClearanceUI();
