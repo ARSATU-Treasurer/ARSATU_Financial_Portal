@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     const text = event.target.result;
                     
-                    // 🌟 ฟังก์ชันอ่าน CSV ขั้นสูง (ทะลุ Enter และลูกน้ำที่อยู่ในช่องได้)
+                    // 🌟 ฟังก์ชันอ่าน CSV แบบมาตรฐาน (รองรับ Enter และลูกน้ำในช่อง)
                     function parseCSV(str) {
                         const arr = [];
                         let quote = false;
@@ -241,43 +241,46 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!tbody) return;
 
                     let count = 0;
-                    // เริ่มอ่านแถวที่ 2 เป็นต้นไป (i=1) ข้ามหัวตาราง
+                    // เริ่มอ่านแถวที่ 2 (ข้ามหัวตาราง)
                     for (let i = 1; i < rows.length; i++) {
                         const cols = rows[i];
+                        // ฟอร์แมตต้องมีอย่างน้อย 5 คอลัมน์
+                        if (!cols || cols.length < 5) continue; 
+
+                        // 1. ดึงชื่อรายการ (คอลัมน์ที่ 2 / Index 1)
+                        let itemName = cols[1] ? cols[1].trim() : '';
+
+                        // 🎯 2. ตัวกรองสุดเข้มงวด (กรองของปลอมทิ้งให้หมด)
+                        if (!itemName) continue; // ข้ามบรรทัดที่รายการว่างเปล่า
+                        if (itemName === 'รายการ') continue; // ข้ามหัวตาราง
+                        if (itemName.includes('รวม') || itemName.toLowerCase().includes('insert row')) continue; // ข้ามบรรทัดสรุปและคำแนะนำ
+
+                        // 3. ดึงจำนวน (คอลัมน์ที่ 4 / Index 3)
+                        const qtyStr = cols[3] ? cols[3].replace(/,/g, '').trim() : '1';
+                        let qty = parseFloat(qtyStr);
+                        if (isNaN(qty) || qty <= 0) qty = 1; // ถ้าแปลงเป็นตัวเลขไม่ได้ ให้บังคับเป็น 1
                         
-                        // Google Sheet มีฟอร์แมต: [0]ลำดับ [1]รายการ [2]หน่วยละ [3]จำนวน [4]ราคารวม
-                        if (cols && cols.length >= 5) {
-                            // ดึงชื่อรายการ (Index 1)
-                            const itemName = cols[1] ? cols[1].trim() : '';
-                            
-                            // ข้ามบรรทัดว่างเปล่า, ข้ามบรรทัด "รวม", หรือบรรทัดคำอธิบาย
-                            if (!itemName || itemName === 'รวม' || itemName.includes('insert row')) continue;
+                        // 4. ดึงราคารวม (คอลัมน์ที่ 5 / Index 4)
+                        const priceStr = cols[4] ? cols[4].replace(/,/g, '').trim() : '0';
+                        let price = parseFloat(priceStr);
+                        if (isNaN(price) || price < 0) price = 0; // ถ้าแปลงเป็นตัวเลขไม่ได้ (NaN) ให้บังคับเป็น 0
 
-                            // ดึงจำนวน (Index 3)
-                            const qtyStr = cols[3] ? cols[3].replace(/,/g, '').trim() : '1';
-                            const qty = parseFloat(qtyStr) || 1;
-                            
-                            // ดึงราคารวม (Index 4)
-                            const priceStr = cols[4] ? cols[4].replace(/,/g, '').trim() : '0';
-                            const price = parseFloat(priceStr) || 0;
-
-                            const tr = document.createElement('tr');
-                            // ป้องกันชื่อรายการที่มี " ทำให้ input HTML พัง
-                            const safeItemName = itemName.replace(/"/g, '&quot;');
-                            
-                            tr.innerHTML = `
-                                <td><input type="text" class="item-name" value="${safeItemName}" required></td>
-                                <td><input type="number" class="item-qty" min="1" value="${qty}" required></td>
-                                <td><input type="number" class="item-price" min="0" step="0.01" value="${price}" required></td>
-                                <td style="text-align: center;"><button type="button" class="btn btn-danger del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
-                            `;
-                            tbody.appendChild(tr);
-                            
-                            tr.querySelectorAll('input').forEach(inp => inp.oninput = window.calculateTotal);
-                            const delBtn = tr.querySelector('.del-btn');
-                            if (delBtn) delBtn.onclick = () => { tr.remove(); window.calculateTotal(); };
-                            count++;
-                        }
+                        // 5. สร้างบรรทัดในตาราง
+                        const tr = document.createElement('tr');
+                        const safeItemName = itemName.replace(/"/g, '&quot;'); // กัน Error เครื่องหมายคำพูด
+                        
+                        tr.innerHTML = `
+                            <td><input type="text" class="item-name" value="${safeItemName}" required></td>
+                            <td><input type="number" class="item-qty" min="1" value="${qty}" required></td>
+                            <td><input type="number" class="item-price" min="0" step="0.01" value="${price}" required></td>
+                            <td style="text-align: center;"><button type="button" class="btn btn-danger del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
+                        `;
+                        tbody.appendChild(tr);
+                        
+                        tr.querySelectorAll('input').forEach(inp => inp.oninput = window.calculateTotal);
+                        const delBtn = tr.querySelector('.del-btn');
+                        if (delBtn) delBtn.onclick = () => { tr.remove(); window.calculateTotal(); };
+                        count++;
                     }
                     
                     window.calculateTotal();
