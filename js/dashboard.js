@@ -1,32 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // ==========================================
-    // 🌟 ระบบ Toast Notification (SweetAlert2)
-    // ==========================================
-    window.showToast = function(title, icon = 'success') {
-        Swal.fire({
-            toast: true,
-            position: 'top-end', // ให้เด้งที่มุมขวาบน
-            icon: icon,          // 'success', 'error', 'warning', 'info'
-            title: title,
-            showConfirmButton: false,
-            timer: 3000,         // โชว์ 3 วินาทีแล้วหายไปเอง
-            timerProgressBar: true,
-            customClass: {
-                popup: 'colored-toast' // (Option) สามารถไปเขียน CSS แต่งเพิ่มทีหลังได้
-            }
-        });
-    };
-
-    window.sendLineMessage = function(msg) {
-        const gasUrl = 'https://script.google.com/macros/s/AKfycbxwOJ9BznMdOSDscRglTNsykif2N1NdMgb8_X7UAmyJd3vZx0mb-y9pJ9xdUI93b4Bt/exec'; 
-        fetch(gasUrl, { 
-            method: 'POST', 
-            mode: 'no-cors', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ action: 'notify_admin', message: msg }) 
-        }).catch(e => console.log(e));
-    };
-
+    
     // ==========================================
     // 🌟 ระบบเช็กล็อกอิน (V7.0 ดั้งเดิม เสถียรที่สุด)
     // ==========================================
