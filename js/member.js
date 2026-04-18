@@ -213,46 +213,66 @@ document.addEventListener('DOMContentLoaded', async () => {
             reader.onload = function(event) {
                 try {
                     const text = event.target.result;
-                    const rows = text.split('\n');
+                    
+                    // 🌟 ฟังก์ชันอ่าน CSV ขั้นสูง (ทะลุ Enter และลูกน้ำที่อยู่ในช่องได้)
+                    function parseCSV(str) {
+                        const arr = [];
+                        let quote = false;
+                        let row = 0, col = 0;
+                        for (let c = 0; c < str.length; c++) {
+                            let cc = str[c], nc = str[c+1];
+                            arr[row] = arr[row] || [];
+                            arr[row][col] = arr[row][col] || '';
+                            
+                            if (cc === '"' && quote && nc === '"') { arr[row][col] += cc; ++c; continue; }
+                            if (cc === '"') { quote = !quote; continue; }
+                            if (cc === ',' && !quote) { ++col; continue; }
+                            if (cc === '\r' && nc === '\n' && !quote) { ++row; col = 0; ++c; continue; }
+                            if (cc === '\n' && !quote) { ++row; col = 0; continue; }
+                            if (cc === '\r' && !quote) { ++row; col = 0; continue; }
+                            
+                            arr[row][col] += cc;
+                        }
+                        return arr;
+                    }
+
+                    const rows = parseCSV(text);
                     const tbody = document.getElementById('items-tbody');
                     if (!tbody) return;
 
                     let count = 0;
-                    // ข้ามแถวที่ 1 (หัวตาราง) เริ่มอ่านข้อมูลที่แถว 2 (i=1)
+                    // เริ่มอ่านแถวที่ 2 เป็นต้นไป (i=1) ข้ามหัวตาราง
                     for (let i = 1; i < rows.length; i++) {
-                        const row = rows[i].trim();
-                        if (!row) continue;
-
-                        // 🌟 แก้ไข: ใช้ Regex ตัดแบ่งคอลัมน์ด้วย (,) แต่ข้าม (,) ที่อยู่ในเครื่องหมายคำพูด (เช่น "5,000")
-                        const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                        const cols = rows[i];
                         
-                        // ฟอร์ม Google Sheet คือ: [0]ลำดับ, [1]รายการ, [2]หน่วยละ, [3]จำนวน, [4]ราคารวม
-                        if (cols.length >= 5) {
-                            // ดึงชื่อรายการ (คอลัมน์ที่ 2)
-                            const itemName = cols[1] ? cols[1].replace(/^"|"$/g, '').trim() : '';
+                        // Google Sheet มีฟอร์แมต: [0]ลำดับ [1]รายการ [2]หน่วยละ [3]จำนวน [4]ราคารวม
+                        if (cols && cols.length >= 5) {
+                            // ดึงชื่อรายการ (Index 1)
+                            const itemName = cols[1] ? cols[1].trim() : '';
                             
-                            // ข้ามแถวที่ว่างเปล่า หรือแถวที่เป็นคำอธิบายด้านล่าง (เช่น "รวม", "insert row")
+                            // ข้ามบรรทัดว่างเปล่า, ข้ามบรรทัด "รวม", หรือบรรทัดคำอธิบาย
                             if (!itemName || itemName === 'รวม' || itemName.includes('insert row')) continue;
 
-                            // ดึงจำนวน (คอลัมน์ที่ 4) และลบลูกน้ำออกก่อนแปลงเป็นตัวเลข
-                            const qtyStr = cols[3] ? cols[3].replace(/["',]/g, '').trim() : '1';
+                            // ดึงจำนวน (Index 3)
+                            const qtyStr = cols[3] ? cols[3].replace(/,/g, '').trim() : '1';
                             const qty = parseFloat(qtyStr) || 1;
                             
-                            // ดึงราคารวม (คอลัมน์ที่ 5) และลบลูกน้ำออกก่อนแปลงเป็นตัวเลข
-                            const priceStr = cols[4] ? cols[4].replace(/["',]/g, '').trim() : '0';
+                            // ดึงราคารวม (Index 4)
+                            const priceStr = cols[4] ? cols[4].replace(/,/g, '').trim() : '0';
                             const price = parseFloat(priceStr) || 0;
 
-                            // สร้างบรรทัดในตาราง
                             const tr = document.createElement('tr');
+                            // ป้องกันชื่อรายการที่มี " ทำให้ input HTML พัง
+                            const safeItemName = itemName.replace(/"/g, '&quot;');
+                            
                             tr.innerHTML = `
-                                <td><input type="text" class="item-name" value="${itemName}" required></td>
+                                <td><input type="text" class="item-name" value="${safeItemName}" required></td>
                                 <td><input type="number" class="item-qty" min="1" value="${qty}" required></td>
                                 <td><input type="number" class="item-price" min="0" step="0.01" value="${price}" required></td>
                                 <td style="text-align: center;"><button type="button" class="btn btn-danger del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
                             `;
                             tbody.appendChild(tr);
                             
-                            // คำนวณเงินใหม่ทุกครั้งที่พิมพ์แก้ หรือกดลบ
                             tr.querySelectorAll('input').forEach(inp => inp.oninput = window.calculateTotal);
                             const delBtn = tr.querySelector('.del-btn');
                             if (delBtn) delBtn.onclick = () => { tr.remove(); window.calculateTotal(); };
@@ -267,7 +287,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         alert(`ดึงข้อมูลสำเร็จ ${count} รายการ!`);
                     }
                     
-                    // ปิดเมนูอัปโหลดหลังทำเสร็จ
                     const importSec = document.getElementById('import-section');
                     if(importSec) importSec.style.display = 'none'; 
                     
@@ -279,7 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     console.error("CSV Parse Error:", err);
                 }
-                e.target.value = ''; // รีเซ็ตให้กดอัปโหลดไฟล์ชื่อเดิมซ้ำได้
+                e.target.value = ''; // รีเซ็ตเพื่อให้อัปโหลดไฟล์เดิมซ้ำได้
             };
             reader.readAsText(file);
         }
