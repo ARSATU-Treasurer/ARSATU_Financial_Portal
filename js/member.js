@@ -218,17 +218,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!tbody) return;
 
                     let count = 0;
-                    // ข้ามแถวที่ 1 (หัวตาราง) เริ่มอ่านจากแถวที่ 2
+                    // ข้ามแถวที่ 1 (หัวตาราง) เริ่มอ่านข้อมูลที่แถว 2 (i=1)
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i].trim();
                         if (!row) continue;
 
-                        const cols = row.split(',');
-                        if (cols.length >= 3) {
-                            const itemName = cols[0].replace(/^"|"$/g, '').trim();
-                            const qty = parseFloat(cols[1].replace(/^"|"$/g, '').trim()) || 1;
-                            const price = parseFloat(cols[2].replace(/^"|"$/g, '').trim()) || 0;
+                        // 🌟 แก้ไข: ใช้ Regex ตัดแบ่งคอลัมน์ด้วย (,) แต่ข้าม (,) ที่อยู่ในเครื่องหมายคำพูด (เช่น "5,000")
+                        const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                        
+                        // ฟอร์ม Google Sheet คือ: [0]ลำดับ, [1]รายการ, [2]หน่วยละ, [3]จำนวน, [4]ราคารวม
+                        if (cols.length >= 5) {
+                            // ดึงชื่อรายการ (คอลัมน์ที่ 2)
+                            const itemName = cols[1] ? cols[1].replace(/^"|"$/g, '').trim() : '';
+                            
+                            // ข้ามแถวที่ว่างเปล่า หรือแถวที่เป็นคำอธิบายด้านล่าง (เช่น "รวม", "insert row")
+                            if (!itemName || itemName === 'รวม' || itemName.includes('insert row')) continue;
 
+                            // ดึงจำนวน (คอลัมน์ที่ 4) และลบลูกน้ำออกก่อนแปลงเป็นตัวเลข
+                            const qtyStr = cols[3] ? cols[3].replace(/["',]/g, '').trim() : '1';
+                            const qty = parseFloat(qtyStr) || 1;
+                            
+                            // ดึงราคารวม (คอลัมน์ที่ 5) และลบลูกน้ำออกก่อนแปลงเป็นตัวเลข
+                            const priceStr = cols[4] ? cols[4].replace(/["',]/g, '').trim() : '0';
+                            const price = parseFloat(priceStr) || 0;
+
+                            // สร้างบรรทัดในตาราง
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
                                 <td><input type="text" class="item-name" value="${itemName}" required></td>
@@ -238,6 +252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             `;
                             tbody.appendChild(tr);
                             
+                            // คำนวณเงินใหม่ทุกครั้งที่พิมพ์แก้ หรือกดลบ
                             tr.querySelectorAll('input').forEach(inp => inp.oninput = window.calculateTotal);
                             const delBtn = tr.querySelector('.del-btn');
                             if (delBtn) delBtn.onclick = () => { tr.remove(); window.calculateTotal(); };
@@ -252,6 +267,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         alert(`ดึงข้อมูลสำเร็จ ${count} รายการ!`);
                     }
                     
+                    // ปิดเมนูอัปโหลดหลังทำเสร็จ
                     const importSec = document.getElementById('import-section');
                     if(importSec) importSec.style.display = 'none'; 
                     
@@ -261,8 +277,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         alert('รูปแบบไฟล์ CSV ไม่ถูกต้อง');
                     }
+                    console.error("CSV Parse Error:", err);
                 }
-                e.target.value = ''; // รีเซ็ต input ให้รับไฟล์ชื่อเดิมซ้ำได้
+                e.target.value = ''; // รีเซ็ตให้กดอัปโหลดไฟล์ชื่อเดิมซ้ำได้
             };
             reader.readAsText(file);
         }
