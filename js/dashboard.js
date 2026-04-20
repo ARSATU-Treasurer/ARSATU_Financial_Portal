@@ -1614,3 +1614,92 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
 
     window.loadAllAdminData();
 });
+
+// ==========================================
+// 🌟 ระบบปิดค่าย (ยืนยัน 3 ชั้น + Backup & Reset)
+// ==========================================
+window.closeCampAndReset = async function() {
+    // 🛑 ด่านที่ 1: คำเตือนแรก
+    const step1 = await Swal.fire({
+        title: '⚠️ คำเตือนระดับสูงสุด',
+        text: "คุณกำลังจะโหลด Backup และ ล้างข้อมูลทุกอย่างในระบบเพื่อเริ่มค่ายใหม่ ใช่หรือไม่?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'ใช่, ฉันต้องการปิดค่าย',
+        cancelButtonText: 'ยกเลิก'
+    });
+    if (!step1.isConfirmed) return;
+
+    // 🛑 ด่านที่ 2: บังคับพิมพ์ข้อความเพื่อยืนยัน
+    const step2 = await Swal.fire({
+        title: 'พิมพ์เพื่อยืนยัน',
+        html: 'กรุณาพิมพ์คำว่า <strong style="color:red;">ปิดค่าย</strong> เพื่อดำเนินการต่อ',
+        input: 'text',
+        inputPlaceholder: 'พิมพ์คำว่า ปิดค่าย',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก',
+        inputValidator: (value) => {
+            if (value !== 'ปิดค่าย') return 'พิมพ์ไม่ถูกต้อง กรุณาลองใหม่!';
+        }
+    });
+    if (!step2.isConfirmed) return;
+
+    // 🛑 ด่านที่ 3: ยืนยันครั้งสุดท้าย
+    const step3 = await Swal.fire({
+        title: '🔥 การตัดสินใจครั้งสุดท้าย',
+        text: "ระบบจะดาวน์โหลดไฟล์และล้างข้อมูลทันที (ไม่สามารถย้อนกลับได้)",
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonColor: '#000',
+        confirmButtonText: 'ดำเนินการเดี๋ยวนี้!',
+        cancelButtonText: 'ยกเลิก'
+    });
+    if (!step3.isConfirmed) return;
+
+    Swal.fire({ title: 'กำลังทำ Backup...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+    try {
+        // ดึงข้อมูลทุกตาราง
+        const { data: clearances } = await supabaseClient.from('clearances').select('*');
+        const { data: clearanceItems } = await supabaseClient.from('clearance_items').select('*');
+        const { data: transactions } = await supabaseClient.from('transactions').select('*');
+        const { data: auditLogs } = await supabaseClient.from('audit_logs').select('*');
+        const { data: bankAccounts } = await supabaseClient.from('bank_accounts').select('*');
+        const { data: funds } = await supabaseClient.from('funds').select('*');
+        const { data: profiles } = await supabaseClient.from('profiles').select('id, full_name, department');
+
+        // แพ็ก JSON
+        const backupData = {
+            export_date: new Date().toISOString(),
+            data: { profiles, clearances, clearance_items, transactions, audit_logs, bank_accounts: bankAccounts, funds }
+        };
+
+        // ดาวน์โหลดไฟล์
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+        const dlAnchorElem = document.createElement('a');
+        dlAnchorElem.setAttribute("href", dataStr);
+        dlAnchorElem.setAttribute("download", `ARSATU_Archive_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(dlAnchorElem);
+        dlAnchorElem.click();
+        dlAnchorElem.remove();
+
+        // ล้างตาราง
+        const dummy = '00000000-0000-0000-0000-000000000000';
+        await supabaseClient.from('audit_logs').delete().neq('id', dummy);
+        await supabaseClient.from('clearance_items').delete().neq('id', dummy);
+        await supabaseClient.from('clearances').delete().neq('id', dummy);
+        await supabaseClient.from('transactions').delete().neq('id', dummy);
+
+        // รีเซ็ตยอดเงิน
+        for (let b of (bankAccounts || [])) await supabaseClient.from('bank_accounts').update({ balance: 0 }).eq('id', b.id);
+        for (let f of (funds || [])) await supabaseClient.from('funds').update({ remaining_budget: 0 }).eq('id', f.id);
+
+        Swal.fire('สำเร็จ!', 'เริ่มต้นค่ายใหม่เรียบร้อยแล้ว', 'success').then(() => window.location.reload());
+    } catch (err) {
+        Swal.fire('ผิดพลาด', err.message, 'error');
+    }
+};
