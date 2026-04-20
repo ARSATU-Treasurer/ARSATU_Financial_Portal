@@ -1490,5 +1490,127 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
         }
     };
 
+    // ==========================================
+    // 🌟 ระบบปิดค่าย (ยืนยัน 3 ชั้น + Backup & Reset)
+    // ==========================================
+    window.closeCampAndReset = async function() {
+        // 🛑 ด่านที่ 1: คำเตือนแรก
+        const step1 = await Swal.fire({
+            title: '⚠️ คำเตือนระดับสูงสุด',
+            text: "คุณกำลังจะโหลด Backup และ ล้างข้อมูลทุกอย่างในระบบเพื่อเริ่มค่ายใหม่ ใช่หรือไม่?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ใช่, ฉันต้องการปิดค่าย',
+            cancelButtonText: 'ยกเลิก'
+        });
+        if (!step1.isConfirmed) return;
+
+        // 🛑 ด่านที่ 2: บังคับพิมพ์ข้อความเพื่อยืนยัน (ป้องกันมือลั่น)
+        const step2 = await Swal.fire({
+            title: 'พิมพ์เพื่อยืนยัน',
+            html: 'เพื่อป้องกันความผิดพลาด กรุณาพิมพ์คำว่า <strong style="color:red;">ปิดค่าย</strong> ลงในช่องว่าง',
+            input: 'text',
+            inputPlaceholder: 'พิมพ์คำว่า ปิดค่าย',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'ยืนยันตัวอักษร',
+            cancelButtonText: 'ยกเลิก',
+            inputValidator: (value) => {
+                if (value !== 'ปิดค่าย') {
+                    return 'พิมพ์ไม่ถูกต้อง กรุณาลองใหม่!';
+                }
+            }
+        });
+        if (!step2.isConfirmed) return;
+
+        // 🛑 ด่านที่ 3: ยืนยันครั้งสุดท้าย
+        const step3 = await Swal.fire({
+            title: '🔥 การตัดสินใจครั้งสุดท้าย',
+            text: "เมื่อกดปุ่มด้านล่าง ระบบจะดาวน์โหลดไฟล์และล้างข้อมูลทันที (ไม่สามารถย้อนกลับได้)",
+            icon: 'error',
+            showCancelButton: true,
+            confirmButtonColor: '#000',
+            cancelButtonColor: 'gray',
+            confirmButtonText: 'ดำเนินการ Backup & ล้างข้อมูลเดี๋ยวนี้!',
+            cancelButtonText: 'เปลี่ยนใจ ยกเลิกดีกว่า'
+        });
+        if (!step3.isConfirmed) return;
+
+        // เริ่มโหลดข้อมูล...
+        Swal.fire({ title: 'กำลังดึงข้อมูลทำ Backup...', text: 'ห้ามปิดหน้าต่างนี้เด็ดขาด', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+        try {
+            // ดึงข้อมูล "ทุกตาราง" ในฐานข้อมูล
+            const { data: clearances } = await supabaseClient.from('clearances').select('*');
+            const { data: clearanceItems } = await supabaseClient.from('clearance_items').select('*');
+            const { data: transactions } = await supabaseClient.from('transactions').select('*');
+            const { data: auditLogs } = await supabaseClient.from('audit_logs').select('*');
+            const { data: bankAccounts } = await supabaseClient.from('bank_accounts').select('*');
+            const { data: funds } = await supabaseClient.from('funds').select('*');
+            const { data: profiles } = await supabaseClient.from('profiles').select('id, full_name, department'); // เก็บชื่อคนไว้ด้วย
+
+            // แพ็กข้อมูลใส่กล่อง JSON
+            const backupData = {
+                export_date: new Date().toISOString(),
+                total_clearances: clearances?.length || 0,
+                total_transactions: transactions?.length || 0,
+                data: {
+                    profiles: profiles || [],
+                    clearances: clearances || [],
+                    clearance_items: clearanceItems || [],
+                    transactions: transactions || [],
+                    audit_logs: auditLogs || [],
+                    ending_balances: bankAccounts || [],
+                    ending_funds: funds || []
+                }
+            };
+
+            // สั่งให้เบราว์เซอร์ดาวน์โหลดไฟล์อัตโนมัติ
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `ARSATU_Archive_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(dlAnchorElem);
+            dlAnchorElem.click();
+            dlAnchorElem.remove();
+
+            Swal.fire({ title: 'ดาวน์โหลดสำเร็จ!', text: 'กำลังล้างข้อมูลและรีเซ็ตระบบ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+            // ล้างข้อมูลตาราง
+            const dummyUUID = '00000000-0000-0000-0000-000000000000';
+            await supabaseClient.from('audit_logs').delete().neq('id', dummyUUID);
+            await supabaseClient.from('clearance_items').delete().neq('id', dummyUUID);
+            await supabaseClient.from('clearances').delete().neq('id', dummyUUID);
+            await supabaseClient.from('transactions').delete().neq('id', dummyUUID);
+
+            // รีเซ็ตยอดเงินบัญชีและกองทุนให้กลับเป็น 0
+            if (bankAccounts && bankAccounts.length > 0) {
+                for (let bank of bankAccounts) {
+                    await supabaseClient.from('bank_accounts').update({ balance: 0 }).eq('id', bank.id);
+                }
+            }
+            if (funds && funds.length > 0) {
+                for (let fund of funds) {
+                    await supabaseClient.from('funds').update({ remaining_budget: 0 }).eq('id', fund.id);
+                }
+            }
+
+            Swal.fire({
+                title: 'สำเร็จ! เริ่มต้นค่ายใหม่',
+                text: 'เก็บไฟล์ Backup ไว้ให้ดี! คุณสามารถนำไฟล์นั้นไปเปิดอ่านในหน้า Archive ได้ทุกเมื่อ',
+                icon: 'success',
+                confirmButtonText: 'ตกลง'
+            }).then(() => {
+                window.location.reload(); 
+            });
+
+        } catch (err) {
+            console.error("Backup & Reset Error:", err);
+            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถรีเซ็ตระบบได้: ' + err.message, 'error');
+        }
+    };
+
     window.loadAllAdminData();
 });

@@ -326,6 +326,20 @@
                 </div>
             </div>
         </div>
+        <div class="card" style="border-top: 4px solid var(--danger); margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: var(--danger); margin: 0 0 5px 0;">🚨 ปิดค่ายและรีเซ็ตระบบ (End of Camp)</h3>
+                        <p style="font-size: 13px; color: gray; margin: 0;">
+                            กดปุ่มนี้เมื่อจบค่าย ระบบจะ <strong>ดาวน์โหลดไฟล์ข้อมูลทั้งหมด (Backup)</strong> ไว้ให้คุณอัปโหลดเก็บใน Google Drive<br>
+                            จากนั้นจะล้างประวัติการเบิกจ่ายทั้งหมด และรีเซ็ตยอดเงินบัญชี/กองทุนเป็น ฿0 เพื่อเริ่มต้นค่ายใหม่ (รายชื่อสมาชิกยังอยู่ครบ)
+                        </p>
+                    </div>
+                    <button onclick="closeCampAndReset()" class="btn btn-danger" style="padding: 12px 20px; font-size: 15px; font-weight: bold; white-space: nowrap;">
+                        📥 โหลด Backup & ล้างข้อมูลเริ่มใหม่
+                    </button>
+                </div>
+            </div>
     </main>
 
     <div id="action-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;">
