@@ -11,7 +11,7 @@ window.showToast = function(title, icon = 'success') {
         icon: icon,          
         title: title,
         showConfirmButton: false,
-        timer: 3000,         
+        timer: 5000,         
         timerProgressBar: true,
         customClass: {
             popup: 'colored-toast' 
