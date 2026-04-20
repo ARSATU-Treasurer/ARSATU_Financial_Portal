@@ -1391,54 +1391,6 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
         }
     };
 
-    // ==========================================
-    // 🌟 โหลดข้อมูล Dashboard สรุปการเงิน (Chart & Cards)
-    // ==========================================
-    let myDeptChart = null;
-    window.loadDashboardSummary = async function() {
-        try {
-            const { data: funds } = await supabaseClient.from('funds').select('budget_limit, remaining_budget').limit(1).single();
-            let totalBudget = funds ? (funds.budget_limit || 150000) : 0; // สมมติงบตั้งต้นถ้าไม่มีคอลัมน์นี้
-
-            const { data: clearances } = await supabaseClient.from('clearances')
-                .select('department, requested_amount, total_actual_amount, status')
-                .neq('status', 'cancelled').neq('status', 'draft');
-
-            let totalExpense = 0, pendingAdvanceCount = 0, pendingClearanceCount = 0, deptSpends = {};
-            if (clearances) {
-                clearances.forEach(req => {
-                    if (req.status === 'pending_advance') pendingAdvanceCount++;
-                    if (req.status === 'pending_clearance') pendingClearanceCount++;
-                    if (['advance_transferred', 'cleared'].includes(req.status)) {
-                        let amountUsed = req.total_actual_amount > 0 ? req.total_actual_amount : req.requested_amount;
-                        totalExpense += amountUsed;
-                        const dept = req.department || 'ส่วนกลาง';
-                        deptSpends[dept] = (deptSpends[dept] || 0) + amountUsed;
-                    }
-                });
-            }
-
-            const currentRemaining = totalBudget > 0 ? (totalBudget - totalExpense) : 0; 
-            if(document.getElementById('dash-total-budget')) document.getElementById('dash-total-budget').textContent = `฿${totalBudget.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            if(document.getElementById('dash-total-expense')) document.getElementById('dash-total-expense').textContent = `฿${totalExpense.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            if(document.getElementById('dash-remaining')) document.getElementById('dash-remaining').textContent = `฿${currentRemaining.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            if(document.getElementById('dash-pending-advance')) document.getElementById('dash-pending-advance').textContent = pendingAdvanceCount;
-            if(document.getElementById('dash-pending-clearance')) document.getElementById('dash-pending-clearance').textContent = pendingClearanceCount;
-
-            const ctx = document.getElementById('deptExpenseChart');
-            if (ctx) {
-                if (myDeptChart) myDeptChart.destroy();
-                const labels = Object.keys(deptSpends).length > 0 ? Object.keys(deptSpends) : ['ยังไม่มีการใช้จ่าย'];
-                const cData = Object.values(deptSpends).length > 0 ? Object.values(deptSpends) : [1];
-                myDeptChart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: { labels: labels, datasets: [{ data: cData, backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'], borderWidth: 1 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-                });
-            }
-        } catch (err) { console.error("Dashboard Summary Error:", err); }
-    };
-
     window.loadAllAdminData = async function() {
         if (!currentUser) return;
         
@@ -1467,8 +1419,7 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             console.error(e); 
         }
 
-        window.loadDashboardWidgets();
-        window.loadDashboardSummary(); 
+        window.loadDashboardWidgets(); 
         window.loadPendingDonations(); 
         window.loadPendingRequests(); 
         window.loadLedger(); 

@@ -640,39 +640,6 @@ if (items.length > 0) {
     handleTransactionForm('other-trans-form', 'other');
 
     // ==========================================
-    // 🌟 โหลดสรุปยอดเงินสำหรับ Member (Dashboard)
-    // ==========================================
-    window.loadMemberDashboard = async function() {
-        if (!currentUser) return;
-        try {
-            const { data: clearances } = await supabaseClient
-                .from('clearances')
-                .select('requested_amount, total_actual_amount, status')
-                .eq('member_id', currentUser.id)
-                .neq('status', 'cancelled');
-
-            let received = 0;
-            let pending = 0;
-
-            if (clearances) {
-                clearances.forEach(req => {
-                    if (['advance_transferred', 'cleared'].includes(req.status)) {
-                        received += (req.total_actual_amount > 0 ? req.total_actual_amount : req.requested_amount);
-                    } else if (['pending_advance', 'pending_clearance'].includes(req.status)) {
-                        pending += (req.requested_amount > 0 ? req.requested_amount : req.total_actual_amount);
-                    }
-                });
-            }
-
-            if(document.getElementById('mem-dash-received')) document.getElementById('mem-dash-received').textContent = `฿${received.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            if(document.getElementById('mem-dash-pending')) document.getElementById('mem-dash-pending').textContent = `฿${pending.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-
-        } catch (err) {
-            console.error("Member Dashboard Error:", err);
-        }
-    };
-    
-    // ==========================================
     // 🌟 โหลดข้อมูลเข้าตาราง (V7.0)
     // ==========================================
     window.loadData = async function() {
@@ -763,7 +730,6 @@ if (items.length > 0) {
                 `;
             }).join('');
         } catch(e) { console.error(e); }
-        window.loadMemberDashboard();
     };
 
     window.viewClearance = async function(id) {
