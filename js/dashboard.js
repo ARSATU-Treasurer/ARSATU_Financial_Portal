@@ -1746,22 +1746,42 @@ window.closeCampAndReset = async function() {
     // 🌟 ระบบจัดการแผนงบประมาณ (Admin Budget Plan)
     // ==========================================
     
-    // โหลดเพดานงบ
+    // โหลดเพดานงบ (เวอร์ชันล็อกชื่อฝ่ายให้อัตโนมัติ ป้องกันการพิมพ์ผิด)
     window.loadCeilings = async function() {
         const tbody = document.querySelector('#ceiling-table tbody');
         if (!tbody) return;
+
+        // รายชื่อฝ่ายอ้างอิงจาก Dropdown ในหน้า Member เป๊ะๆ
+        const allDepts = [
+            'อำนวยการ', 'สวัสดิการ', 'โครงงาน', 'อุปกรณ์', 'สถานที่', 
+            'สันทนาการ', 'เหรัญญิก', 'สปอนเซอร์', 'PR', 'สัมพันธ์ชาวบ้าน', 'อื่นๆ'
+        ];
+
         try {
-            const { data, error } = await supabaseClient.from('department_ceilings').select('*').order('department');
+            const { data, error } = await supabaseClient.from('department_ceilings').select('*');
             if (error) throw error;
             
-            tbody.innerHTML = data.map(c => `
-                <tr>
-                    <td style="font-weight: 500;">${c.department}</td>
-                    <td><input type="number" id="ceil-amt-${c.department}" value="${c.ceiling_amount}" style="width: 100%; padding: 4px;"></td>
-                    <td style="text-align:center;"><button onclick="saveCeiling('${c.department}')" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;">💾</button></td>
-                </tr>
-            `).join('');
-        } catch(e) { console.error(e); }
+            // จับคู่ข้อมูลที่มีอยู่ใน Database
+            const dbDepts = {};
+            if (data) {
+                data.forEach(c => dbDepts[c.department] = c.ceiling_amount);
+            }
+
+            // สร้างตารางตามรายชื่อฝ่ายทั้งหมด (แม้จะยังไม่เคยกินหนดค่า ก็จะขึ้น 0)
+            tbody.innerHTML = allDepts.map(dept => {
+                const amt = dbDepts[dept] || 0;
+                return `
+                    <tr>
+                        <td style="font-weight: 500; color: var(--primary);">${dept}</td>
+                        <td><input type="number" id="ceil-amt-${dept}" value="${amt}" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"></td>
+                        <td style="text-align:center;"><button onclick="saveCeiling('${dept}')" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; border-color: var(--success); color: var(--success);">💾 บันทึก</button></td>
+                    </tr>
+                `;
+            }).join('');
+        } catch(e) { 
+            console.error(e); 
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:red;">โหลดข้อมูลไม่ได้: ${e.message}</td></tr>`;
+        }
     };
 
     window.saveCeiling = async function(dept) {
@@ -1777,22 +1797,25 @@ window.closeCampAndReset = async function() {
         }
 
         try {
-            // 🚨 เพิ่ม const { error } และ throw error เพื่อดักปัญหา
-            const { error } = await supabaseClient.from('department_ceilings').upsert([{ department: saveDept, ceiling_amount: saveAmt }]);
+            // 🚨 ใส่ onConflict: 'department' เพื่อบังคับให้เซฟทับของเดิมได้
+            const { error } = await supabaseClient.from('department_ceilings').upsert(
+                [{ department: saveDept, ceiling_amount: saveAmt }], 
+                { onConflict: 'department' }
+            );
+            
             if (error) throw error; 
 
-            showToast('บันทึกเพดานงบสำเร็จ', 'success');
+            showToast(`บันทึกงบของฝ่าย "${saveDept}" สำเร็จ`, 'success');
             if(dept === 'new') {
                 document.getElementById('new-ceiling-dept').value = '';
                 document.getElementById('new-ceiling-amt').value = '';
             }
-            window.loadCeilings();
+            window.loadCeilings(); // โหลดใหม่เพื่ออัปเดตตาราง
         } catch(err) {
-            // ถ้าระบบบันทึกไม่เข้า จะแจ้งเตือนให้รู้ทันที
             showToast('บันทึกไม่สำเร็จ: ' + err.message, 'error');
+            console.error("Save Ceiling Error:", err);
         }
     };
-
     // โหลดตารางคำขอแผน
     window.loadAdminPlans = async function() {
         const tbody = document.querySelector('#admin-plans-table tbody');
