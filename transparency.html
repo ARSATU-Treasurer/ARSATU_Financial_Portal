@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transparency Dashboard - ARSATU Financial Portal</title>
+    <title>Summary Dashboard - ARSATU Financial Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #3b82f6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --info: #0ea5e9; --bg: #f8fafc; --text: #1e293b; }
         body { font-family: 'Prompt', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
-        header { background: white; padding: 20px 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-bottom: 4px solid var(--primary); text-align: center; }
+        header { background: white; padding: 20px 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-bottom: 4px solid var(--primary); text-align: center; position: relative; }
         .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
@@ -25,12 +25,20 @@
         td { padding: 15px; border-top: 1px solid #f1f5f9; }
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
         .footer-note { text-align: center; margin-top: 50px; color: #94a3b8; font-size: 12px; padding-bottom: 30px; }
+        
+        /* ปุ่มย้อนกลับ */
+        .back-btn { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); border: none; background: #f1f5f9; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-family: 'Prompt'; font-size: 13px; color: #64748b; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
+        .back-btn:hover { background: #e2e8f0; color: var(--text); }
+        @media (max-width: 600px) { .back-btn { position: static; transform: none; margin-bottom: 10px; display: inline-flex; } }
     </style>
 </head>
 <body>
     <header>
-        <h1 style="margin: 0; color: var(--primary);">🏛️ ARSATU Transparency Portal</h1>
-        <p style="margin: 5px 0 0 0; color: #64748b;">รายงานสรุปความเคลื่อนไหวทางการเงิน เพื่อความโปร่งใสตรวจสอบได้</p>
+        <button onclick="window.location.href='index.html'" class="back-btn">
+            🔐 Log-in
+        </button>
+        <h1 style="margin: 0; color: var(--primary);">⏰ ARSATU Dashboard</h1>
+        <p style="margin: 5px 0 0 0; color: #64748b;">สถานะทางการเงิน ณ ปัจจุบัน</p>
     </header>
 
     <main class="container">
@@ -44,11 +52,11 @@
                 <div class="stat-val" id="sum-fund" style="color: var(--info);">กำลังโหลด...</div>
             </div>
             <div class="card" style="border-top: 5px solid var(--success);">
-                <span style="color: #64748b; font-size: 14px;">📈 รายรับ & ยอดบริจาค</span>
+                <span style="color: #64748b; font-size: 14px;">🟢 รายรับ & ยอดบริจาค</span>
                 <div class="stat-val" id="sum-income" style="color: var(--success);">กำลังโหลด...</div>
             </div>
             <div class="card" style="border-top: 5px solid var(--danger);">
-                <span style="color: #64748b; font-size: 14px;">📉 รายจ่ายทั้งหมด</span>
+                <span style="color: #64748b; font-size: 14px;">🔴 รายจ่ายทั้งหมด</span>
                 <div class="stat-val" id="sum-expense" style="color: var(--danger);">กำลังโหลด...</div>
             </div>
         </div>
@@ -56,7 +64,7 @@
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab(event, 'view-ledger')">📖 สมุดบัญชีกลาง</button>
             <button class="tab-btn" onclick="switchTab(event, 'view-clearance')">📑 รายการเบิกจ่าย</button>
-            <button class="tab-btn" onclick="switchTab(event, 'view-audit')">📜 ประวัติการแก้ไข</button>
+            <button class="tab-btn" onclick="switchTab(event, 'view-audit')">✏️ ประวัติการแก้ไข</button>
         </div>
 
         <div id="view-ledger" class="tab-pane active">
@@ -85,7 +93,7 @@
 
         <div id="view-audit" class="tab-pane">
             <div class="card">
-                <h3 style="margin-top:0;">📜 ประวัติการแก้ไขข้อมูล (Audit Log)</h3>
+                <h3 style="margin-top:0;">✏️ ประวัติการแก้ไขข้อมูล (Audit Log)</h3>
                 <div class="table-res">
                     <table id="audit-table">
                         <thead><tr><th>วันเวลา</th><th>การกระทำ</th><th>รหัสรายการ</th><th>เหตุผล/รายละเอียด</th></tr></thead>
@@ -96,13 +104,13 @@
         </div>
 
         <div class="footer-note">
-            ระบบความโปร่งใสทางการเงิน ARSATU Financial Portal © 2026<br>
-            หน้านี้เชื่อมต่อฐานข้อมูลแบบ Real-time และอนุญาตให้ <b>อ่านได้อย่างเดียวเท่านั้น (Read-Only)</b>
+            Real-time Dashboard ARSATU Financial Portal © 2026<br>
+            หน้านี้เชื่อมต่อฐานข้อมูลแบบ Real-time และสามารถ <b>อ่านได้เท่านั้น (Read-Only)</b> กรณีแก้ไขต้องเข้าสู่ระบบ
         </div>
     </main>
 
     <div id="detail-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
-        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 600px; width: 100%; max-height: 85vh; overflow-y: auto; position: relative;">
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 650px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative;">
             <button onclick="closeModal()" style="position: absolute; top: 15px; right: 15px; border: none; background: #f1f5f9; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-weight: bold; font-size: 16px;">✕</button>
             <div id="modal-body">กำลังโหลด...</div>
         </div>
@@ -136,7 +144,6 @@
         async function loadAllTransparencyData() {
             const pMap = await getProfileMap();
 
-            // 1. สรุปยอด
             try {
                 const { data: bankData } = await supabaseClient.from('bank_accounts').select('balance');
                 const { data: fundData } = await supabaseClient.from('funds').select('remaining_budget');
@@ -160,7 +167,6 @@
                 document.getElementById('sum-expense').textContent = `฿${tExp.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
             } catch(e) { console.error("Summary Error:", e); }
 
-            // 2. สมุดบัญชี
             try {
                 const { data: ledger } = await supabaseClient.from('transactions').select('*').eq('status', 'approved').order('created_at', { ascending: false });
                 const tbody = document.querySelector('#ledger-table tbody');
@@ -182,7 +188,6 @@
                 }
             } catch(e) { console.error("Ledger Error:", e); }
 
-            // 3. บิลเบิกจ่าย
             try {
                 const { data: clearances, error: clrErr } = await supabaseClient.from('clearances').select('*').neq('status', 'draft').order('created_at', { ascending: false });
                 const tbody = document.querySelector('#clearance-table tbody');
@@ -194,7 +199,6 @@
                         const userName = pMap[c.member_id] || 'ไม่ระบุชื่อ';
                         const hasImg = c.receipt_url || c.return_slip_url || c.statement_url;
                         const iconHtml = hasImg ? '🖼️ ดูรายละเอียด' : 'ดูรายละเอียด';
-
                         return `
                         <tr>
                             <td>${new Date(c.created_at).toLocaleDateString('th-TH')}</td>
@@ -202,11 +206,7 @@
                             <td>${c.purpose || '-'}</td>
                             <td style="font-weight:bold;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</td>
                             <td><span class="badge" style="${getStatusStyle(c.status)}">${translateStatus(c.status)}</span></td>
-                            <td style="text-align:center;">
-                                <button onclick="viewClearanceDetail('${c.id}')" class="badge" style="cursor:pointer; border:1px solid var(--primary); background:white; color:var(--primary);">
-                                    ${iconHtml}
-                                </button>
-                            </td>
+                            <td style="text-align:center;"><button onclick="viewClearanceDetail('${c.id}')" class="badge" style="cursor:pointer; border:1px solid var(--primary); background:white; color:var(--primary);">${iconHtml}</button></td>
                         </tr>
                     `}).join('');
                 } else {
@@ -214,11 +214,9 @@
                 }
             } catch(e) { console.error("Clearance Error:", e); }
 
-            // 4. ประวัติแก้ไข (Audit Log)
             try {
                 const { data: audits, error: audErr } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
                 const tbody = document.querySelector('#audit-table tbody');
-                
                 if (audErr) {
                     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">โหลดข้อมูลไม่ได้ (ติดสิทธิ์ความปลอดภัย)</td></tr>';
                 } else if (audits && audits.length > 0) {
@@ -240,9 +238,6 @@
             } catch(e) { console.error("Audit Error:", e); }
         }
 
-        // ==========================================
-        // Helpers & Modal Views
-        // ==========================================
         function getStatusStyle(status) {
             if (status === 'cleared') return 'background:#d1fae5; color:#059669;';
             if (status === 'cancelled') return 'background:#fee2e2; color:#ef4444;';
@@ -254,32 +249,38 @@
             return map[status] || status;
         }
 
+        // ฟังก์ชันช่วยจัดการสื่อ (รูปภาพ และ PDF)
+        function renderMedia(url, label, color) {
+            if (!url) return '';
+            const isPdf = url.toLowerCase().endsWith('.pdf');
+            let mediaHtml = isPdf 
+                ? `<iframe src="${url}" style="width:100%; height:450px; border:1px solid #e2e8f0; border-radius:8px; margin-top:5px;"></iframe>`
+                : `<a href="${url}" target="_blank"><img src="${url}" style="width:100%; border-radius:8px; margin-top:5px; background:#f1f5f9; max-height:450px; object-fit:contain;"></a>`;
+            
+            return `<div style="margin-bottom: 20px; border-bottom: 1px dashed #eee; padding-bottom: 15px;">
+                        <span style="font-size:13px; color:${color}; font-weight:bold;">${label}:</span>
+                        ${mediaHtml}
+                        ${isPdf ? '' : '<p style="text-align:center; font-size:11px; color:gray; margin-top:5px;">(คลิกที่รูปเพื่อดูขนาดเต็ม)</p>'}
+                    </div>`;
+        }
+
         async function viewClearanceDetail(id) {
             try {
                 const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
                 const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
                 if (!c) return;
                 
-                // สรุปบิลย่อย
                 let itemsHtml = items && items.length > 0 
                     ? items.map(i => `<li style="margin-bottom:8px; border-bottom:1px dashed #eee; padding-bottom:5px;">${i.item_name} <span style="float:right; font-weight:bold;">฿${parseFloat(i.total_price||0).toLocaleString()}</span></li>`).join('') 
                     : '<li style="color:gray;">ไม่มีรายการย่อย</li>';
                 
-                // ดึงรูปทุกประเภทมาต่อกัน
-                let imagesHtml = '';
-                if (c.receipt_url) {
-                    imagesHtml += `<div style="margin-bottom: 15px;"><span style="font-size:13px; color:#64748b; font-weight:bold;">📄 ใบเสร็จ/สลิปโอนเงิน (ผู้เบิกแนบ):</span><a href="${c.receipt_url}" target="_blank"><img src="${c.receipt_url}" style="width:100%; border-radius:8px; margin-top:5px; background:#f1f5f9; max-height:400px; object-fit:contain;"></a></div>`;
-                }
-                if (c.return_slip_url) {
-                    imagesHtml += `<div style="margin-bottom: 15px;"><span style="font-size:13px; color:#ef4444; font-weight:bold;">💸 สลิปเงินทอน (ผู้เบิกแนบ):</span><a href="${c.return_slip_url}" target="_blank"><img src="${c.return_slip_url}" style="width:100%; border-radius:8px; margin-top:5px; background:#f1f5f9; max-height:400px; object-fit:contain;"></a></div>`;
-                }
-                if (c.statement_url) {
-                    imagesHtml += `<div style="margin-bottom: 15px;"><span style="font-size:13px; color:#10b981; font-weight:bold;">🏦 สลิปโอนเงิน (เหรัญญิกแนบ):</span><a href="${c.statement_url}" target="_blank"><img src="${c.statement_url}" style="width:100%; border-radius:8px; margin-top:5px; background:#f1f5f9; max-height:400px; object-fit:contain;"></a></div>`;
-                }
+                // รวมหลักฐานทั้งหมด (รองรับทั้ง Image และ PDF)
+                let allMedia = '';
+                allMedia += renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
+                allMedia += renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+                allMedia += renderMedia(c.statement_url, '🏦 หลักฐานการโอนเงิน (เหรัญญิกแนบ)', '#10b981');
                 
-                if (!imagesHtml) {
-                    imagesHtml = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีภาพหลักฐานแนบในระบบ</div>';
-                }
+                if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
 
                 document.getElementById('modal-body').innerHTML = `
                     <h2 style="color:var(--primary); margin-top:0;">${c.purpose}</h2>
@@ -293,9 +294,9 @@
                         <div style="text-align:right; margin-top:15px; font-size:18px;">ยอดรวมสุทธิ: <strong style="color:var(--primary); font-size:24px;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</strong></div>
                     </div>
                     
-                    <div style="margin-top: 20px;">
-                        <h4 style="margin-bottom: 10px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">📸 หลักฐานแนบทั้งหมด</h4>
-                        ${imagesHtml}
+                    <div style="margin-top: 25px;">
+                        <h4 style="margin-bottom: 15px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">📸 หลักฐานทั้งหมด (รูปภาพ/PDF)</h4>
+                        ${allMedia}
                     </div>
                 `;
                 document.getElementById('detail-modal').style.display = 'flex';
@@ -307,11 +308,12 @@
                 const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
                 if (!tx) return;
                 document.getElementById('modal-body').innerHTML = `
-                    <h2 style="color:var(--primary); margin-top:0;">รายละเอียดบัญชี</h2>
+                    <h2 style="color:var(--primary); margin-top:0;">รายละเอียดสมุดบัญชี</h2>
                     <div style="background:#f8fafc; padding:15px; border-radius:10px;">
                         <p style="margin:8px 0;"><b>รายการ:</b> ${tx.description}</p>
-                        <p style="margin:8px 0;"><b>ประเภท:</b> ${tx.transaction_type === 'expense' ? '<span style="color:red;">รายจ่าย</span>' : '<span style="color:green;">รายรับ</span>'}</p>
+                        <p style="margin:8px 0;"><b>ประเภท:</b> ${['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type) ? '<span style="color:green; font-weight:bold;">รายรับ</span>' : '<span style="color:red; font-weight:bold;">รายจ่าย</span>'}</p>
                         <p style="margin:8px 0;"><b>ยอดเงิน:</b> <strong style="font-size:20px;">฿${parseFloat(tx.amount).toLocaleString()}</strong></p>
+                        <p style="margin:8px 0;"><b>บัญชี:</b> ${tx.bank_name || 'ไม่ระบุ'}</p>
                     </div>
                 `;
                 document.getElementById('detail-modal').style.display = 'flex';

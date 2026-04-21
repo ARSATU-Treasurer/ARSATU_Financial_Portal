@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - ระบบบริหารการเงิน</title>
+    <title>Admin Portal - ARSATU Financial Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #8e44ad; --primary-hover: #9b59b6; --success: #27ae60; --info: #2980b9; --warning: #f39c12; --danger: #c0392b; --bg-color: #f4f6f9; --text-main: #2c3e50; --text-muted: #7f8c8d; --border: #e0e6ed; --card-bg: #ffffff; }
@@ -64,8 +64,8 @@
 <body>
     <header style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <h2 style="margin: 0; color: var(--primary);">Admin Dashboard</h2>
-            <small style="color: var(--text-muted);">ระบบบริหารการเงิน (ผู้ดูแล)</small>
+            <h2 style="margin: 0; color: var(--primary);">Admin Portal</h2>
+            <small style="color: var(--text-muted);">ระบบบริหารการเงิน (เหรัญญิก)</small>
         </div>
         <div style="display: flex; align-items: center; gap: 15px;">
             <div id="noti-bell" style="position: relative; cursor: pointer; font-size: 22px;" title="รายการรอตรวจสอบ">
@@ -73,9 +73,9 @@
             </div>
             <div style="text-align: right; line-height: 1.2; border-left: 2px solid var(--border); padding-left: 15px;">
                 <strong id="current-user-name" style="color: var(--primary); font-size: 14px;">กำลังโหลด...</strong><br>
-                <span id="current-user-role" style="font-size: 12px; color: gray;">ผู้ดูแลระบบ</span>
+                <span id="current-user-role" style="font-size: 12px; color: gray;">เหรัญญิก</span>
             </div>
-            <button class="btn btn-outline" style="padding: 6px 10px; font-size: 13px; border-color: #3b82f6; color: #3b82f6; background: #eff6ff;" onclick="window.location.href='transparency.html'">🏛️ Transparency</button>
+            <button class="btn btn-outline" style="padding: 6px 10px; font-size: 13px; border-color: #3b82f6; color: #3b82f6; background: #eff6ff;" onclick="window.location.href='transparency.html'">🏛️ Public Dashboard</button>
             <button id="switch-role-btn" class="btn btn-outline" style="padding: 6px 10px; font-size: 13px; border-color: var(--info); color: var(--info);" onclick="window.location.href='member.html'">👤 โหมด Member</button>
             <button id="logout-btn" class="btn btn-outline" style="padding: 6px 10px; font-size: 13px; border-color: var(--danger); color: var(--danger);">ออก</button>
         </div>
