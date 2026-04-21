@@ -233,46 +233,34 @@
         </div>
         
         <form id="budget-plan-form" style="margin-top: 20px;">
-            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label>หัวข้อการเบิก / แผนงาน</label>
-                    <input type="text" id="plan-purpose" placeholder="เช่น แผนจัดซื้อสวัสดิการค่าย" required>
-                </div>
-                <div class="form-group">
-                    <label>วันที่ต้องการใช้เงิน</label>
-                    <input type="date" id="plan-date-needed" required>
-                </div>
-            </div>
-
-            <div style="margin: 20px 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="margin: 0;">🛒 รายการที่ต้องการซื้อ</label>
-                    <button type="button" id="add-plan-item-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 13px;">+ เพิ่มรายการ</button>
-                </div>
-                <div class="table-responsive" style="border: 1px solid var(--border); border-radius: 8px;">
-                    <table id="plan-items-table" style="min-width: 800px;">
-                        <thead>
-                            <tr>
-                                <th>รายการ</th>
-                                <th style="width: 10%;">จำนวน</th>
-                                <th style="width: 15%;">หน่วยละ (฿)</th>
-                                <th style="width: 15%;">ราคารวม (฿)</th>
-                                <th style="width: 20%;">ความสำคัญ (1-5)</th>
-                                <th style="width: 15%;">หมายเหตุ</th>
-                                <th style="width: 8%; text-align: center;">ลบ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="plan-items-tbody"></tbody>
-                    </table>
-                </div>
-                <div style="text-align: right; margin-top: 15px; font-size: 16px;">
-                    จำนวนเงินรวมทั้งหมด: <strong style="color: var(--primary); font-size: 20px;"><span id="plan-total-amount">0.00</span> ฿</strong>
-                </div>
-            </div>
-            
-            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px;">📤 ส่งแผนงบประมาณให้เหรัญญิก</button>
-            <div id="plan-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
-        </form>
+    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+        <div class="form-group">
+            <label>ฝ่าย / แผนก</label>
+            <select id="plan-dept" required>
+                <option value="" disabled selected>-- เลือกฝ่าย --</option>
+                <option value="อำนวยการ">อำนวยการ-ประธาน/รองประธาน/เลขานุการ</option>
+                <option value="สวัสดิการ">สวัสดิการ</option>
+                <option value="โครงงาน">โครงงาน</option>
+                <option value="อุปกรณ์">อุปกรณ์</option>
+                <option value="สถานที่">สถานที่</option>
+                <option value="สันทนาการ">สันทนาการ</option>
+                <option value="เหรัญญิก">เหรัญญิก</option>
+                <option value="สปอนเซอร์">สปอนเซอร์</option>
+                <option value="PR">PR</option>
+                <option value="สัมพันธ์ชาวบ้าน">สัมพันธ์ชาวบ้าน</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>หัวข้อการเบิก / แผนงาน</label>
+            <input type="text" id="plan-purpose" placeholder="เช่น แผนจัดซื้อสวัสดิการค่าย" required>
+        </div>
+        <div class="form-group">
+            <label>วันที่ต้องการใช้เงิน</label>
+            <input type="date" id="plan-date-needed" required>
+        </div>
+    </div>
+    </form>
     </div>
 
     <div class="card">

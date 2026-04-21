@@ -1057,6 +1057,93 @@ if (items.length > 0) {
             } finally {
                 subBtn.disabled = false;
             }
+            // อัปเดตในส่วน budgetForm.addEventListener('submit', ...)
+const budgetForm = document.getElementById('budget-plan-form');
+if (budgetForm) {
+    budgetForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('plan-msg');
+        const subBtn = budgetForm.querySelector('button[type="submit"]');
+        
+        subBtn.disabled = true;
+        msg.textContent = 'กำลังส่งแผน...';
+
+        try {
+            // ดึงค่าจาก Dropdown ที่เพิ่มใหม่
+            const dept = document.getElementById('plan-dept').value; 
+            const purpose = document.getElementById('plan-purpose').value;
+            const dateNeeded = document.getElementById('plan-date-needed').value;
+            
+            if (!dept) throw new Error("กรุณาเลือกฝ่าย / แผนก");
+
+            const items = [];
+            let totalAmount = 0;
+            document.querySelectorAll('#plan-items-tbody tr').forEach(tr => {
+                const name = tr.querySelector('.plan-name').value;
+                const qty = parseFloat(tr.querySelector('.plan-qty').value) || 0;
+                const price = parseFloat(tr.querySelector('.plan-price').value) || 0;
+                const prio = parseInt(tr.querySelector('.plan-priority').value) || 1;
+                const notes = tr.querySelector('.plan-notes').value;
+                
+                if (name) {
+                    const rowTotal = qty * price;
+                    totalAmount += rowTotal;
+                    items.push({ 
+                        item_name: name, 
+                        quantity: qty, 
+                        unit_price: price, 
+                        total_price: rowTotal, 
+                        priority: prio, 
+                        notes: notes 
+                    });
+                }
+            });
+
+            // บันทึกลง Supabase (โค้ดส่วนเดิม)
+            const { data: planData, error: planErr } = await supabaseClient.from('budget_plans')
+                .insert([{ 
+                    department: dept, 
+                    purpose: purpose, 
+                    date_needed: dateNeeded, 
+                    total_amount: totalAmount, 
+                    created_by: currentUser.id 
+                }])
+                .select();
+            
+            if (planErr) throw planErr;
+            const planId = planData[0].id;
+
+            const itemsToInsert = items.map(i => ({ ...i, plan_id: planId }));
+            await supabaseClient.from('budget_plan_items').insert(itemsToInsert);
+
+            msg.style.color = 'var(--success)';
+            msg.textContent = '✅ ส่งแผนงบประมาณเรียบร้อยแล้ว';
+            
+            budgetForm.reset();
+            applySavedData(); // เรียกฟังก์ชันเดิมเพื่อดึงฝ่ายที่เซฟไว้กลับมาใหม่
+            window.loadBudgetPlans();
+            
+        } catch (err) {
+            msg.style.color = 'var(--danger)';
+            msg.textContent = 'ผิดพลาด: ' + err.message;
+        } finally {
+            subBtn.disabled = false;
+        }
+    });
+}
+
+// เพิ่มระบบ Auto-select ฝ่ายใน Tab วางแผนงบประมาณ
+const originalApplyData = window.applySavedData;
+window.applySavedData = function() {
+    if (originalApplyData) originalApplyData();
+    
+    // ดึงค่าฝ่ายที่เซฟไว้ใน LocalStorage มาเลือกใน Dropdown แผนงบประมาณ
+    const savedDept = localStorage.getItem('user_department');
+    const planDeptSelect = document.getElementById('plan-dept');
+    if (planDeptSelect && savedDept) {
+        planDeptSelect.value = savedDept;
+    }
+};
         });
     }
 
