@@ -1147,20 +1147,48 @@ window.applySavedData = function() {
         });
     }
 
+    // ฟังก์ชันดึงเพดานงบเฉพาะฝ่ายที่เลือก
+    window.loadDeptCeiling = async function(deptName) {
+        const display = document.getElementById('dept-ceiling-display');
+        if (!display || !deptName) return;
+        
+        display.textContent = 'กำลังโหลด...';
+        try {
+            const { data: ceiling, error } = await supabaseClient
+                .from('department_ceilings')
+                .select('ceiling_amount')
+                .eq('department', deptName)
+                .single();
+            
+            if (ceiling) {
+                display.textContent = `฿${parseFloat(ceiling.ceiling_amount).toLocaleString()}`;
+            } else {
+                display.textContent = 'ยังไม่ได้กำหนด';
+            }
+        } catch(err) {
+            display.textContent = 'ยังไม่ได้กำหนด';
+        }
+    };
+
+    // ทำให้ Dropdown ดึงตัวเลขมาอัปเดตแบบ Real-time
+    const planDeptSelect = document.getElementById('plan-dept');
+    if (planDeptSelect) {
+        planDeptSelect.addEventListener('change', (e) => {
+            window.loadDeptCeiling(e.target.value);
+        });
+    }
+
+    // ฟังก์ชันโหลดตารางประวัติ (เวอร์ชันอัปเดต)
     window.loadBudgetPlans = async function() {
         if (!currentUser) return;
         
-        // 1. โหลดเพดานงบ
-        const dept = savedDepartment || 'ส่วนกลาง';
-        try {
-            const { data: ceiling } = await supabaseClient.from('department_ceilings').select('*').eq('department', dept).single();
-            const display = document.getElementById('dept-ceiling-display');
-            if (display) {
-                display.textContent = ceiling ? `฿${parseFloat(ceiling.ceiling_amount).toLocaleString()}` : 'ยังไม่ได้กำหนด';
-            }
-        } catch(e) {}
+        // เมื่อเปิดหน้ามา ให้ดึงเพดานงบตาม Dropdown ที่เลือกอยู่
+        if (planDeptSelect && planDeptSelect.value) {
+            window.loadDeptCeiling(planDeptSelect.value);
+        } else if (savedDepartment) {
+            window.loadDeptCeiling(savedDepartment);
+        }
 
-        // 2. โหลดประวัติ
         const tbody = document.querySelector('#plan-history-table tbody');
         if (!tbody) return;
         try {

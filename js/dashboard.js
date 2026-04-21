@@ -1777,7 +1777,10 @@ window.closeCampAndReset = async function() {
         }
 
         try {
-            await supabaseClient.from('department_ceilings').upsert([{ department: saveDept, ceiling_amount: saveAmt }]);
+            // 🚨 เพิ่ม const { error } และ throw error เพื่อดักปัญหา
+            const { error } = await supabaseClient.from('department_ceilings').upsert([{ department: saveDept, ceiling_amount: saveAmt }]);
+            if (error) throw error; 
+
             showToast('บันทึกเพดานงบสำเร็จ', 'success');
             if(dept === 'new') {
                 document.getElementById('new-ceiling-dept').value = '';
@@ -1785,7 +1788,8 @@ window.closeCampAndReset = async function() {
             }
             window.loadCeilings();
         } catch(err) {
-            showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+            // ถ้าระบบบันทึกไม่เข้า จะแจ้งเตือนให้รู้ทันที
+            showToast('บันทึกไม่สำเร็จ: ' + err.message, 'error');
         }
     };
 
