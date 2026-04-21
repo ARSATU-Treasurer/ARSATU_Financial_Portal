@@ -84,7 +84,7 @@
                 <h3 style="margin-top:0;">📜 ประวัติการแก้ไขข้อมูล (Audit Log)</h3>
                 <div class="table-res">
                     <table id="audit-table">
-                        <thead><tr><th>วันเวลา</th><th>การกระทำ</th><th>รหัสรายการ</th><th>เหตุผล</th></tr></thead>
+                        <thead><tr><th>วันเวลา</th><th>การกระทำ</th><th>รหัสรายการ</th><th>เหตุผล/รายละเอียด</th></tr></thead>
                         <tbody><tr><td colspan="4" style="text-align:center; padding: 30px;">กำลังโหลดข้อมูล...</td></tr></tbody>
                     </table>
                 </div>
@@ -93,7 +93,7 @@
 
         <div class="footer-note">
             ระบบความโปร่งใสทางการเงิน ARSATU Financial Portal © 2026<br>
-            หน้านี้เชื่อมต่อฐานข้อมูลแบบ Real-time และอนุญาตให้ <b>อ่านได้อย่างเดียวเท่านั้น (Read-Only)</b> ไม่สามารถแก้ไขได้
+            หน้านี้เชื่อมต่อฐานข้อมูลแบบ Real-time และอนุญาตให้ <b>อ่านได้อย่างเดียวเท่านั้น (Read-Only)</b>
         </div>
     </main>
 
@@ -107,17 +107,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // 1. เชื่อมต่อฐานข้อมูล (ใช้ URL และ Key ของคุณโดยตรง)
+        // 1. เชื่อมต่อฐานข้อมูล
         const supabaseUrl = 'https://runskpzhgsvvfdqdjxdf.supabase.co';
         const supabaseKey = 'sb_publishable_3PbjecPyG7GZGv9DltScug_3uC_oQhV';
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // 2. เมื่อหน้าเว็บโหลดเสร็จ ให้ดึงข้อมูลมาแสดงทันที
         document.addEventListener('DOMContentLoaded', () => {
-            loadTransparencyData();
+            loadAllTransparencyData();
         });
 
-        // ฟังก์ชันสลับ Tab หน้าต่าง
         function switchTab(evt, tabId) {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -125,124 +123,157 @@
             evt.currentTarget.classList.add('active');
         }
 
-        // ฟังก์ชันหลัก: ดึงข้อมูล
-        async function loadTransparencyData() {
+        // ตัวช่วยโหลดชื่อโปรไฟล์แบบปลอดภัย ไม่พึ่งพา Foreign Key
+        async function getProfileMap() {
             try {
-                // ดึงยอดคงเหลือ
-                const { data: bankData } = await supabaseClient.from('bank_accounts').select('balance');
-                // ดึงรายรับ/รายจ่าย
-                const { data: txData } = await supabaseClient.from('transactions').select('amount, transaction_type');
+                const { data } = await supabaseClient.from('profiles').select('id, full_name');
+                const map = {};
+                if (data) data.forEach(p => map[p.id] = p.full_name);
+                return map;
+            } catch(e) { return {}; }
+        }
 
-                let totalIncome = 0;
-                let totalExpense = 0;
+        // โหลดข้อมูลแยกอิสระจากกัน ป้องกัน Error ลุกลาม
+        async function loadAllTransparencyData() {
+            const pMap = await getProfileMap();
+
+            // 🌟 ส่วนที่ 1: การ์ดสรุปยอด
+            try {
+                const { data: bankData } = await supabaseClient.from('bank_accounts').select('balance');
+                const { data: txData } = await supabaseClient.from('transactions').select('amount, transaction_type').eq('status', 'approved');
+
+                let totalIncome = 0; let totalExpense = 0;
                 let netBalance = bankData ? bankData.reduce((sum, b) => sum + b.balance, 0) : 0;
 
                 if (txData) {
                     txData.forEach(tx => {
-                        if (tx.transaction_type === 'income') totalIncome += tx.amount;
-                        else totalExpense += tx.amount;
+                        if (['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type)) totalIncome += parseFloat(tx.amount || 0);
+                        else if (tx.transaction_type === 'expense') totalExpense += parseFloat(tx.amount || 0);
                     });
                 }
-
                 document.getElementById('sum-net').textContent = `฿${netBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
                 document.getElementById('sum-income').textContent = `฿${totalIncome.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
                 document.getElementById('sum-expense').textContent = `฿${totalExpense.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            } catch(e) { console.error("Summary Error:", e); }
 
-                // โหลดตารางสมุดบัญชี
-                const { data: ledger } = await supabaseClient.from('transactions').select('*').order('created_at', { ascending: false });
-                const ledgerBody = document.querySelector('#ledger-table tbody');
-                ledgerBody.innerHTML = (ledger && ledger.length > 0) ? ledger.map(tx => `
-                    <tr>
-                        <td>${new Date(tx.created_at).toLocaleDateString('th-TH')}</td>
-                        <td><span class="badge" style="background:#eff6ff; color:#3b82f6;">${tx.department || 'ส่วนกลาง'}</span></td>
-                        <td>${tx.description}</td>
-                        <td style="text-align:right; color:var(--success); font-weight:bold;">${tx.transaction_type === 'income' ? '฿' + tx.amount.toLocaleString() : '-'}</td>
-                        <td style="text-align:right; color:var(--danger); font-weight:bold;">${tx.transaction_type === 'expense' ? '฿' + tx.amount.toLocaleString() : '-'}</td>
-                        <td style="text-align:center;"><button onclick="viewTxDetail('${tx.id}')" style="cursor:pointer; border:1px solid var(--primary); padding:4px 10px; border-radius:6px; background:white; color:var(--primary); font-family: 'Prompt';">🔍 ดู</button></td>
-                    </tr>
-                `).join('') : '<tr><td colspan="6" style="text-align:center; padding:20px;">ไม่พบข้อมูล / หรือยังไม่มีการทำรายการ</td></tr>';
+            // 🌟 ส่วนที่ 2: สมุดบัญชี
+            try {
+                const { data: ledger } = await supabaseClient.from('transactions').select('*').eq('status', 'approved').order('created_at', { ascending: false });
+                const tbody = document.querySelector('#ledger-table tbody');
+                if (ledger && ledger.length > 0) {
+                    tbody.innerHTML = ledger.map(tx => {
+                        const isIncome = ['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type);
+                        return `
+                        <tr>
+                            <td>${new Date(tx.created_at).toLocaleDateString('th-TH')}</td>
+                            <td><span class="badge" style="background:#eff6ff; color:#3b82f6;">${tx.department || 'ส่วนกลาง'}</span></td>
+                            <td>${tx.description || '-'}</td>
+                            <td style="text-align:right; color:var(--success); font-weight:bold;">${isIncome ? '฿' + parseFloat(tx.amount).toLocaleString() : '-'}</td>
+                            <td style="text-align:right; color:var(--danger); font-weight:bold;">${tx.transaction_type === 'expense' ? '฿' + parseFloat(tx.amount).toLocaleString() : '-'}</td>
+                            <td style="text-align:center;"><button onclick="viewTxDetail('${tx.id}')" class="badge" style="cursor:pointer; border:1px solid var(--primary); background:white; color:var(--primary);">🔍 ดู</button></td>
+                        </tr>
+                    `}).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:gray;">ยังไม่มีรายการในสมุดบัญชี</td></tr>';
+                }
+            } catch(e) { console.error("Ledger Error:", e); }
 
-                // โหลดตารางรายการเบิกจ่าย
-                const { data: clearances } = await supabaseClient.from('clearances').select('*, profiles(full_name)').neq('status', 'draft').order('created_at', { ascending: false });
-                const clearanceBody = document.querySelector('#clearance-table tbody');
-                clearanceBody.innerHTML = (clearances && clearances.length > 0) ? clearances.map(c => `
-                    <tr>
-                        <td>${new Date(c.created_at).toLocaleDateString('th-TH')}</td>
-                        <td>${c.profiles?.full_name || 'ไม่ระบุชื่อ'}</td>
-                        <td>${c.purpose}</td>
-                        <td style="font-weight:bold;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</td>
-                        <td><span class="badge" style="${getStatusStyle(c.status)}">${translateStatus(c.status)}</span></td>
-                        <td style="text-align:center;"><button onclick="viewClearanceDetail('${c.id}')" style="cursor:pointer; border:1px solid var(--primary); padding:4px 10px; border-radius:6px; background:white; color:var(--primary); font-family: 'Prompt';">🔍 รายละเอียด</button></td>
-                    </tr>
-                `).join('') : '<tr><td colspan="6" style="text-align:center; padding:20px;">ไม่พบข้อมูล</td></tr>';
+            // 🌟 ส่วนที่ 3: บิลเบิกจ่าย (แก้บั๊ก Query พังตรงนี้)
+            try {
+                // โหลดตรงๆ ไม่ใช้การ Join 
+                const { data: clearances, error: clrErr } = await supabaseClient.from('clearances').select('*').neq('status', 'draft').order('created_at', { ascending: false });
+                
+                const tbody = document.querySelector('#clearance-table tbody');
+                
+                if (clrErr) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">โหลดข้อมูลไม่ได้ (อาจติดสิทธิ์ RLS ของตาราง Clearances)</td></tr>';
+                } else if (clearances && clearances.length > 0) {
+                    tbody.innerHTML = clearances.map(c => {
+                        const userName = pMap[c.member_id] || 'ไม่ระบุชื่อ (รหัสเก่า)';
+                        return `
+                        <tr>
+                            <td>${new Date(c.created_at).toLocaleDateString('th-TH')}</td>
+                            <td>${userName}</td>
+                            <td>${c.purpose || '-'}</td>
+                            <td style="font-weight:bold;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</td>
+                            <td><span class="badge" style="${getStatusStyle(c.status)}">${translateStatus(c.status)}</span></td>
+                            <td style="text-align:center;"><button onclick="viewClearanceDetail('${c.id}')" class="badge" style="cursor:pointer; border:1px solid var(--primary); background:white; color:var(--primary);">🔍 ดู</button></td>
+                        </tr>
+                    `}).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:gray;">ยังไม่มีประวัติการเบิกจ่าย</td></tr>';
+                }
+            } catch(e) { console.error("Clearance Error:", e); }
 
-                // โหลดประวัติแก้ไข
-                const { data: audits } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
-                const auditBody = document.querySelector('#audit-table tbody');
-                auditBody.innerHTML = (audits && audits.length > 0) ? audits.map(a => `
-                    <tr>
-                        <td>${new Date(a.created_at).toLocaleString('th-TH')}</td>
-                        <td><span class="badge" style="background:#f1f5f9; color: gray;">${a.action_type}</span></td>
-                        <td style="font-size: 12px;">${a.record_id.substring(0,8)}...</td>
-                        <td>${a.reason || '-'}</td>
-                    </tr>
-                `).join('') : '<tr><td colspan="4" style="text-align:center; padding:20px;">ไม่มีประวัติการแก้ไข</td></tr>';
-
-            } catch (e) {
-                console.error('Data Loading Error:', e);
-                // หากติดขัดเรื่องสิทธิ์ จะไม่ให้เว็บพัง แต่จะแสดงยอดเป็น 0
-            }
+            // 🌟 ส่วนที่ 4: ประวัติการแก้ไข (Audit Log)
+            try {
+                const { data: audits, error: audErr } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
+                const tbody = document.querySelector('#audit-table tbody');
+                
+                if (audErr) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">โหลดข้อมูลไม่ได้ (อาจติดสิทธิ์ RLS ของตาราง Audit_logs)</td></tr>';
+                } else if (audits && audits.length > 0) {
+                    tbody.innerHTML = audits.map(a => {
+                        // รองรับชื่อคอลัมน์หลายแบบใน Audit_logs
+                        const actType = a.action_type || a.action || 'แก้ไขข้อมูล';
+                        const recId = a.record_id || a.clearance_id || 'ไม่ระบุ';
+                        const reason = a.reason || a.edit_reason || '-';
+                        return `
+                        <tr>
+                            <td>${new Date(a.created_at).toLocaleString('th-TH')}</td>
+                            <td><span class="badge" style="background:#f1f5f9; color: gray;">${actType}</span></td>
+                            <td style="font-size: 12px; color:gray;">${recId.substring(0,8)}...</td>
+                            <td><span style="color:var(--danger); font-weight:500;">${reason}</span><br><small style="color:gray;">${a.new_value || ''}</small></td>
+                        </tr>
+                    `}).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:gray;">ไม่มีประวัติการแก้ไขข้อมูล</td></tr>';
+                }
+            } catch(e) { console.error("Audit Error:", e); }
         }
 
-        // ตั้งค่าสีสถานะ
+        // ==========================================
+        // ฟังก์ชันช่วยเหลือ (Helpers)
+        // ==========================================
         function getStatusStyle(status) {
             if (status === 'cleared') return 'background:#d1fae5; color:#059669;';
             if (status === 'cancelled') return 'background:#fee2e2; color:#ef4444;';
             return 'background:#fef3c7; color:#d97706;';
         }
 
-        // แปลภาษาของสถานะ
         function translateStatus(status) {
-            const map = { 'pending_advance': 'รอโอนเงินตั้งต้น', 'advance_transferred': 'โอนแล้ว/รอเคลียร์บิล', 'pending_clearance': 'รอตรวจสอบบิล', 'cleared': '✅ อนุมัติเรียบร้อย', 'cancelled': '❌ ยกเลิกแล้ว' };
+            const map = { 'pending_advance': 'รอโอนตั้งต้น', 'advance_transferred': 'โอนแล้ว/รอเคลียร์', 'pending_clearance': 'รอตรวจบิล', 'cleared': '✅ อนุมัติแล้ว', 'cancelled': '❌ ยกเลิก' };
             return map[status] || status;
         }
 
-        // ฟังก์ชัน: เปิดป๊อปอัพดูรายละเอียดบิล
         async function viewClearanceDetail(id) {
             try {
-                const { data: c } = await supabaseClient.from('clearances').select('*, clearance_items(*)').eq('id', id).single();
+                const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
+                const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
                 if (!c) return;
                 
-                let itemsHtml = c.clearance_items && c.clearance_items.length > 0 
-                    ? c.clearance_items.map(i => `<li style="margin-bottom:8px; border-bottom:1px dashed #eee; padding-bottom:5px;">
-                        ${i.item_name} <span style="float:right; font-weight:bold;">฿${i.amount.toLocaleString()}</span>
-                      </li>`).join('') 
+                let itemsHtml = items && items.length > 0 
+                    ? items.map(i => `<li style="margin-bottom:8px; border-bottom:1px dashed #eee; padding-bottom:5px;">${i.item_name} <span style="float:right; font-weight:bold;">฿${parseFloat(i.total_price||0).toLocaleString()}</span></li>`).join('') 
                     : '<li style="color:gray;">ไม่มีรายการย่อย</li>';
                 
                 document.getElementById('modal-body').innerHTML = `
                     <h2 style="color:var(--primary); margin-top:0;">${c.purpose}</h2>
-                    <p style="margin:5px 0;"><b>วันที่ทำรายการ:</b> ${new Date(c.created_at).toLocaleString('th-TH')}</p>
+                    <p style="margin:5px 0;"><b>วันที่:</b> ${new Date(c.created_at).toLocaleString('th-TH')}</p>
                     <p style="margin:5px 0;"><b>ฝ่าย/แผนก:</b> ${c.department || '-'}</p>
-                    <p style="margin:5px 0;"><b>สถานะปัจจุบัน:</b> ${translateStatus(c.status)}</p>
+                    <p style="margin:5px 0;"><b>สถานะปัจจุบัน:</b> <span class="badge" style="${getStatusStyle(c.status)}">${translateStatus(c.status)}</span></p>
                     
                     <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-top:20px;">
                         <h4 style="margin-top:0; color: #475569;">รายการบิลย่อย</h4>
                         <ul style="list-style:none; padding:0; margin:0;">${itemsHtml}</ul>
-                        <div style="text-align:right; margin-top:15px; font-size:18px;">
-                            ยอดรวมสุทธิ: <strong style="color:var(--primary); font-size:24px;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</strong>
-                        </div>
+                        <div style="text-align:right; margin-top:15px; font-size:18px;">ยอดรวม: <strong style="color:var(--primary); font-size:24px;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</strong></div>
                     </div>
-
-                    <h4 style="margin-bottom: 5px; color: #475569;">หลักฐานแนบ (สลิป/ใบเสร็จ)</h4>
-                    ${c.statement_url ? `<a href="${c.statement_url}" target="_blank"><img src="${c.statement_url}" style="width:100%; max-height: 300px; object-fit: contain; background: #e2e8f0; border-radius:8px; margin-top:10px;"></a><p style="text-align:center; font-size:12px; color:gray;">(คลิกที่รูปเพื่อดูขนาดเต็ม)</p>` : '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบมาในระบบ</div>'}
+                    <h4 style="margin-bottom: 5px; color: #475569;">หลักฐานแนบ</h4>
+                    ${c.statement_url ? `<a href="${c.statement_url}" target="_blank"><img src="${c.statement_url}" style="width:100%; max-height:300px; object-fit:contain; background:#e2e8f0; border-radius:8px; margin-top:10px;"></a>` : '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐาน</div>'}
                 `;
                 document.getElementById('detail-modal').style.display = 'flex';
-            } catch (e) {
-                console.error('View Detail Error:', e);
-            }
+            } catch (e) { console.error('Detail Error:', e); }
         }
 
-        // ฟังก์ชัน: เปิดป๊อปอัพดูรายละเอียดธุรกรรม
         async function viewTxDetail(id) {
             try {
                 const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
@@ -251,16 +282,12 @@
                     <h2 style="color:var(--primary); margin-top:0;">รายละเอียดบัญชี</h2>
                     <div style="background:#f8fafc; padding:15px; border-radius:10px;">
                         <p style="margin:8px 0;"><b>รายการ:</b> ${tx.description}</p>
-                        <p style="margin:8px 0;"><b>ประเภท:</b> ${tx.transaction_type === 'income' ? '<span style="color:green;">รายรับ</span>' : '<span style="color:red;">รายจ่าย</span>'}</p>
+                        <p style="margin:8px 0;"><b>ประเภท:</b> ${tx.transaction_type === 'expense' ? '<span style="color:red;">รายจ่าย</span>' : '<span style="color:green;">รายรับ</span>'}</p>
                         <p style="margin:8px 0;"><b>ยอดเงิน:</b> <strong style="font-size:20px;">฿${parseFloat(tx.amount).toLocaleString()}</strong></p>
-                        <p style="margin:8px 0;"><b>วันที่บันทึก:</b> ${new Date(tx.created_at).toLocaleString('th-TH')}</p>
-                        <p style="margin:8px 0;"><b>ฝ่ายที่เบิก:</b> ${tx.department || 'ส่วนกลาง'}</p>
                     </div>
                 `;
                 document.getElementById('detail-modal').style.display = 'flex';
-            } catch (e) {
-                console.error('View TX Error:', e);
-            }
+            } catch (e) { console.error('TX Error:', e); }
         }
 
         function closeModal() { document.getElementById('detail-modal').style.display = 'none'; }
