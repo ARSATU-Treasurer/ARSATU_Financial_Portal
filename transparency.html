@@ -37,8 +37,8 @@
         <button onclick="window.location.href='index.html'" class="back-btn">
             🔐 Log-in
         </button>
-        <h1 style="margin: 0; color: var(--primary);">🏛️ ARSATU Public Portal</h1>
-        <p style="margin: 5px 0 0 0; color: #64748b;">รายงานความเคลื่อนไหวทางการเงิน ณ ปัจจุบัน</p>
+        <h1 style="margin: 0; color: var(--primary);">🏛️ ARSATU Public Dashboard</h1>
+        <p style="margin: 5px 0 0 0; color: #64748b;">รายงานเคลื่อนไหวทางการเงิน</p>
     </header>
 
     <main class="container">
@@ -105,7 +105,7 @@
 
         <div class="footer-note">
             Public Dashboard - ARSATU Financial Portal © 2026<br>
-            หน้านี้เชื่อมต่อฐานข้อมูลแบบ Real-time และอนุญาตให้ <b>อ่านเท่านั้น (Read-Only)</b> หากทำรายการต้องเข้าสู่ระบบ
+            หน้านี้เชื่อมต่อฐานข้อมูลแบบ Real-time และอนุญาตให้ <b>อ่านได้อย่างเดียวเท่านั้น (Read-Only)</b> หากต้องการทำรายการกรุณา Log-in
         </div>
     </main>
 
@@ -144,7 +144,6 @@
         async function loadAllTransparencyData() {
             const pMap = await getProfileMap();
 
-            // 1. สรุปยอด
             try {
                 const { data: bankData } = await supabaseClient.from('bank_accounts').select('balance');
                 const { data: fundData } = await supabaseClient.from('funds').select('remaining_budget');
@@ -168,14 +167,13 @@
                 document.getElementById('sum-expense').textContent = `฿${tExp.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
             } catch(e) { console.error("Summary Error:", e); }
 
-            // 2. สมุดบัญชี
             try {
                 const { data: ledger } = await supabaseClient.from('transactions').select('*').eq('status', 'approved').order('created_at', { ascending: false });
                 const tbody = document.querySelector('#ledger-table tbody');
                 if (ledger && ledger.length > 0) {
                     tbody.innerHTML = ledger.map(tx => {
                         const isIncome = ['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type);
-                        const hasImg = tx.statement_url || tx.receipt_url || tx.slip_url;
+                        const hasImg = tx.statement_url || tx.receipt_url || tx.slip_url || tx.clearance_id;
                         const iconHtml = hasImg ? '🖼️ ดูรายละเอียด' : '🔍 ดูรายละเอียด';
                         
                         return `
@@ -193,7 +191,6 @@
                 }
             } catch(e) { console.error("Ledger Error:", e); }
 
-            // 3. บิลเบิกจ่าย
             try {
                 const { data: clearances, error: clrErr } = await supabaseClient.from('clearances').select('*').neq('status', 'draft').order('created_at', { ascending: false });
                 const tbody = document.querySelector('#clearance-table tbody');
@@ -220,7 +217,6 @@
                 }
             } catch(e) { console.error("Clearance Error:", e); }
 
-            // 4. ประวัติแก้ไข (Audit Log)
             try {
                 const { data: audits, error: audErr } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
                 const tbody = document.querySelector('#audit-table tbody');
@@ -256,7 +252,6 @@
             return map[status] || status;
         }
 
-        // ฟังก์ชันช่วยจัดการสื่อ (รูปภาพ และ PDF)
         function renderMedia(url, label, color) {
             if (!url) return '';
             const isPdf = url.toLowerCase().endsWith('.pdf');
@@ -314,10 +309,21 @@
                 const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
                 if (!tx) return;
 
-                // ตรวจสอบหลักฐานใน Transaction
                 let allMedia = '';
-                allMedia += renderMedia(tx.receipt_url || tx.slip_url, '📄 หลักฐาน/สลิปอ้างอิง', '#64748b');
-                allMedia += renderMedia(tx.statement_url, '🏦 หลักฐานการทำธุรกรรม', '#10b981');
+                
+                // 🌟 หัวใจสำคัญ: ตรวจสอบว่ารายการบัญชีนี้มาจากการ "เบิกเงิน" หรือไม่
+                if (tx.clearance_id) {
+                    const { data: c } = await supabaseClient.from('clearances').select('receipt_url, return_slip_url, statement_url').eq('id', tx.clearance_id).single();
+                    if (c) {
+                        allMedia += renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
+                        allMedia += renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+                        // ถ้ามี statement_url ในการเบิก ก็ใช้ตัวนั้น แต่ถ้าไม่มีก็ตกไปใช้ slip_url ของ transaction
+                        allMedia += renderMedia(c.statement_url || tx.slip_url, '🏦 หลักฐานการทำธุรกรรม (เหรัญญิกแนบ)', '#10b981');
+                    }
+                } else {
+                    // ถ้ารายการมาจาก "รับบริจาค" หรือ "รายจ่ายตรงๆ"
+                    allMedia += renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
+                }
 
                 if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
 
@@ -331,7 +337,7 @@
                     </div>
 
                     <div style="margin-top: 25px;">
-                        <h4 style="margin-bottom: 15px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">📸 หลักฐานการทำรายการ</h4>
+                        <h4 style="margin-bottom: 15px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">📸 ภาพหลักฐานอ้างอิง</h4>
                         ${allMedia}
                     </div>
                 `;

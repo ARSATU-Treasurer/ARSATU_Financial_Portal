@@ -1126,12 +1126,28 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
     };
 
     // ==========================================
-    // 10. ระบบดูบิลย่อย (Read-Only)
+    // 10. ระบบดูบิลย่อย และ สมุดบัญชี (Read-Only)
     // ==========================================
+    
+    // ฟังก์ชันช่วยจัดการสื่อ (รูปภาพ และ PDF)
+    function renderMedia(url, label, color) {
+        if (!url) return '';
+        const isPdf = url.toLowerCase().endsWith('.pdf');
+        let mediaHtml = isPdf 
+            ? `<iframe src="${url}" style="width:100%; height:450px; border:1px solid #e2e8f0; border-radius:8px; margin-top:5px;"></iframe>`
+            : `<a href="${url}" target="_blank"><img src="${url}" style="width:100%; border-radius:8px; margin-top:5px; background:#f1f5f9; max-height:450px; object-fit:contain;"></a>`;
+        
+        return `<div style="margin-bottom: 20px; border-bottom: 1px dashed #eee; padding-bottom: 15px;">
+                    <span style="font-size:13px; color:${color}; font-weight:bold;">${label}:</span>
+                    ${mediaHtml}
+                    ${isPdf ? '' : '<p style="text-align:center; font-size:11px; color:gray; margin-top:5px;">(คลิกที่รูปเพื่อดูขนาดเต็ม)</p>'}
+                </div>`;
+    }
+
     window.viewTransaction = async function(id) {
         document.getElementById('view-tx-modal').style.display = 'flex'; 
         const content = document.getElementById('view-tx-content'); 
-        content.innerHTML = 'กำลังโหลดข้อมูล...';
+        content.innerHTML = '<div style="text-align:center; padding:20px; color:gray;">กำลังโหลดข้อมูล...</div>';
         
         try {
             const { data: tx } = await supabaseClient.from('transactions').select(`*`).eq('id', id).single(); 
@@ -1142,7 +1158,24 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             const { data: fData } = await supabaseClient.from('funds').select('fund_name').eq('id', tx.fund_id).single();
 
             const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
-            const imgHtml = tx.slip_url ? `<div style="margin-top:15px; text-align:center;"><img src="${tx.slip_url}" style="max-width:100%; max-height:300px; border-radius:8px; border:1px solid #ccc; cursor:pointer;" onclick="window.open(this.src, '_blank')"></div>` : `<div style="margin-top:15px; padding:20px; text-align:center; background:#f4f6f9; color:gray; border-radius:8px;">ไม่มีรูปหลักฐาน</div>`;
+            
+            let allMedia = '';
+            
+            // 🌟 เช็กว่ารายการนี้มาจากการเบิกเงินหรือไม่
+            if (tx.clearance_id) {
+                const { data: c } = await supabaseClient.from('clearances').select('receipt_url, return_slip_url, statement_url').eq('id', tx.clearance_id).single();
+                if (c) {
+                    allMedia += renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
+                    allMedia += renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+                    // ใช้ statement_url จาก clearance หรือถ้าไม่มีก็ดึงจาก tx.slip_url
+                    allMedia += renderMedia(c.statement_url || tx.slip_url, '🏦 หลักฐานการทำธุรกรรม (เหรัญญิกแนบ)', '#10b981');
+                }
+            } else {
+                // รายการรับบริจาค หรือ รายจ่ายทั่วไป
+                allMedia += renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
+            }
+
+            if (!allMedia) allMedia = '<div style="margin-top:15px; padding:20px; text-align:center; background:#f4f6f9; color:gray; border-radius:8px;">ไม่มีหลักฐานแนบในระบบ</div>';
 
             content.innerHTML = `
                 <table style="width:100%; font-size:14px;">
@@ -1154,7 +1187,12 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
                     <tr><td style="padding:5px 0; color:gray;">บัญชี / กองทุน:</td><td>🏦 ${bData?.bank_name||'-'} <br> 💼 ${fData?.fund_name||'-'}</td></tr>
                     <tr><td style="padding:5px 0; color:gray;">ผู้บันทึก:</td><td>${pMap[tx.created_by]?.full_name || 'แอดมิน'}</td></tr>
                 </table>
-                ${imgHtml}
+                
+                <div style="margin-top: 25px;">
+                    <h4 style="margin-bottom: 15px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">📸 ภาพหลักฐานอ้างอิง</h4>
+                    ${allMedia}
+                </div>
+                
                 <div style="margin-top:20px; padding-top:15px; border-top:1px dashed #ccc; display:flex; justify-content:center;">
                     <button onclick="undoTransaction('${tx.id}')" class="btn btn-danger" style="width:100%; padding:10px; font-size:14px;">🗑️ ยกเลิกรายการนี้ (Undo & คืนเงิน)</button>
                 </div>
