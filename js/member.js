@@ -711,23 +711,12 @@ if (items.length > 0) {
                                 ${btn}
                                 ${viewBtn}
                                 ${cwBtn}
-                                ${cancelBtn} </div>
-                        </td>
-                    </tr>
-                        <td>${date}</td>
-                        <td>${typeLabel}</td>
-                        <td>${req.purpose}</td>
-                        <td style="font-weight:600;">฿${parseFloat(amt).toLocaleString()}</td>
-                        <td>${stat}</td>
-                        <td style="text-align:center;">
-                            <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
-                                ${btn}
-                                ${viewBtn}
-                                ${cwBtn}
+                                ${cancelBtn}
                             </div>
                         </td>
                     </tr>
                 `;
+                
             }).join('');
         } catch(e) { console.error(e); }
     };
