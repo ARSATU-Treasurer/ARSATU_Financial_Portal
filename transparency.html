@@ -76,7 +76,7 @@
                 <h3 style="margin-top:0;">📑 รายการขอเบิก / เคลียร์เงิน</h3>
                 <div class="table-res">
                     <table id="clearance-table">
-                        <thead><tr><th>วันที่</th><th>ผู้เบิก</th><th>หัวข้อ</th><th>ยอดเงิน</th><th>สถานะ</th><th style="text-align:center;">หลักฐาน</th></tr></thead>
+                        <thead><tr><th>วันที่</th><th>ผู้เบิก</th><th>หัวข้อ</th><th>ยอดเงิน</th><th>สถานะ</th><th style="text-align:center;">ข้อมูล</th></tr></thead>
                         <tbody><tr><td colspan="6" style="text-align:center; padding: 30px;">กำลังโหลดข้อมูล...</td></tr></tbody>
                     </table>
                 </div>
@@ -111,14 +111,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // 1. เชื่อมต่อฐานข้อมูล
         const supabaseUrl = 'https://runskpzhgsvvfdqdjxdf.supabase.co';
         const supabaseKey = 'sb_publishable_3PbjecPyG7GZGv9DltScug_3uC_oQhV';
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAllTransparencyData();
-        });
+        document.addEventListener('DOMContentLoaded', () => { loadAllTransparencyData(); });
 
         function switchTab(evt, tabId) {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
@@ -139,7 +136,7 @@
         async function loadAllTransparencyData() {
             const pMap = await getProfileMap();
 
-            // 🌟 ส่วนที่ 1: การ์ดสรุปยอด (ใช้ตรรกะเดียวกับ Admin Dashboard)
+            // 1. สรุปยอด
             try {
                 const { data: bankData } = await supabaseClient.from('bank_accounts').select('balance');
                 const { data: fundData } = await supabaseClient.from('funds').select('remaining_budget');
@@ -163,7 +160,7 @@
                 document.getElementById('sum-expense').textContent = `฿${tExp.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
             } catch(e) { console.error("Summary Error:", e); }
 
-            // 🌟 ส่วนที่ 2: สมุดบัญชี
+            // 2. สมุดบัญชี
             try {
                 const { data: ledger } = await supabaseClient.from('transactions').select('*').eq('status', 'approved').order('created_at', { ascending: false });
                 const tbody = document.querySelector('#ledger-table tbody');
@@ -185,16 +182,19 @@
                 }
             } catch(e) { console.error("Ledger Error:", e); }
 
-            // 🌟 ส่วนที่ 3: บิลเบิกจ่าย
+            // 3. บิลเบิกจ่าย
             try {
                 const { data: clearances, error: clrErr } = await supabaseClient.from('clearances').select('*').neq('status', 'draft').order('created_at', { ascending: false });
                 const tbody = document.querySelector('#clearance-table tbody');
                 
                 if (clrErr) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">โหลดข้อมูลไม่ได้ (ติดสิทธิ์ความปลอดภัย กรุณาตั้งค่าใน Supabase)</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">โหลดข้อมูลไม่ได้ (ติดสิทธิ์ความปลอดภัย)</td></tr>';
                 } else if (clearances && clearances.length > 0) {
                     tbody.innerHTML = clearances.map(c => {
                         const userName = pMap[c.member_id] || 'ไม่ระบุชื่อ';
+                        const hasImg = c.receipt_url || c.return_slip_url || c.statement_url;
+                        const iconHtml = hasImg ? '🖼️ ดูรายละเอียด' : 'ดูรายละเอียด';
+
                         return `
                         <tr>
                             <td>${new Date(c.created_at).toLocaleDateString('th-TH')}</td>
@@ -202,16 +202,19 @@
                             <td>${c.purpose || '-'}</td>
                             <td style="font-weight:bold;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</td>
                             <td><span class="badge" style="${getStatusStyle(c.status)}">${translateStatus(c.status)}</span></td>
-                            <td style="text-align:center;"><button onclick="viewClearanceDetail('${c.id}')" class="badge" style="cursor:pointer; border:1px solid var(--primary); background:white; color:var(--primary);">🔍 ดู</button></td>
+                            <td style="text-align:center;">
+                                <button onclick="viewClearanceDetail('${c.id}')" class="badge" style="cursor:pointer; border:1px solid var(--primary); background:white; color:var(--primary);">
+                                    ${iconHtml}
+                                </button>
+                            </td>
                         </tr>
                     `}).join('');
                 } else {
-                    // หากไม่มีข้อมูล หรือ RLS บล็อกแบบเงียบๆ
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:gray; line-height: 1.6;">ยังไม่มีประวัติการเบิกจ่าย<br><small style="color:var(--warning);">*หากมั่นใจว่ามีข้อมูล แต่ไม่แสดงผล โปรดตรวจสอบการตั้งค่า RLS ใน Supabase อีกครั้ง</small></td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:gray;">ยังไม่มีประวัติการเบิกจ่าย</td></tr>`;
                 }
             } catch(e) { console.error("Clearance Error:", e); }
 
-            // 🌟 ส่วนที่ 4: ประวัติการแก้ไข (Audit Log)
+            // 4. ประวัติแก้ไข (Audit Log)
             try {
                 const { data: audits, error: audErr } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
                 const tbody = document.querySelector('#audit-table tbody');
@@ -221,7 +224,6 @@
                 } else if (audits && audits.length > 0) {
                     tbody.innerHTML = audits.map(a => {
                         const actType = a.action_type || a.action || 'แก้ไขข้อมูล';
-                        // 🛠️ แก้บั๊ก: แปลงให้เป็น String ก่อนทำ substring ป้องกันหน้าเว็บค้าง
                         const recId = String(a.record_id || a.clearance_id || 'ไม่ระบุ');
                         const reason = a.reason || a.edit_reason || '-';
                         return `
@@ -235,14 +237,11 @@
                 } else {
                     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:gray;">ไม่มีประวัติการแก้ไขข้อมูล</td></tr>';
                 }
-            } catch(e) { 
-                console.error("Audit Error:", e); 
-                document.querySelector('#audit-table tbody').innerHTML = '<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">ระบบขัดข้องขณะโหลดประวัติ</td></tr>';
-            }
+            } catch(e) { console.error("Audit Error:", e); }
         }
 
         // ==========================================
-        // ฟังก์ชันช่วยเหลือ (Helpers)
+        // Helpers & Modal Views
         // ==========================================
         function getStatusStyle(status) {
             if (status === 'cleared') return 'background:#d1fae5; color:#059669;';
@@ -261,10 +260,27 @@
                 const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
                 if (!c) return;
                 
+                // สรุปบิลย่อย
                 let itemsHtml = items && items.length > 0 
                     ? items.map(i => `<li style="margin-bottom:8px; border-bottom:1px dashed #eee; padding-bottom:5px;">${i.item_name} <span style="float:right; font-weight:bold;">฿${parseFloat(i.total_price||0).toLocaleString()}</span></li>`).join('') 
                     : '<li style="color:gray;">ไม่มีรายการย่อย</li>';
                 
+                // ดึงรูปทุกประเภทมาต่อกัน
+                let imagesHtml = '';
+                if (c.receipt_url) {
+                    imagesHtml += `<div style="margin-bottom: 15px;"><span style="font-size:13px; color:#64748b; font-weight:bold;">📄 ใบเสร็จ/สลิปโอนเงิน (ผู้เบิกแนบ):</span><a href="${c.receipt_url}" target="_blank"><img src="${c.receipt_url}" style="width:100%; border-radius:8px; margin-top:5px; background:#f1f5f9; max-height:400px; object-fit:contain;"></a></div>`;
+                }
+                if (c.return_slip_url) {
+                    imagesHtml += `<div style="margin-bottom: 15px;"><span style="font-size:13px; color:#ef4444; font-weight:bold;">💸 สลิปเงินทอน (ผู้เบิกแนบ):</span><a href="${c.return_slip_url}" target="_blank"><img src="${c.return_slip_url}" style="width:100%; border-radius:8px; margin-top:5px; background:#f1f5f9; max-height:400px; object-fit:contain;"></a></div>`;
+                }
+                if (c.statement_url) {
+                    imagesHtml += `<div style="margin-bottom: 15px;"><span style="font-size:13px; color:#10b981; font-weight:bold;">🏦 สลิปโอนเงิน (เหรัญญิกแนบ):</span><a href="${c.statement_url}" target="_blank"><img src="${c.statement_url}" style="width:100%; border-radius:8px; margin-top:5px; background:#f1f5f9; max-height:400px; object-fit:contain;"></a></div>`;
+                }
+                
+                if (!imagesHtml) {
+                    imagesHtml = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีภาพหลักฐานแนบในระบบ</div>';
+                }
+
                 document.getElementById('modal-body').innerHTML = `
                     <h2 style="color:var(--primary); margin-top:0;">${c.purpose}</h2>
                     <p style="margin:5px 0;"><b>วันที่:</b> ${new Date(c.created_at).toLocaleString('th-TH')}</p>
@@ -274,10 +290,13 @@
                     <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-top:20px;">
                         <h4 style="margin-top:0; color: #475569;">รายการบิลย่อย</h4>
                         <ul style="list-style:none; padding:0; margin:0;">${itemsHtml}</ul>
-                        <div style="text-align:right; margin-top:15px; font-size:18px;">ยอดรวม: <strong style="color:var(--primary); font-size:24px;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</strong></div>
+                        <div style="text-align:right; margin-top:15px; font-size:18px;">ยอดรวมสุทธิ: <strong style="color:var(--primary); font-size:24px;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</strong></div>
                     </div>
-                    <h4 style="margin-bottom: 5px; color: #475569;">หลักฐานแนบ</h4>
-                    ${c.statement_url ? `<a href="${c.statement_url}" target="_blank"><img src="${c.statement_url}" style="width:100%; max-height:300px; object-fit:contain; background:#e2e8f0; border-radius:8px; margin-top:10px;"></a>` : '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐาน</div>'}
+                    
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">📸 หลักฐานแนบทั้งหมด</h4>
+                        ${imagesHtml}
+                    </div>
                 `;
                 document.getElementById('detail-modal').style.display = 'flex';
             } catch (e) { console.error('Detail Error:', e); }
