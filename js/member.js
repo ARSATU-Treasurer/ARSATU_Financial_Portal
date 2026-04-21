@@ -716,7 +716,7 @@ if (items.length > 0) {
                         </td>
                     </tr>
                 `;
-                
+
             }).join('');
         } catch(e) { console.error(e); }
     };
@@ -957,4 +957,156 @@ if (items.length > 0) {
             }
         }
     };
+    // ==========================================
+    // 🌟 ระบบวางแผนงบประมาณ (Budget Plan)
+    // ==========================================
+    window.calculatePlanTotal = function() {
+        let total = 0;
+        document.querySelectorAll('#plan-items-tbody tr').forEach(tr => {
+            const qty = parseFloat(tr.querySelector('.plan-qty').value) || 0;
+            const price = parseFloat(tr.querySelector('.plan-price').value) || 0;
+            const rowTotal = qty * price;
+            tr.querySelector('.plan-total').value = rowTotal.toFixed(2);
+            total += rowTotal;
+        });
+        document.getElementById('plan-total-amount').textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2});
+    };
+
+    document.getElementById('add-plan-item-btn')?.addEventListener('click', () => {
+        const tbody = document.getElementById('plan-items-tbody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" class="plan-name" placeholder="ชื่อรายการ" required></td>
+            <td><input type="number" class="plan-qty" min="1" value="1" required></td>
+            <td><input type="number" class="plan-price" min="0" step="0.01" value="0" required></td>
+            <td><input type="number" class="plan-total" readonly style="background:#f1f5f9; color:var(--primary); font-weight:bold;"></td>
+            <td>
+                <select class="plan-priority" required style="font-size: 12px;">
+                    <option value="1">(1) จำเป็นที่สุด</option>
+                    <option value="2">(2) ค่อนข้างจำเป็น</option>
+                    <option value="3">(3) ควรมี</option>
+                    <option value="4">(4) ตัดได้หากจำเป็น</option>
+                    <option value="5">(5) ตัดได้</option>
+                </select>
+            </td>
+            <td><input type="text" class="plan-notes" placeholder="หมายเหตุ..."></td>
+            <td style="text-align: center;"><button type="button" class="btn btn-danger plan-del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
+        `;
+        tbody.appendChild(tr);
+        
+        tr.querySelectorAll('.plan-qty, .plan-price').forEach(inp => inp.addEventListener('input', window.calculatePlanTotal));
+        tr.querySelector('.plan-del-btn').addEventListener('click', () => { tr.remove(); window.calculatePlanTotal(); });
+    });
+
+    const budgetForm = document.getElementById('budget-plan-form');
+    if (budgetForm) {
+        budgetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('plan-msg');
+            const subBtn = budgetForm.querySelector('button[type="submit"]');
+            
+            subBtn.disabled = true;
+            if(msg) { msg.style.color = 'var(--info)'; msg.textContent = 'กำลังส่งแผน...'; }
+
+            try {
+                const purpose = document.getElementById('plan-purpose').value;
+                const dateNeeded = document.getElementById('plan-date-needed').value;
+                const dept = savedDepartment || 'ส่วนกลาง'; // ใช้ตัวแปรฝ่ายที่เซฟไว้ตอนเปิดหน้า member
+                
+                const items = [];
+                let totalAmount = 0;
+                document.querySelectorAll('#plan-items-tbody tr').forEach(tr => {
+                    const name = tr.querySelector('.plan-name').value;
+                    const qty = parseFloat(tr.querySelector('.plan-qty').value) || 0;
+                    const price = parseFloat(tr.querySelector('.plan-price').value) || 0;
+                    const prio = parseInt(tr.querySelector('.plan-priority').value) || 1;
+                    const notes = tr.querySelector('.plan-notes').value;
+                    
+                    if (name) {
+                        const rowTotal = qty * price;
+                        totalAmount += rowTotal;
+                        items.push({ item_name: name, quantity: qty, unit_price: price, total_price: rowTotal, priority: prio, notes: notes });
+                    }
+                });
+
+                if(items.length === 0) throw new Error("กรุณาเพิ่มอย่างน้อย 1 รายการ");
+
+                // 1. สร้างแผนหลัก
+                const { data: planData, error: planErr } = await supabaseClient.from('budget_plans')
+                    .insert([{ department: dept, purpose: purpose, date_needed: dateNeeded, total_amount: totalAmount, created_by: currentUser.id }])
+                    .select();
+                
+                if (planErr) throw planErr;
+                const planId = planData[0].id;
+
+                // 2. สร้างรายการย่อย
+                const itemsToInsert = items.map(i => ({ ...i, plan_id: planId }));
+                const { error: itemErr } = await supabaseClient.from('budget_plan_items').insert(itemsToInsert);
+                if (itemErr) throw itemErr;
+
+                if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งแผนงบประมาณเรียบร้อยแล้ว'; }
+                budgetForm.reset();
+                document.getElementById('plan-items-tbody').innerHTML = '';
+                document.getElementById('add-plan-item-btn').click();
+                window.calculatePlanTotal();
+                window.loadBudgetPlans(); // โหลดประวัติใหม่
+                
+                setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
+            } catch (err) {
+                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'ผิดพลาด: ' + err.message; }
+            } finally {
+                subBtn.disabled = false;
+            }
+        });
+    }
+
+    window.loadBudgetPlans = async function() {
+        if (!currentUser) return;
+        
+        // 1. โหลดเพดานงบ
+        const dept = savedDepartment || 'ส่วนกลาง';
+        try {
+            const { data: ceiling } = await supabaseClient.from('department_ceilings').select('*').eq('department', dept).single();
+            const display = document.getElementById('dept-ceiling-display');
+            if (display) {
+                display.textContent = ceiling ? `฿${parseFloat(ceiling.ceiling_amount).toLocaleString()}` : 'ยังไม่ได้กำหนด';
+            }
+        } catch(e) {}
+
+        // 2. โหลดประวัติ
+        const tbody = document.querySelector('#plan-history-table tbody');
+        if (!tbody) return;
+        try {
+            const { data, error } = await supabaseClient.from('budget_plans').select('*').eq('created_by', currentUser.id).order('created_at', { ascending: false });
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">ยังไม่มีประวัติการวางแผน</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(plan => {
+                const createdDate = new Date(plan.created_at).toLocaleDateString('th-TH');
+                const neededDate = new Date(plan.date_needed).toLocaleDateString('th-TH');
+                
+                let stat = '';
+                if(plan.status === 'pending') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">รอตรวจสอบ</span>';
+                else if(plan.status === 'approved') stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติแล้ว</span>';
+                else if(plan.status === 'rejected') stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธแผน</span>';
+
+                return `
+                    <tr>
+                        <td>${createdDate}</td>
+                        <td>${plan.purpose}</td>
+                        <td>${neededDate}</td>
+                        <td style="font-weight:bold; color:var(--primary);">฿${parseFloat(plan.total_amount).toLocaleString()}</td>
+                        <td>${stat}</td>
+                    </tr>
+                `;
+            }).join('');
+        } catch(e) {}
+    };
+
+    // เรียกตอนโหลดหน้า
+    setTimeout(() => { document.getElementById('add-plan-item-btn')?.click(); window.loadBudgetPlans(); }, 1500);
 });

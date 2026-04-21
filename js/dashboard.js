@@ -1741,3 +1741,173 @@ window.closeCampAndReset = async function() {
         Swal.fire('ผิดพลาด', err.message, 'error');
     }
 };
+
+// ==========================================
+    // 🌟 ระบบจัดการแผนงบประมาณ (Admin Budget Plan)
+    // ==========================================
+    
+    // โหลดเพดานงบ
+    window.loadCeilings = async function() {
+        const tbody = document.querySelector('#ceiling-table tbody');
+        if (!tbody) return;
+        try {
+            const { data, error } = await supabaseClient.from('department_ceilings').select('*').order('department');
+            if (error) throw error;
+            
+            tbody.innerHTML = data.map(c => `
+                <tr>
+                    <td style="font-weight: 500;">${c.department}</td>
+                    <td><input type="number" id="ceil-amt-${c.department}" value="${c.ceiling_amount}" style="width: 100%; padding: 4px;"></td>
+                    <td style="text-align:center;"><button onclick="saveCeiling('${c.department}')" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;">💾</button></td>
+                </tr>
+            `).join('');
+        } catch(e) { console.error(e); }
+    };
+
+    window.saveCeiling = async function(dept) {
+        let saveDept = dept;
+        let saveAmt = 0;
+        
+        if (dept === 'new') {
+            saveDept = document.getElementById('new-ceiling-dept').value;
+            saveAmt = parseFloat(document.getElementById('new-ceiling-amt').value) || 0;
+            if(!saveDept) return showToast('กรุณากรอกชื่อฝ่าย', 'warning');
+        } else {
+            saveAmt = parseFloat(document.getElementById(`ceil-amt-${dept}`).value) || 0;
+        }
+
+        try {
+            await supabaseClient.from('department_ceilings').upsert([{ department: saveDept, ceiling_amount: saveAmt }]);
+            showToast('บันทึกเพดานงบสำเร็จ', 'success');
+            if(dept === 'new') {
+                document.getElementById('new-ceiling-dept').value = '';
+                document.getElementById('new-ceiling-amt').value = '';
+            }
+            window.loadCeilings();
+        } catch(err) {
+            showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+        }
+    };
+
+    // โหลดตารางคำขอแผน
+    window.loadAdminPlans = async function() {
+        const tbody = document.querySelector('#admin-plans-table tbody');
+        if (!tbody) return;
+        try {
+            const { data, error } = await supabaseClient.from('budget_plans').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+
+            if(!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:gray;">ไม่มีแผนงบประมาณ</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(plan => {
+                const date = new Date(plan.created_at).toLocaleDateString('th-TH');
+                let stat = '';
+                if(plan.status === 'pending') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">รอตรวจสอบ</span>';
+                else if(plan.status === 'approved') stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติ</span>';
+                else if(plan.status === 'rejected') stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธ</span>';
+
+                return `
+                    <tr>
+                        <td>${date}</td>
+                        <td style="color:var(--primary); font-weight:500;">${plan.department}</td>
+                        <td>${plan.purpose}</td>
+                        <td style="font-weight:bold;">฿${parseFloat(plan.total_amount).toLocaleString()}</td>
+                        <td>${stat}</td>
+                        <td style="text-align:center;"><button onclick="viewAdminPlan('${plan.id}')" class="btn btn-info" style="padding:4px 8px; font-size:11px;">🔍 ดูรายละเอียด</button></td>
+                    </tr>
+                `;
+            }).join('');
+        } catch(e) { console.error(e); }
+    };
+
+    window.viewAdminPlan = async function(id) {
+        document.getElementById('view-plan-modal').style.display = 'flex';
+        const content = document.getElementById('view-plan-content');
+        content.innerHTML = 'กำลังโหลด...';
+
+        try {
+            const { data: plan } = await supabaseClient.from('budget_plans').select('*, profiles(full_name)').eq('id', id).single();
+            const { data: items } = await supabaseClient.from('budget_plan_items').select('*').eq('plan_id', id).order('priority', { ascending: true });
+            const { data: ceil } = await supabaseClient.from('department_ceilings').select('ceiling_amount').eq('department', plan.department).single();
+            
+            const ceilingAmt = ceil ? parseFloat(ceil.ceiling_amount) : 0;
+            const diff = ceilingAmt - parseFloat(plan.total_amount);
+            const diffHtml = diff >= 0 
+                ? `<span style="color:var(--success);">✅ อยู่ในงบ (เหลือ ฿${diff.toLocaleString()})</span>` 
+                : `<span style="color:var(--danger);">🚨 เกินงบ! (เกินไป ฿${Math.abs(diff).toLocaleString()})</span>`;
+
+            // เรียงสีตามความสำคัญ 1=แดง(จำเป็น), 5=เทา(ตัดได้)
+            const prioColor = { 1: '#ef4444', 2: '#f97316', 3: '#eab308', 4: '#64748b', 5: '#94a3b8' };
+            const prioText = { 1: 'จำเป็นมาก', 2: 'ค่อนข้างจำเป็น', 3: 'ควรมี', 4: 'ตัดได้หากจำเป็น', 5: 'ตัดได้' };
+
+            let itemsHtml = `
+                <table style="width:100%; background:#f8fafc; font-size:13px; margin-top:15px; border-radius:6px; overflow:hidden;">
+                    <thead style="background:#e2e8f0;">
+                        <tr><th style="padding:8px;">รายการ</th><th style="text-align:center;">จำนวน</th><th style="text-align:right;">ราคา/หน่วย</th><th style="text-align:right;">ราคารวม</th><th style="text-align:center;">ความสำคัญ</th><th>หมายเหตุ</th></tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(it => `
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:8px;">${it.item_name}</td>
+                                <td style="text-align:center;">${it.quantity}</td>
+                                <td style="text-align:right;">฿${parseFloat(it.unit_price).toLocaleString()}</td>
+                                <td style="text-align:right; font-weight:bold;">฿${parseFloat(it.total_price).toLocaleString()}</td>
+                                <td style="text-align:center;"><span style="background:${prioColor[it.priority]}20; color:${prioColor[it.priority]}; padding:2px 6px; border-radius:4px; font-weight:bold;">(${it.priority}) ${prioText[it.priority]}</span></td>
+                                <td>${it.notes || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            let actionBtns = '';
+            if (plan.status === 'pending') {
+                actionBtns = `
+                    <div style="display:flex; gap:10px; margin-top:20px; border-top:1px dashed #ccc; padding-top:15px; justify-content:center;">
+                        <button onclick="updatePlanStatus('${plan.id}', 'rejected')" class="btn btn-danger" style="width:150px;">❌ ปฏิเสธแผน</button>
+                        <button onclick="updatePlanStatus('${plan.id}', 'approved')" class="btn btn-success" style="width:150px;">✅ อนุมัติแผน</button>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = `
+                <div style="background:#f0f9ff; padding:15px; border-radius:8px; border:1px solid #bae6fd;">
+                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <p style="margin:0 0 5px 0;"><b>หัวข้อ:</b> ${plan.purpose}</p>
+                            <p style="margin:0 0 5px 0;"><b>ฝ่าย:</b> ${plan.department} <small>(ผู้เสนอ: ${plan.profiles?.full_name})</small></p>
+                            <p style="margin:0;"><b>วันที่ต้องการใช้เงิน:</b> ${new Date(plan.date_needed).toLocaleDateString('th-TH')}</p>
+                        </div>
+                        <div style="text-align:right; background:white; padding:10px; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                            <div style="font-size:12px; color:gray;">ยอดรวมในแผน:</div>
+                            <div style="font-size:24px; font-weight:bold; color:var(--primary);">฿${parseFloat(plan.total_amount).toLocaleString()}</div>
+                            <div style="font-size:12px; margin-top:5px;">เพดานงบ: ฿${ceilingAmt.toLocaleString()} <br> ${diffHtml}</div>
+                        </div>
+                    </div>
+                </div>
+                ${itemsHtml}
+                ${actionBtns}
+            `;
+        } catch(e) { content.innerHTML = '<span style="color:red;">โหลดไม่สำเร็จ</span>'; }
+    };
+
+    window.updatePlanStatus = async function(id, status) {
+        if(!confirm(`ยืนยันการ ${status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} แผนงบประมาณนี้?`)) return;
+        try {
+            await supabaseClient.from('budget_plans').update({ status: status }).eq('id', id);
+            showToast('อัปเดตสถานะสำเร็จ', 'success');
+            document.getElementById('view-plan-modal').style.display = 'none';
+            window.loadAdminPlans();
+        } catch(e) { showToast('ผิดพลาด: ' + e.message, 'error'); }
+    };
+
+    // นำฟังก์ชันใหม่ไปผูกกับ loadAllAdminData เดิม เพื่อให้โหลดพร้อมกันตอนเปิดหน้า
+    const originalLoadAdmin = window.loadAllAdminData;
+    window.loadAllAdminData = async function() {
+        if (originalLoadAdmin) await originalLoadAdmin();
+        window.loadCeilings();
+        window.loadAdminPlans();
+    };

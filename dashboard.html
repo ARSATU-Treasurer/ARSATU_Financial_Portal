@@ -88,6 +88,7 @@
             <button class="tab-btn" onclick="switchTab(event, 'tab-history')">🕒 ประวัติคำขอเบิก</button>
             <button class="tab-btn" onclick="switchTab(event, 'tab-audit')">📜 ประวัติแก้ไข/ยกเลิก</button>
             <button class="tab-btn" onclick="switchTab(event, 'tab-settings')">⚙️ ตั้งค่าระบบ</button>
+            <button class="tab-btn" onclick="switchTab(event, 'tab-budget-admin')">📋 ตรวจแผนงบประมาณ</button>ด
         </div>
 
         <div id="tab-overview" class="tab-content active">
@@ -133,6 +134,46 @@
                 <div class="table-responsive"><table id="requests-table"><thead><tr><th>วันที่ส่ง</th><th>ผู้เบิก</th><th>ประเภท</th><th>รายการ</th><th>ยอดขอเบิก</th><th>สถานะ</th><th>ตรวจสอบ</th></tr></thead><tbody><tr><td colspan="7" style="text-align: center; color: gray;">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
             </div>
         </div>
+
+        <div id="tab-budget-admin" class="tab-content">
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+        <div class="card" style="border-top: 4px solid var(--info);">
+            <h3>⚙️ กำหนดเพดานงบแต่ละฝ่าย</h3>
+            <div class="table-responsive">
+                <table id="ceiling-table" style="font-size: 13px;">
+                    <thead><tr><th>ฝ่าย / แผนก</th><th>เพดานงบ (฿)</th><th>บันทึก</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;">
+                <label style="font-size: 13px;">เพิ่มฝ่ายที่ยังไม่มีในตาราง</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="new-ceiling-dept" placeholder="ชื่อฝ่าย" style="flex: 1; padding: 6px;">
+                    <input type="number" id="new-ceiling-amt" placeholder="จำนวนเงิน" style="flex: 1; padding: 6px;">
+                    <button onclick="saveCeiling('new')" class="btn btn-info" style="padding: 6px 12px;">เพิ่ม</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <h3>📋 แผนงบประมาณที่รอตรวจสอบ</h3>
+            <div class="table-responsive">
+                <table id="admin-plans-table">
+                    <thead><tr><th>ส่งเมื่อ</th><th>ฝ่าย</th><th>หัวข้อ</th><th>ยอดรวม (฿)</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+                    <tbody><tr><td colspan="6" style="text-align: center;">กำลังโหลด...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="view-plan-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;">
+    <div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 800px; position: relative; max-height: 85vh; display: flex; flex-direction: column;">
+        <button onclick="document.getElementById('view-plan-modal').style.display='none'" style="position: absolute; top: 15px; right: 15px; background: #f1f5f9; border: none; font-size: 18px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">✖</button>
+        <h3 style="margin-top: 0; color: var(--primary);">📄 ตรวจสอบแผนงบประมาณ</h3>
+        <div id="view-plan-content" style="overflow-y: auto; flex: 1; padding-right: 5px;"></div>
+    </div>
+</div>
 
         <div id="tab-ledger" class="tab-content">
             <div class="card" style="background: #fdfefe; border-top: 4px solid var(--info);">
