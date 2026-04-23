@@ -657,6 +657,11 @@ if (fundError) throw fundError;
     if (modalForm) {
         modalForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // 🚨 1. กุญแจล็อค: ป้องกันการกดปุ่มเบิ้ล หรือกด Enter รัวๆ (Double Submit)
+            if (modalForm.dataset.submitting === 'true') return;
+            modalForm.dataset.submitting = 'true';
+
             const msg = document.getElementById('modal-msg');
             const btn = document.getElementById('confirm-action-btn');
             
@@ -674,6 +679,7 @@ if (fundError) throw fundError;
             if (actionDir === 'pay' && processAmt > 0 && !slipFile) {
                 if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณาแนบสลิปโอนเงินจ่าย'; }
                 if(btn) btn.disabled = false; 
+                modalForm.dataset.submitting = 'false'; // 🚨 ปลดล็อกถ้าเกิด Error
                 return;
             }
 
@@ -698,12 +704,10 @@ if (fundError) throw fundError;
                 }
 
                 if (actionDir !== 'none' && processAmt > 0) {
-    // คำนวณค่าที่จะบวก (ถ้าแอดมินจ่ายออกให้ค่าติดลบ ถ้าแอดมินรับเงินทอนให้ค่าเป็นบวก)
-    const finalAmount = actionDir === 'pay' ? -processAmt : processAmt;
+                    const finalAmount = actionDir === 'pay' ? -processAmt : processAmt;
 
-    // ใช้ RPC อัปเดตตรงๆ
-    await supabaseClient.rpc('update_bank_balance', { bank_id: bankId, amount: finalAmount });
-    await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: finalAmount });
+                    await supabaseClient.rpc('update_bank_balance', { bank_id: bankId, amount: finalAmount });
+                    await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: finalAmount });
                     
                     const reqPurpose = window.currentClearance.purpose || '-';
                     const shortId = reqId.substring(0,6);
@@ -742,10 +746,11 @@ if (fundError) throw fundError;
                 if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ ผิดพลาด: ' + err.message; } 
             } finally { 
                 if(btn) btn.disabled = false; 
+                // 🚨 2. ปลดล็อกคิวเมื่อทำงานเสร็จสิ้นทั้งหมด
+                modalForm.dataset.submitting = 'false';
             }
         });
     }
-
     // ==========================================
     // 6. สมุดบัญชีรายรับ-รายจ่าย (Ledger)
     // ==========================================
@@ -820,9 +825,14 @@ if (fundError) throw fundError;
     if (directForm) {
         directForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // 🚨 ป้องกันการกดเบิ้ล
+            if (directForm.dataset.submitting === 'true') return;
+            directForm.dataset.submitting = 'true';
+
             const msg = document.getElementById('direct-msg');
             const subBtn = directForm.querySelector('button');
-            subBtn.disabled = true;
+            if(subBtn) subBtn.disabled = true;
             
             if(msg) { msg.style.color = 'var(--info)'; msg.textContent = 'กำลังบันทึก...'; }
             
@@ -834,8 +844,8 @@ if (fundError) throw fundError;
                 const fundId = document.getElementById('direct-fund').value;
                 
                 const finalAmount = type === 'income' ? amt : -amt;
-await supabaseClient.rpc('update_bank_balance', { bank_id: bankId, amount: finalAmount });
-await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: finalAmount });
+                await supabaseClient.rpc('update_bank_balance', { bank_id: bankId, amount: finalAmount });
+                await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: finalAmount });
                 
                 await supabaseClient.from('transactions').insert([{ 
                     transaction_date: new Date().toISOString().split('T')[0], 
@@ -856,7 +866,9 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
             } catch (err) { 
                 if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'ผิดพลาด: ' + err.message; } 
             } finally { 
-                subBtn.disabled = false; 
+                if(subBtn) subBtn.disabled = false; 
+                // 🚨 ปลดล็อกคิว
+                directForm.dataset.submitting = 'false';
             }
         });
     }
