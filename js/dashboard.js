@@ -1465,6 +1465,8 @@ await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: final
         window.loadSettingsData(); 
         window.loadPendingUsers(); 
         if (typeof window.loadAuditLogs === 'function') window.loadAuditLogs();
+        if (typeof window.loadCeilings === 'function') window.loadCeilings();
+        if (typeof window.loadAdminPlans === 'function') window.loadAdminPlans();
     };
 
     // ==========================================
@@ -1931,10 +1933,4 @@ window.closeCampAndReset = async function() {
         } catch(e) { showToast('ผิดพลาด: ' + e.message, 'error'); }
     };
 
-    // สั่งให้โหลดข้อมูลทันทีที่หน้าเว็บโหลดเสร็จ (แก้ปัญหาฟังก์ชันไม่รัน)
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-            if (typeof window.loadCeilings === 'function') window.loadCeilings();
-            if (typeof window.loadAdminPlans === 'function') window.loadAdminPlans();
-        }, 1500); // หน่วงเวลา 1.5 วินาทีให้ระบบหลักโหลดเสร็จก่อน
-    });
+    
