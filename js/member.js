@@ -1000,82 +1000,33 @@ if (items.length > 0) {
 
     const budgetForm = document.getElementById('budget-plan-form');
     if (budgetForm) {
-        budgetForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const msg = document.getElementById('plan-msg');
-            const subBtn = budgetForm.querySelector('button[type="submit"]');
-            
-            subBtn.disabled = true;
-            if(msg) { msg.style.color = 'var(--info)'; msg.textContent = 'กำลังส่งแผน...'; }
+        // ค้นหาส่วน budgetForm.addEventListener('submit', ...) และแทนที่ด้วยชุดนี้ครับ
 
-            try {
-                const purpose = document.getElementById('plan-purpose').value;
-                const dateNeeded = document.getElementById('plan-date-needed').value;
-                const dept = savedDepartment || 'ส่วนกลาง'; // ใช้ตัวแปรฝ่ายที่เซฟไว้ตอนเปิดหน้า member
-                
-                const items = [];
-                let totalAmount = 0;
-                document.querySelectorAll('#plan-items-tbody tr').forEach(tr => {
-                    const name = tr.querySelector('.plan-name').value;
-                    const qty = parseFloat(tr.querySelector('.plan-qty').value) || 0;
-                    const price = parseFloat(tr.querySelector('.plan-price').value) || 0;
-                    const prio = parseInt(tr.querySelector('.plan-priority').value) || 1;
-                    const notes = tr.querySelector('.plan-notes').value;
-                    
-                    if (name) {
-                        const rowTotal = qty * price;
-                        totalAmount += rowTotal;
-                        items.push({ item_name: name, quantity: qty, unit_price: price, total_price: rowTotal, priority: prio, notes: notes });
-                    }
-                });
-
-                if(items.length === 0) throw new Error("กรุณาเพิ่มอย่างน้อย 1 รายการ");
-
-                // 1. สร้างแผนหลัก
-                const { data: planData, error: planErr } = await supabaseClient.from('budget_plans')
-                    .insert([{ department: dept, purpose: purpose, date_needed: dateNeeded, total_amount: totalAmount, created_by: currentUser.id }])
-                    .select();
-                
-                if (planErr) throw planErr;
-                const planId = planData[0].id;
-
-                // 2. สร้างรายการย่อย
-                const itemsToInsert = items.map(i => ({ ...i, plan_id: planId }));
-                const { error: itemErr } = await supabaseClient.from('budget_plan_items').insert(itemsToInsert);
-                if (itemErr) throw itemErr;
-
-                if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ส่งแผนงบประมาณเรียบร้อยแล้ว'; }
-                budgetForm.reset();
-                document.getElementById('plan-items-tbody').innerHTML = '';
-                document.getElementById('add-plan-item-btn').click();
-                window.calculatePlanTotal();
-                window.loadBudgetPlans(); // โหลดประวัติใหม่
-                
-                setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
-            } catch (err) {
-                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'ผิดพลาด: ' + err.message; }
-            } finally {
-                subBtn.disabled = false;
-            }
-            // อัปเดตในส่วน budgetForm.addEventListener('submit', ...)
-const budgetForm = document.getElementById('budget-plan-form');
-if (budgetForm) {
-    budgetForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    const budgetForm = document.getElementById('budget-plan-form');
+    
+    // ฟังก์ชันส่วนกลางสำหรับการบันทึก (ทั้งแบบร่างและส่งจริง)
+    window.processBudgetPlan = async function(isDraft) {
         const msg = document.getElementById('plan-msg');
         const subBtn = budgetForm.querySelector('button[type="submit"]');
+        const draftBtn = document.getElementById('save-plan-draft-btn');
         
+        const planId = document.getElementById('current-plan-id').value;
+        const dept = document.getElementById('plan-dept').value;
+        const purpose = document.getElementById('plan-purpose').value;
+        const dateNeeded = document.getElementById('plan-date-needed').value;
+
+        if (!isDraft && (!dept || !purpose || !dateNeeded)) {
+            msg.style.color = 'var(--danger)';
+            msg.textContent = 'กรุณากรอกข้อมูลพื้นฐานให้ครบก่อนส่งแผน';
+            return;
+        }
+
         subBtn.disabled = true;
-        msg.textContent = 'กำลังส่งแผน...';
+        draftBtn.disabled = true;
+        msg.style.color = 'var(--info)';
+        msg.textContent = isDraft ? 'กำลังบันทึกแบบร่าง...' : 'กำลังส่งแผนงบประมาณ...';
 
         try {
-            // ดึงค่าจาก Dropdown ที่เพิ่มใหม่
-            const dept = document.getElementById('plan-dept').value; 
-            const purpose = document.getElementById('plan-purpose').value;
-            const dateNeeded = document.getElementById('plan-date-needed').value;
-            
-            if (!dept) throw new Error("กรุณาเลือกฝ่าย / แผนก");
-
             const items = [];
             let totalAmount = 0;
             document.querySelectorAll('#plan-items-tbody tr').forEach(tr => {
@@ -1088,63 +1039,152 @@ if (budgetForm) {
                 if (name) {
                     const rowTotal = qty * price;
                     totalAmount += rowTotal;
-                    items.push({ 
-                        item_name: name, 
-                        quantity: qty, 
-                        unit_price: price, 
-                        total_price: rowTotal, 
-                        priority: prio, 
-                        notes: notes 
-                    });
+                    items.push({ item_name: name, quantity: qty, unit_price: price, total_price: rowTotal, priority: prio, notes: notes });
                 }
             });
 
-            // บันทึกลง Supabase (โค้ดส่วนเดิม)
-            const { data: planData, error: planErr } = await supabaseClient.from('budget_plans')
-                .insert([{ 
-                    department: dept, 
-                    purpose: purpose, 
-                    date_needed: dateNeeded, 
-                    total_amount: totalAmount, 
-                    created_by: currentUser.id 
-                }])
-                .select();
-            
-            if (planErr) throw planErr;
-            const planId = planData[0].id;
+            const planData = {
+                department: dept || 'ไม่ระบุ',
+                purpose: purpose || 'แบบร่างไม่มีหัวข้อ',
+                date_needed: dateNeeded || null,
+                total_amount: totalAmount,
+                status: isDraft ? 'draft' : 'pending',
+                created_by: currentUser.id
+            };
 
-            const itemsToInsert = items.map(i => ({ ...i, plan_id: planId }));
-            await supabaseClient.from('budget_plan_items').insert(itemsToInsert);
+            let finalPlanId = planId;
+            if (planId) {
+                // อัปเดตของเดิม
+                await supabaseClient.from('budget_plans').update(planData).eq('id', planId);
+                await supabaseClient.from('budget_plan_items').delete().eq('plan_id', planId);
+            } else {
+                // สร้างใหม่
+                const { data: newPlan, error } = await supabaseClient.from('budget_plans').insert([planData]).select();
+                if (error) throw error;
+                finalPlanId = newPlan[0].id;
+            }
+
+            // บันทึกรายการย่อย
+            if (items.length > 0) {
+                const itemsToInsert = items.map(i => ({ ...i, plan_id: finalPlanId }));
+                await supabaseClient.from('budget_plan_items').insert(itemsToInsert);
+            }
 
             msg.style.color = 'var(--success)';
-            msg.textContent = '✅ ส่งแผนงบประมาณเรียบร้อยแล้ว';
+            msg.textContent = isDraft ? '💾 บันทึกแบบร่างเรียบร้อยแล้ว' : '✅ ส่งแผนงบประมาณสำเร็จ';
             
+            // รีเซ็ตฟอร์ม
             budgetForm.reset();
-            applySavedData(); // เรียกฟังก์ชันเดิมเพื่อดึงฝ่ายที่เซฟไว้กลับมาใหม่
+            document.getElementById('current-plan-id').value = '';
+            document.getElementById('plan-items-tbody').innerHTML = '';
+            document.getElementById('add-plan-item-btn').click();
+            window.calculatePlanTotal();
             window.loadBudgetPlans();
             
+            setTimeout(() => { msg.textContent = ''; }, 3000);
         } catch (err) {
             msg.style.color = 'var(--danger)';
             msg.textContent = 'ผิดพลาด: ' + err.message;
         } finally {
             subBtn.disabled = false;
+            draftBtn.disabled = false;
         }
-    });
-}
+    };
 
-// เพิ่มระบบ Auto-select ฝ่ายใน Tab วางแผนงบประมาณ
-const originalApplyData = window.applySavedData;
-window.applySavedData = function() {
-    if (originalApplyData) originalApplyData();
-    
-    // ดึงค่าฝ่ายที่เซฟไว้ใน LocalStorage มาเลือกใน Dropdown แผนงบประมาณ
-    const savedDept = localStorage.getItem('user_department');
-    const planDeptSelect = document.getElementById('plan-dept');
-    if (planDeptSelect && savedDept) {
-        planDeptSelect.value = savedDept;
-    }
-};
-        });
+    // ผูกเหตุการณ์กับปุ่ม
+    budgetForm.addEventListener('submit', (e) => { e.preventDefault(); window.processBudgetPlan(false); });
+    document.getElementById('save-plan-draft-btn')?.addEventListener('click', () => window.processBudgetPlan(true));
+
+    // ฟังก์ชันโหลดข้อมูลร่างกลับมาแก้ไข
+    window.editBudgetPlan = async function(id) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const msg = document.getElementById('plan-msg');
+        msg.textContent = 'กำลังดึงข้อมูลแบบร่าง...';
+
+        try {
+            const { data: plan } = await supabaseClient.from('budget_plans').select('*').eq('id', id).single();
+            const { data: items } = await supabaseClient.from('budget_plan_items').select('*').eq('plan_id', id);
+
+            document.getElementById('current-plan-id').value = plan.id;
+            document.getElementById('plan-dept').value = plan.department;
+            document.getElementById('plan-purpose').value = plan.purpose;
+            document.getElementById('plan-date-needed').value = plan.date_needed;
+
+            const tbody = document.getElementById('plan-items-tbody');
+            tbody.innerHTML = '';
+            if (items && items.length > 0) {
+                items.forEach(it => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="text" class="plan-name" value="${it.item_name}" required></td>
+                        <td><input type="number" class="plan-qty" min="1" value="${it.quantity}" required></td>
+                        <td><input type="number" class="plan-price" min="0" step="0.01" value="${it.unit_price}" required></td>
+                        <td><input type="number" class="plan-total" readonly style="background:#f1f5f9; color:var(--primary); font-weight:bold;"></td>
+                        <td>
+                            <select class="plan-priority" required>
+                                <option value="1" ${it.priority == 1 ? 'selected' : ''}>(1) จำเป็นที่สุด</option>
+                                <option value="2" ${it.priority == 2 ? 'selected' : ''}>(2) ค่อนข้างจำเป็น</option>
+                                <option value="3" ${it.priority == 3 ? 'selected' : ''}>(3) ควรมี</option>
+                                <option value="4" ${it.priority == 4 ? 'selected' : ''}>(4) ตัดได้หากจำเป็น</option>
+                                <option value="5" ${it.priority == 5 ? 'selected' : ''}>(5) ตัดได้</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="plan-notes" value="${it.notes || ''}"></td>
+                        <td style="text-align: center;"><button type="button" class="btn btn-danger plan-del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                    tr.querySelectorAll('.plan-qty, .plan-price').forEach(inp => inp.addEventListener('input', window.calculatePlanTotal));
+                    tr.querySelector('.plan-del-btn').addEventListener('click', () => { tr.remove(); window.calculatePlanTotal(); });
+                });
+            }
+            window.calculatePlanTotal();
+            msg.textContent = '✏️ กำลังแก้ไขแบบร่าง';
+        } catch (e) {
+            msg.textContent = '❌ โหลดข้อมูลไม่สำเร็จ';
+        }
+    };
+
+    // อัปเดตฟังก์ชันโหลดประวัติให้แสดงปุ่มแก้ไขสำหรับดราฟต์
+    window.loadBudgetPlans = async function() {
+        if (!currentUser) return;
+        const tbody = document.querySelector('#plan-history-table tbody');
+        if (!tbody) return;
+
+        try {
+            const { data, error } = await supabaseClient.from('budget_plans').select('*').eq('created_by', currentUser.id).order('created_at', { ascending: false });
+            if (error) throw error;
+
+            tbody.innerHTML = data.map(plan => {
+                const createdDate = new Date(plan.created_at).toLocaleDateString('th-TH');
+                const neededDate = plan.date_needed ? new Date(plan.date_needed).toLocaleDateString('th-TH') : '-';
+                
+                let stat = '';
+                let actionBtn = '-';
+
+                if(plan.status === 'draft') {
+                    stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">💾 แบบร่าง</span>';
+                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px;">✏️ แก้ไขร่าง</button>`;
+                } else if(plan.status === 'pending') {
+                    stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจสอบ</span>';
+                } else if(plan.status === 'approved') {
+                    stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติแล้ว</span>';
+                } else if(plan.status === 'rejected') {
+                    stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธ</span>';
+                }
+
+                return `
+                    <tr>
+                        <td>${createdDate}</td>
+                        <td>${plan.purpose}</td>
+                        <td>${neededDate}</td>
+                        <td style="font-weight:bold; color:var(--primary);">฿${parseFloat(plan.total_amount).toLocaleString()}</td>
+                        <td>${stat}</td>
+                        <td style="text-align:center;">${actionBtn}</td>
+                    </tr>
+                `;
+            }).join('');
+        } catch(e) {}
+    };
     }
 
     // ฟังก์ชันดึงเพดานงบเฉพาะฝ่ายที่เลือก

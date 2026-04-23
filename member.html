@@ -225,7 +225,7 @@
         <div id="tab-budget-plan" class="tab-content">
     <div class="card" style="border-top: 4px solid var(--primary);">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-            <h3>📋 สร้างแผนงบประมาณ (Budget Plan)</h3>
+            <h3>📋 วางแผนงบประมาณ (Budget Plan)</h3>
             <div style="background: #f0f9ff; padding: 10px 15px; border-radius: 8px; border: 1px solid #bae6fd;">
                 <span style="color: var(--text-muted); font-size: 13px;">เพดานงบประมาณฝ่ายคุณ:</span>
                 <strong id="dept-ceiling-display" style="color: var(--primary); font-size: 18px;">กำลังโหลด...</strong>
@@ -233,6 +233,8 @@
         </div>
         
         <form id="budget-plan-form" style="margin-top: 20px;">
+            <input type="hidden" id="current-plan-id" value="">
+
             <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                 <div class="form-group">
                     <label>ฝ่าย / แผนก</label>
@@ -252,7 +254,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>หัวข้อการเบิก / แผนงาน</label>
+                    <label>หัวข้อแผนงาน</label>
                     <input type="text" id="plan-purpose" placeholder="เช่น แผนจัดซื้อสวัสดิการค่าย" required>
                 </div>
                 <div class="form-group">
@@ -274,7 +276,7 @@
                                 <th style="width: 10%;">จำนวน</th>
                                 <th style="width: 15%;">หน่วยละ (฿)</th>
                                 <th style="width: 15%;">ราคารวม (฿)</th>
-                                <th style="width: 20%;">ความสำคัญ (1-5)</th>
+                                <th style="width: 20%;">ความสำคัญ</th>
                                 <th style="width: 15%;">หมายเหตุ</th>
                                 <th style="width: 8%; text-align: center;">ลบ</th>
                             </tr>
@@ -283,23 +285,26 @@
                     </table>
                 </div>
                 <div style="text-align: right; margin-top: 15px; font-size: 16px;">
-                    จำนวนเงินรวมทั้งหมด: <strong style="color: var(--primary); font-size: 20px;"><span id="plan-total-amount">0.00</span> ฿</strong>
+                    จำนวนเงินรวมในแผน: <strong style="color: var(--primary); font-size: 20px;"><span id="plan-total-amount">0.00</span> ฿</strong>
                 </div>
             </div>
             
-            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px;">📤 ส่งแผนงบประมาณให้เหรัญญิก</button>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" id="save-plan-draft-btn" class="btn btn-outline" style="flex: 1; padding: 12px;">💾 บันทึกแบบร่าง</button>
+                <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px; font-size: 16px;">🚀 ส่งแผนให้เหรัญญิก</button>
+            </div>
             <div id="plan-msg" style="margin-top: 15px; text-align: center; font-weight: 500;"></div>
         </form>
     </div>
 
     <div class="card">
-        <h3>ประวัติการส่งแผนงบประมาณ</h3>
+        <h3>ประวัติการส่งและแบบร่างแผนงบประมาณ</h3>
         <div class="table-responsive">
             <table id="plan-history-table">
                 <thead>
-                    <tr><th>วันที่สร้าง</th><th>หัวข้อ</th><th>วันที่ใช้เงิน</th><th>ยอดรวม (฿)</th><th>สถานะ</th></tr>
+                    <tr><th>วันที่สร้าง</th><th>หัวข้อ</th><th>วันที่ใช้เงิน</th><th>ยอดรวม (฿)</th><th>สถานะ</th><th>จัดการ</th></tr>
                 </thead>
-                <tbody><tr><td colspan="5" style="text-align: center; color: gray;">กำลังโหลดข้อมูล...</td></tr></tbody>
+                <tbody><tr><td colspan="6" style="text-align: center; color: gray;">กำลังโหลดข้อมูล...</td></tr></tbody>
             </table>
         </div>
     </div>
