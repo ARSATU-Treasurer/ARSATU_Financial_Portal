@@ -1000,10 +1000,6 @@ if (items.length > 0) {
 
     const budgetForm = document.getElementById('budget-plan-form');
     if (budgetForm) {
-        // ค้นหาส่วน budgetForm.addEventListener('submit', ...) และแทนที่ด้วยชุดนี้ครับ
-
-    const budgetForm = document.getElementById('budget-plan-form');
-    
     // ฟังก์ชันส่วนกลางสำหรับการบันทึก (ทั้งแบบร่างและส่งจริง)
     window.processBudgetPlan = async function(isDraft) {
         const msg = document.getElementById('plan-msg');
