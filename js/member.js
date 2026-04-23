@@ -1144,32 +1144,47 @@ if (items.length > 0) {
         }
     };
 
-    // อัปเดตฟังก์ชันโหลดประวัติให้แสดงปุ่มแก้ไขสำหรับดราฟต์
+    // ฟังก์ชันโหลดตารางประวัติ (เวอร์ชันสมบูรณ์ รองรับปุ่มแก้ไขร่าง)
     window.loadBudgetPlans = async function() {
         if (!currentUser) return;
+        
+        // ดึงเพดานงบตามฝ่ายที่เลือกอยู่ปัจจุบัน
+        const currentDept = document.getElementById('plan-dept')?.value || savedDepartment;
+        if (currentDept) window.loadDeptCeiling(currentDept);
+
         const tbody = document.querySelector('#plan-history-table tbody');
         if (!tbody) return;
 
         try {
-            const { data, error } = await supabaseClient.from('budget_plans').select('*').eq('created_by', currentUser.id).order('created_at', { ascending: false });
+            const { data, error } = await supabaseClient
+                .from('budget_plans')
+                .select('*')
+                .eq('created_by', currentUser.id)
+                .order('created_at', { ascending: false });
+            
             if (error) throw error;
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">ยังไม่มีประวัติการวางแผน</td></tr>`;
+                return;
+            }
 
             tbody.innerHTML = data.map(plan => {
                 const createdDate = new Date(plan.created_at).toLocaleDateString('th-TH');
                 const neededDate = plan.date_needed ? new Date(plan.date_needed).toLocaleDateString('th-TH') : '-';
                 
                 let stat = '';
-                let actionBtn = '-';
+                let actionBtn = '-'; // ค่าเริ่มต้นถ้าไม่มีปุ่ม
 
-                if(plan.status === 'draft') {
+                if (plan.status === 'draft') {
                     stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">💾 แบบร่าง</span>';
-                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px;">✏️ แก้ไขร่าง</button>`;
-                } else if(plan.status === 'pending') {
+                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--primary); color:var(--primary);">✏️ แก้ไขร่าง</button>`;
+                } else if (plan.status === 'pending') {
                     stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจสอบ</span>';
-                } else if(plan.status === 'approved') {
+                } else if (plan.status === 'approved') {
                     stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติแล้ว</span>';
-                } else if(plan.status === 'rejected') {
-                    stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธ</span>';
+                } else if (plan.status === 'rejected') {
+                    stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธแผน</span>';
                 }
 
                 return `
@@ -1183,7 +1198,9 @@ if (items.length > 0) {
                     </tr>
                 `;
             }).join('');
-        } catch(e) {}
+        } catch(e) {
+            console.error("Load Plans Error:", e);
+        }
     };
     }
 
@@ -1218,49 +1235,7 @@ if (items.length > 0) {
         });
     }
 
-    // ฟังก์ชันโหลดตารางประวัติ (เวอร์ชันอัปเดต)
-    window.loadBudgetPlans = async function() {
-        if (!currentUser) return;
-        
-        // เมื่อเปิดหน้ามา ให้ดึงเพดานงบตาม Dropdown ที่เลือกอยู่
-        if (planDeptSelect && planDeptSelect.value) {
-            window.loadDeptCeiling(planDeptSelect.value);
-        } else if (savedDepartment) {
-            window.loadDeptCeiling(savedDepartment);
-        }
 
-        const tbody = document.querySelector('#plan-history-table tbody');
-        if (!tbody) return;
-        try {
-            const { data, error } = await supabaseClient.from('budget_plans').select('*').eq('created_by', currentUser.id).order('created_at', { ascending: false });
-            if (error) throw error;
-
-            if (!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">ยังไม่มีประวัติการวางแผน</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = data.map(plan => {
-                const createdDate = new Date(plan.created_at).toLocaleDateString('th-TH');
-                const neededDate = new Date(plan.date_needed).toLocaleDateString('th-TH');
-                
-                let stat = '';
-                if(plan.status === 'pending') stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">รอตรวจสอบ</span>';
-                else if(plan.status === 'approved') stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติแล้ว</span>';
-                else if(plan.status === 'rejected') stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธแผน</span>';
-
-                return `
-                    <tr>
-                        <td>${createdDate}</td>
-                        <td>${plan.purpose}</td>
-                        <td>${neededDate}</td>
-                        <td style="font-weight:bold; color:var(--primary);">฿${parseFloat(plan.total_amount).toLocaleString()}</td>
-                        <td>${stat}</td>
-                    </tr>
-                `;
-            }).join('');
-        } catch(e) {}
-    };
 
     // เรียกตอนโหลดหน้า
     setTimeout(() => { document.getElementById('add-plan-item-btn')?.click(); window.loadBudgetPlans(); }, 1500);
