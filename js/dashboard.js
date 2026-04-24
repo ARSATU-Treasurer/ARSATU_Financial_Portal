@@ -655,101 +655,144 @@ if (fundError) throw fundError;
 
     const modalForm = document.getElementById('admin-action-form');
     if (modalForm) {
-        modalForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // ==========================================
+    // 🌟 ระบบประมวลผลคำขอ (V9.3: อนุมัติ / ตีกลับ / ปฏิเสธ)
+    // ==========================================
+    window.processAdminAction = async function(actionType) {
+        const modalForm = document.getElementById('admin-action-form');
+        if (modalForm.dataset.submitting === 'true') return;
+        modalForm.dataset.submitting = 'true';
 
-            // 🚨 1. กุญแจล็อค: ป้องกันการกดปุ่มเบิ้ล หรือกด Enter รัวๆ (Double Submit)
-            if (modalForm.dataset.submitting === 'true') return;
-            modalForm.dataset.submitting = 'true';
+        const msg = document.getElementById('modal-msg');
+        const reqId = document.getElementById('modal-req-id')?.value;
+        const finalTotal = parseFloat(document.getElementById('modal-final-total')?.value);
+        const processAmt = parseFloat(document.getElementById('modal-req-amount')?.value);
+        const actionDir = document.getElementById('modal-action-dir')?.value;
+        const bankId = document.getElementById('admin-bank-select')?.value;
+        const fundId = document.getElementById('admin-fund-select')?.value;
+        const slipFile = document.getElementById('admin-slip')?.files[0];
+        const adminNote = document.getElementById('admin-note-input')?.value.trim();
 
-            const msg = document.getElementById('modal-msg');
-            const btn = document.getElementById('confirm-action-btn');
-            
-            if(btn) btn.disabled = true; 
-            if(msg) { msg.style.color = 'var(--info)'; msg.textContent = 'กำลังประมวลผล...'; }
+        const btnApprove = document.getElementById('btn-admin-approve');
+        const btnReturn = document.getElementById('btn-admin-return');
+        const btnReject = document.getElementById('btn-admin-reject');
 
-            const reqId = document.getElementById('modal-req-id')?.value;
-            const finalTotal = parseFloat(document.getElementById('modal-final-total')?.value);
-            const processAmt = parseFloat(document.getElementById('modal-req-amount')?.value);
-            const actionDir = document.getElementById('modal-action-dir')?.value;
-            const bankId = document.getElementById('admin-bank-select')?.value;
-            const fundId = document.getElementById('admin-fund-select')?.value;
-            const slipFile = document.getElementById('admin-slip')?.files[0];
+        if(btnApprove) btnApprove.disabled = true;
+        if(btnReturn) btnReturn.disabled = true;
+        if(btnReject) btnReject.disabled = true;
 
-            if (actionDir === 'pay' && processAmt > 0 && !slipFile) {
-                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณาแนบสลิปโอนเงินจ่าย'; }
-                if(btn) btn.disabled = false; 
-                modalForm.dataset.submitting = 'false'; // 🚨 ปลดล็อกถ้าเกิด Error
-                return;
+        try {
+            // 1. ตรวจสอบเงื่อนไข
+            if (actionType === 'approve') {
+                if (actionDir === 'pay' && processAmt > 0 && !slipFile) {
+                    throw new Error('กรุณาแนบสลิปโอนเงินจ่าย สำหรับการอนุมัติ');
+                }
+            } else if (actionType === 'return' || actionType === 'reject') {
+                if (!adminNote) {
+                    throw new Error('กรุณาระบุ "เหตุผล / หมายเหตุ" ให้ Member ทราบ');
+                }
             }
 
-            try {
-                const inputs = document.querySelectorAll('.admin-edit-price');
-                if (inputs.length > 0) { 
-                    for (let inp of inputs) { 
-                        const iId = inp.dataset.id;
-                        const val = parseFloat(inp.value)||0;
-                        const orig = parseFloat(inp.dataset.original)||0; 
-                        if (val !== orig) {
-                            await supabaseClient.from('clearance_items').update({ total_price: val }).eq('id', iId); 
-                        }
-                    } 
-                }
+            if(msg) { msg.style.color = 'var(--info)'; msg.textContent = 'กำลังประมวลผล...'; }
 
+            // 2. อัปเดตราคาในตาราง items ย่อยก่อนเสมอ (กรณีแอดมินแก้ตัวเลข)
+            const inputs = document.querySelectorAll('.admin-edit-price');
+            if (inputs.length > 0) {
+                for (let inp of inputs) {
+                    const iId = inp.dataset.id;
+                    const val = parseFloat(inp.value)||0;
+                    const orig = parseFloat(inp.dataset.original)||0;
+                    if (val !== orig) {
+                        await supabaseClient.from('clearance_items').update({ total_price: val }).eq('id', iId);
+                    }
+                }
+            }
+
+            let upData = {};
+
+            // 3. แยกการทำงานตาม Action
+            if (actionType === 'approve') {
                 let aSlipUrl = null;
-                if (slipFile) { 
-                    const p = `admin-slip-${Date.now()}.${slipFile.name.split('.').pop()}`; 
-                    await supabaseClient.storage.from('slips').upload(p, slipFile); 
-                    aSlipUrl = supabaseClient.storage.from('slips').getPublicUrl(p).data.publicUrl; 
+                if (slipFile) {
+                    const p = `admin-slip-${Date.now()}.${slipFile.name.split('.').pop()}`;
+                    await supabaseClient.storage.from('slips').upload(p, slipFile);
+                    aSlipUrl = supabaseClient.storage.from('slips').getPublicUrl(p).data.publicUrl;
                 }
 
                 if (actionDir !== 'none' && processAmt > 0) {
                     const finalAmount = actionDir === 'pay' ? -processAmt : processAmt;
-
                     await supabaseClient.rpc('update_bank_balance', { bank_id: bankId, amount: finalAmount });
                     await supabaseClient.rpc('update_fund_balance', { fund_id: fundId, amount: finalAmount });
-                    
+
                     const reqPurpose = window.currentClearance.purpose || '-';
                     const shortId = reqId.substring(0,6);
                     const logDesc = window.currentClearance.status === 'pending_advance' ? `[โอนตั้งต้น] ${reqPurpose} (${shortId})` : `[เคลียร์บิล] ${reqPurpose} (${shortId})`;
-                    
-                    await supabaseClient.from('transactions').insert([{ 
-                        transaction_date: new Date().toISOString().split('T')[0], 
-                        transaction_type: actionDir === 'pay' ? 'expense' : 'income', 
-                        amount: processAmt, 
-                        description: logDesc, 
-                        fund_id: fundId, 
-                        bank_account_id: bankId, 
-                        slip_url: aSlipUrl, 
-                        status: 'approved', 
-                        department: window.currentClearance.department || '-', 
-                        clearance_id: reqId, 
-                        created_by: currentUser.id 
+
+                    await supabaseClient.from('transactions').insert([{
+                        transaction_date: new Date().toISOString().split('T')[0],
+                        transaction_type: actionDir === 'pay' ? 'expense' : 'income',
+                        amount: processAmt,
+                        description: logDesc,
+                        fund_id: fundId,
+                        bank_account_id: bankId,
+                        slip_url: aSlipUrl,
+                        status: 'approved',
+                        department: window.currentClearance.department || '-',
+                        clearance_id: reqId,
+                        created_by: currentUser.id
                     }]);
                 }
 
-                let newStat = window.currentClearance.status === 'pending_advance' ? 'advance_transferred' : 'cleared';
-                const upData = { status: newStat, total_actual_amount: finalTotal };
+                upData.status = window.currentClearance.status === 'pending_advance' ? 'advance_transferred' : 'cleared';
+                upData.total_actual_amount = finalTotal;
                 if (aSlipUrl) upData.admin_transfer_slip = aSlipUrl;
-                
-                await supabaseClient.from('clearances').update(upData).eq('id', reqId);
+                upData.admin_note = null; // ล้างโน้ตถ้าอนุมัติผ่าน
 
-                if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ ดำเนินการสำเร็จ'; }
-                
-                const reqPurpose = window.currentClearance?.purpose || '-';
-                const actionText = newStat === 'advance_transferred' ? '💸 แอดมินโอนเงินล่วงหน้าให้แล้ว' : '✅ แอดมินอนุมัติเคลียร์บิลสำเร็จ';
-                const alertMsg = `${actionText}\n\n📌 หัวข้อ: ${reqPurpose}\n💰 ยอดอนุมัติ: ฿${finalTotal.toLocaleString()}\n\n(บันทึกลงสมุดบัญชีเรียบร้อย)`;
-                if (window.sendLineMessage) window.sendLineMessage(alertMsg);
+                if(msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ อนุมัติสำเร็จ'; }
 
-                setTimeout(() => { window.closeModal(); window.loadAllAdminData(); }, 2000);
-            } catch (err) { 
-                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ ผิดพลาด: ' + err.message; } 
-            } finally { 
-                if(btn) btn.disabled = false; 
-                // 🚨 2. ปลดล็อกคิวเมื่อทำงานเสร็จสิ้นทั้งหมด
-                modalForm.dataset.submitting = 'false';
+            } else if (actionType === 'return') {
+                upData.status = 'returned_for_edit';
+                upData.admin_note = adminNote;
+                upData.total_actual_amount = finalTotal; // บันทึกยอดที่แอดมินแก้ไข
+                if(msg) { msg.style.color = 'var(--warning)'; msg.textContent = '🔙 ตีกลับให้ Member แก้ไขสำเร็จ'; }
+                
+            } else if (actionType === 'reject') {
+                upData.status = 'rejected';
+                upData.admin_note = adminNote;
+                if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ ปฏิเสธคำขอสำเร็จ'; }
             }
-        });
+
+            await supabaseClient.from('clearances').update(upData).eq('id', reqId);
+
+            // 4. ส่งแจ้งเตือน LINE
+            const reqPurpose = window.currentClearance?.purpose || '-';
+            let alertMsg = '';
+            if (actionType === 'approve') {
+                const actionText = upData.status === 'advance_transferred' ? '💸 แอดมินโอนเงินล่วงหน้าให้แล้ว' : '✅ แอดมินอนุมัติเคลียร์บิลสำเร็จ';
+                alertMsg = `${actionText}\n\n📌 หัวข้อ: ${reqPurpose}\n💰 ยอดอนุมัติ: ฿${finalTotal.toLocaleString()}`;
+            } else if (actionType === 'return') {
+                alertMsg = `⚠️ แอดมินตีกลับคำขอ (รอการยืนยัน/แก้ไข)\n\n📌 หัวข้อ: ${reqPurpose}\n💬 เหตุผล: ${adminNote}\n\nกรุณาเข้าสู่ระบบเพื่อตรวจสอบและยืนยันยอดใหม่`;
+            } else if (actionType === 'reject') {
+                alertMsg = `❌ แอดมินปฏิเสธคำขอ\n\n📌 หัวข้อ: ${reqPurpose}\n💬 เหตุผล: ${adminNote}`;
+            }
+            if (window.sendLineMessage && alertMsg) window.sendLineMessage(alertMsg);
+
+            setTimeout(() => { window.closeModal(); window.loadAllAdminData(); }, 2000);
+
+        } catch (err) {
+            if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = '❌ ผิดพลาด: ' + err.message; }
+        } finally {
+            if(btnApprove) btnApprove.disabled = false;
+            if(btnReturn) btnReturn.disabled = false;
+            if(btnReject) btnReject.disabled = false;
+            modalForm.dataset.submitting = 'false';
+        }
+    };
+
+    // ผูกปุ่มเข้ากับฟังก์ชัน
+    document.getElementById('btn-admin-approve')?.addEventListener('click', () => window.processAdminAction('approve'));
+    document.getElementById('btn-admin-return')?.addEventListener('click', () => window.processAdminAction('return'));
+    document.getElementById('btn-admin-reject')?.addEventListener('click', () => window.processAdminAction('reject'));
     }
     // ==========================================
     // 6. สมุดบัญชีรายรับ-รายจ่าย (Ledger)
@@ -1880,7 +1923,6 @@ window.closeCampAndReset = async function() {
                 ? `<span style="color:var(--success);">✅ อยู่ในงบ (เหลือ ฿${diff.toLocaleString()})</span>` 
                 : `<span style="color:var(--danger);">🚨 เกินงบ! (เกินไป ฿${Math.abs(diff).toLocaleString()})</span>`;
 
-            // เรียงสีตามความสำคัญ 1=แดง(จำเป็น), 5=เทา(ตัดได้)
             const prioColor = { 1: '#ef4444', 2: '#f97316', 3: '#eab308', 4: '#64748b', 5: '#94a3b8' };
             const prioText = { 1: 'จำเป็นมาก', 2: 'ค่อนข้างจำเป็น', 3: 'ควรมี', 4: 'ตัดได้หากจำเป็น', 5: 'ตัดได้' };
 
@@ -1904,12 +1946,18 @@ window.closeCampAndReset = async function() {
                 </table>
             `;
 
+            // 🚨 [อัปเดต V9.3] เพิ่มช่องกรอกเหตุผลและปุ่ม 3 แบบ
             let actionBtns = '';
-            if (plan.status === 'pending') {
+            if (plan.status === 'pending' || plan.status === 'returned_for_edit') {
                 actionBtns = `
-                    <div style="display:flex; gap:10px; margin-top:20px; border-top:1px dashed #ccc; padding-top:15px; justify-content:center;">
-                        <button onclick="updatePlanStatus('${plan.id}', 'rejected')" class="btn btn-danger" style="width:150px;">❌ ปฏิเสธแผน</button>
-                        <button onclick="updatePlanStatus('${plan.id}', 'approved')" class="btn btn-success" style="width:150px;">✅ อนุมัติแผน</button>
+                    <div style="margin-top:20px; background: #fff1f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
+                        <label style="color: var(--danger); font-size:13px; margin-bottom:5px; display:block;">💬 เหตุผล / หมายเหตุ (จำเป็นหากต้องการตีกลับ หรือ ปฏิเสธ)</label>
+                        <textarea id="plan-admin-note" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #fca5a5; font-family: 'Prompt';" rows="2" placeholder="ระบุเหตุผลให้ Member ทราบ..."></textarea>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:15px; justify-content:center;">
+                        <button onclick="updatePlanStatus('${plan.id}', 'approved')" class="btn btn-success" style="flex:2; padding:10px;">✅ อนุมัติแผนนี้</button>
+                        <button onclick="updatePlanStatus('${plan.id}', 'returned_for_edit')" class="btn btn-warning" style="flex:1; padding:10px;">🔙 ตีกลับให้แก้ไข</button>
+                        <button onclick="updatePlanStatus('${plan.id}', 'rejected')" class="btn btn-danger" style="flex:1; padding:10px;">❌ ปฏิเสธแผน</button>
                     </div>
                 `;
             }
@@ -1936,13 +1984,32 @@ window.closeCampAndReset = async function() {
     };
 
     window.updatePlanStatus = async function(id, status) {
-        if(!confirm(`ยืนยันการ ${status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} แผนงบประมาณนี้?`)) return;
+        const noteInput = document.getElementById('plan-admin-note');
+        const adminNote = noteInput ? noteInput.value.trim() : '';
+
+        // บังคับให้ใส่เหตุผลถ้ากดตีกลับหรือปฏิเสธ
+        if ((status === 'returned_for_edit' || status === 'rejected') && !adminNote) {
+            return showToast('⚠️ กรุณาระบุเหตุผลในช่องหมายเหตุก่อนตีกลับหรือปฏิเสธ', 'warning');
+        }
+
+        let confirmMsg = 'ยืนยันการอนุมัติแผนงบประมาณนี้?';
+        if (status === 'returned_for_edit') confirmMsg = 'ยืนยันการตีกลับแผนให้ Member แก้ไข?';
+        if (status === 'rejected') confirmMsg = 'ยืนยันการปฏิเสธแผนงบประมาณนี้?';
+
+        if(!confirm(confirmMsg)) return;
+
         try {
-            await supabaseClient.from('budget_plans').update({ status: status }).eq('id', id);
+            await supabaseClient.from('budget_plans').update({ 
+                status: status, 
+                admin_note: adminNote || null 
+            }).eq('id', id);
+            
             showToast('อัปเดตสถานะสำเร็จ', 'success');
             document.getElementById('view-plan-modal').style.display = 'none';
             window.loadAdminPlans();
-        } catch(e) { showToast('ผิดพลาด: ' + e.message, 'error'); }
+        } catch(e) { 
+            showToast('ผิดพลาด: ' + e.message, 'error'); 
+        }
     };
 
     

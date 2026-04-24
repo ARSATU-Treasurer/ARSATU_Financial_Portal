@@ -1140,11 +1140,9 @@ if (items.length > 0) {
         }
     };
 
-    // ฟังก์ชันโหลดตารางประวัติ (เวอร์ชันสมบูรณ์ รองรับปุ่มแก้ไขร่าง)
+    // 4. โหลดประวัติ (ดึงรายการที่เราเป็น Co-Worker + รองรับการตีกลับ V9.3)
     window.loadBudgetPlans = async function() {
         if (!currentUser) return;
-        
-        // ดึงเพดานงบตามฝ่ายที่เลือกอยู่ปัจจุบัน
         const currentDept = document.getElementById('plan-dept')?.value || savedDepartment;
         if (currentDept) window.loadDeptCeiling(currentDept);
 
@@ -1155,33 +1153,34 @@ if (items.length > 0) {
             const { data, error } = await supabaseClient
                 .from('budget_plans')
                 .select('*')
-                .eq('created_by', currentUser.id)
+                .or(`created_by.eq.${currentUser.id},co_worker_ids.cs.{${currentUser.id}}`) // 🚨 โหลดของตัวเอง + Co-worker
                 .order('created_at', { ascending: false });
             
             if (error) throw error;
-
-            if (!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">ยังไม่มีประวัติการวางแผน</td></tr>`;
-                return;
-            }
+            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">ยังไม่มีประวัติการวางแผน</td></tr>`; return; }
 
             tbody.innerHTML = data.map(plan => {
                 const createdDate = new Date(plan.created_at).toLocaleDateString('th-TH');
                 const neededDate = plan.date_needed ? new Date(plan.date_needed).toLocaleDateString('th-TH') : '-';
                 
-                let stat = '';
-                let actionBtn = '-'; // ค่าเริ่มต้นถ้าไม่มีปุ่ม
-
+                let stat = ''; let actionBtn = ''; 
                 if (plan.status === 'draft') {
                     stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">💾 แบบร่าง</span>';
-                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--primary); color:var(--primary);">✏️ แก้ไขร่าง</button>`;
+                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--primary); color:var(--primary); width:100%;">✏️ แก้ไขร่าง</button>`;
                 } else if (plan.status === 'pending') {
                     stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจสอบ</span>';
                 } else if (plan.status === 'approved') {
                     stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติแล้ว</span>';
+                } else if (plan.status === 'returned_for_edit') { // 🚨 [อัปเดต V9.3]
+                    stat = '<span class="status-badge" style="background:#fef08a; color:#b45309;">⚠️ ตีกลับให้แก้ไข</span>';
+                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-warning" style="padding:4px 8px; font-size:11px; color:white; width:100%; border:none; box-shadow:0 2px 4px rgba(0,0,0,0.1);">🔍 ดูเหตุผล/แก้ไข</button>`;
                 } else if (plan.status === 'rejected') {
                     stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธแผน</span>';
+                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:11px; color:white; width:100%; border:none;">🔍 ดูเหตุผล</button>`;
                 }
+
+                // ปุ่มจัดการรายชื่อ
+                const cwBtn = `<button onclick="openManagePlanCwModal('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--info); color:var(--info); width:100%;">👥 จัดการ Co-Worker</button>`;
 
                 return `
                     <tr>
@@ -1190,13 +1189,16 @@ if (items.length > 0) {
                         <td>${neededDate}</td>
                         <td style="font-weight:bold; color:var(--primary);">฿${parseFloat(plan.total_amount).toLocaleString()}</td>
                         <td>${stat}</td>
-                        <td style="text-align:center;">${actionBtn}</td>
+                        <td style="text-align:center;">
+                            <div style="display:flex; flex-direction:column; gap:5px;">
+                                ${actionBtn}
+                                ${cwBtn}
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join('');
-        } catch(e) {
-            console.error("Load Plans Error:", e);
-        }
+        } catch(e) {}
     };
     }
 
@@ -1316,7 +1318,8 @@ if (items.length > 0) {
                 total_amount: totalAmount,
                 status: isDraft ? 'draft' : 'pending',
                 created_by: currentUser.id,
-                co_worker_ids: coWorkerIds.length > 0 ? coWorkerIds : null // 🚨 บันทึกลงตาราง
+                co_worker_ids: coWorkerIds.length > 0 ? coWorkerIds : null, // 🚨 บันทึกลงตาราง
+                admin_note: null // 🚨 [อัปเดต V9.3] ล้างข้อความตีกลับเมื่อส่งใหม่
             };
 
             let finalPlanId = planId;
@@ -1398,65 +1401,24 @@ if (items.length > 0) {
                     tr.querySelector('.plan-del-btn').addEventListener('click', () => { tr.remove(); window.calculatePlanTotal(); });
                 });
             }
-            window.calculatePlanTotal(); msg.textContent = '✏️ กำลังแก้ไขแบบร่าง';
-        } catch (e) { msg.textContent = '❌ โหลดข้อมูลไม่สำเร็จ'; }
-    };
+            window.calculatePlanTotal(); 
+            // 🚨 [อัปเดต V9.3] จัดการแสดงกล่องเหตุผลตีกลับ
+            const noteBox = document.getElementById('plan-return-note-box');
+            const noteText = document.getElementById('plan-return-note-text');
+            const submitBtn = document.querySelector('#budget-plan-form button[type="submit"]');
 
-    // 4. โหลดประวัติ (ดึงรายการที่เราเป็น Co-Worker และเพิ่มปุ่มจัดการ)
-    window.loadBudgetPlans = async function() {
-        if (!currentUser) return;
-        const currentDept = document.getElementById('plan-dept')?.value || savedDepartment;
-        if (currentDept) window.loadDeptCeiling(currentDept);
-
-        const tbody = document.querySelector('#plan-history-table tbody');
-        if (!tbody) return;
-
-        try {
-            const { data, error } = await supabaseClient
-                .from('budget_plans')
-                .select('*')
-                .or(`created_by.eq.${currentUser.id},co_worker_ids.cs.{${currentUser.id}}`) // 🚨 โหลดของที่ตัวเองมีส่วนร่วม
-                .order('created_at', { ascending: false });
-            
-            if (error) throw error;
-            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">ยังไม่มีประวัติการวางแผน</td></tr>`; return; }
-
-            tbody.innerHTML = data.map(plan => {
-                const createdDate = new Date(plan.created_at).toLocaleDateString('th-TH');
-                const neededDate = plan.date_needed ? new Date(plan.date_needed).toLocaleDateString('th-TH') : '-';
-                
-                let stat = ''; let actionBtn = ''; 
-                if (plan.status === 'draft') {
-                    stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">💾 แบบร่าง</span>';
-                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--primary); color:var(--primary); width:100%;">✏️ แก้ไขร่าง</button>`;
-                } else if (plan.status === 'pending') {
-                    stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจสอบ</span>';
-                } else if (plan.status === 'approved') {
-                    stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติแล้ว</span>';
-                } else if (plan.status === 'rejected') {
-                    stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธแผน</span>';
+            if (plan.status === 'returned_for_edit' || plan.status === 'rejected') {
+                if (noteBox && plan.admin_note) {
+                    noteBox.style.display = 'block';
+                    noteText.textContent = plan.admin_note;
                 }
-
-                // ปุ่มจัดการรายชื่อ
-                const cwBtn = `<button onclick="openManagePlanCwModal('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--info); color:var(--info); width:100%;">👥 จัดการ Co-Worker</button>`;
-
-                return `
-                    <tr>
-                        <td>${createdDate}</td>
-                        <td>${plan.purpose}</td>
-                        <td>${neededDate}</td>
-                        <td style="font-weight:bold; color:var(--primary);">฿${parseFloat(plan.total_amount).toLocaleString()}</td>
-                        <td>${stat}</td>
-                        <td style="text-align:center;">
-                            <div style="display:flex; flex-direction:column; gap:5px;">
-                                ${actionBtn}
-                                ${cwBtn}
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        } catch(e) {}
+                if (submitBtn) submitBtn.innerHTML = '🚀 บันทึกการแก้ไขและส่งแผนใหม่';
+            } else {
+                if (noteBox) noteBox.style.display = 'none';
+                if (submitBtn) submitBtn.innerHTML = '🚀 ส่งแผนให้เหรัญญิก';
+            }
+            msg.textContent = '✏️ กำลังแก้ไขแบบร่าง';
+        } catch (e) { msg.textContent = '❌ โหลดข้อมูลไม่สำเร็จ'; }
     };
 
     // 5. ฟังก์ชันเปิด/บันทึก การจัดการ Co-worker ย้อนหลัง

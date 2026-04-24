@@ -308,8 +308,23 @@
                         <input type="file" id="admin-slip" accept="image/*" style="width: 100%; padding: 8px;">
                     </div>
 
-                    <button type="submit" id="confirm-action-btn" class="btn btn-primary" style="width: 100%; padding: 10px;">✅ ยืนยันดำเนินการ</button>
-                    <div id="modal-msg" style="margin-top: 10px; text-align: center;"></div>
+                    <div id="admin-slip-section" class="form-group" style="margin-bottom: 15px;">
+                        <label>แนบสลิปโอนเงิน (เหรัญญิกบันทึก)</label>
+                        <input type="file" id="admin-slip" accept="image/*" style="width: 100%; padding: 8px;">
+                    </div>
+
+                    <div class="form-group" id="admin-note-section" style="margin-bottom: 15px; background: #fff1f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
+                        <label style="color: var(--danger); margin-bottom: 5px;">💬 เหตุผล / หมายเหตุ (จำเป็นหากต้องการตีกลับ หรือ ปฏิเสธ)</label>
+                        <textarea id="admin-note-input" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #fca5a5; font-family: 'Prompt'; box-sizing: border-box;" rows="2" placeholder="ระบุเหตุผลให้ Member ทราบ..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" id="btn-admin-approve" class="btn btn-success" style="flex: 2; min-width: 150px; padding: 12px; font-size: 15px;">✅ อนุมัติ (พร้อมโอน)</button>
+                        <button type="button" id="btn-admin-return" class="btn btn-warning" style="flex: 1; min-width: 120px; padding: 12px;">🔙 ตีกลับให้แก้ไข</button>
+                        <button type="button" id="btn-admin-reject" class="btn btn-danger" style="flex: 1; min-width: 120px; padding: 12px;">❌ ปฏิเสธคำขอ</button>
+                    </div>
+                    
+                    <div id="modal-msg" style="margin-top: 10px; text-align: center; font-weight: 500;"></div>
                 </form>
             </div>
         </div>
