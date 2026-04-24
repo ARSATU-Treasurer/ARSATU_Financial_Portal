@@ -1231,8 +1231,276 @@ if (items.length > 0) {
         });
     }
 
-
-
     // เรียกตอนโหลดหน้า
     setTimeout(() => { document.getElementById('add-plan-item-btn')?.click(); window.loadBudgetPlans(); }, 1500);
+    // ==========================================
+    // 🌟 ระบบ Co-Worker สำหรับแผนงบประมาณ (อัปเกรด)
+    // ==========================================
+
+    // 1. ดึงรายชื่อ Co-Worker ลงใน Modal แผนงบประมาณ
+    const originalLoadCwPlans = window.loadCoWorkers;
+    window.loadCoWorkers = async function() {
+        if (originalLoadCwPlans) await originalLoadCwPlans();
+        try {
+            const { data } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', currentUser.id);
+            const planCwList = document.getElementById('plan-coworker-list');
+            if (planCwList) {
+                planCwList.innerHTML = '';
+                if (data && data.length > 0) {
+                    data.forEach(user => {
+                        const lbl = document.createElement('label');
+                        lbl.style.display = 'block'; lbl.style.marginBottom = '8px'; lbl.style.cursor = 'pointer'; lbl.style.fontSize = '14px'; lbl.style.padding = '8px'; lbl.style.background = '#f8fafc'; lbl.style.border = '1px solid #e2e8f0'; lbl.style.borderRadius = '6px';
+                        lbl.innerHTML = `<input type="checkbox" class="plan-coworker-cb" value="${user.id}" data-name="${user.full_name}" style="margin-right:10px; transform: scale(1.3);"> <strong>${user.full_name}</strong> <span style="color:gray; font-size:12px;">(${user.department || '-'})</span>`;
+                        planCwList.appendChild(lbl);
+                    });
+                }
+            }
+        } catch(e) {}
+    };
+
+    window.confirmPlanCoWorker = function() {
+        const checkboxes = document.querySelectorAll('.plan-coworker-cb:checked');
+        const summary = document.getElementById('plan-coworker-summary');
+        if (!summary) return;
+        if (checkboxes.length === 0) {
+            summary.innerHTML = 'ไม่มีผู้ร่วมแผน (ทำรายการของตัวเอง)'; summary.style.color = 'var(--text-muted)';
+        } else {
+            const names = Array.from(checkboxes).map(cb => cb.getAttribute('data-name'));
+            let text = names.length > 2 ? `${names[0]}, ${names[1]} และอีก ${names.length - 2} คน` : names.join(', ');
+            summary.innerHTML = `✅ เพิ่มแล้ว <strong style="font-size:15px;">${checkboxes.length}</strong> คน: <br><span style="font-size:12px; color:var(--text-main); font-weight:normal;">${text}</span>`; summary.style.color = 'var(--success)';
+        }
+        document.getElementById('plan-coworker-modal').style.display = 'none';
+    };
+
+    // 2. เขียนทับกระบวนการบันทึกแผนให้ดึงข้อมูล Co-Worker
+    window.processBudgetPlan = async function(isDraft) {
+        const budgetForm = document.getElementById('budget-plan-form');
+        const msg = document.getElementById('plan-msg');
+        const subBtn = budgetForm.querySelector('button[type="submit"]');
+        const draftBtn = document.getElementById('save-plan-draft-btn');
+        
+        const planId = document.getElementById('current-plan-id').value;
+        const dept = document.getElementById('plan-dept').value;
+        const purpose = document.getElementById('plan-purpose').value;
+        const dateNeeded = document.getElementById('plan-date-needed').value;
+
+        if (!isDraft && (!dept || !purpose || !dateNeeded)) {
+            msg.style.color = 'var(--danger)'; msg.textContent = 'กรุณากรอกข้อมูลพื้นฐานให้ครบก่อนส่งแผน'; return;
+        }
+
+        subBtn.disabled = true; draftBtn.disabled = true;
+        msg.style.color = 'var(--info)'; msg.textContent = isDraft ? 'กำลังบันทึกแบบร่าง...' : 'กำลังส่งแผนงบประมาณ...';
+
+        try {
+            const items = []; let totalAmount = 0;
+            document.querySelectorAll('#plan-items-tbody tr').forEach(tr => {
+                const name = tr.querySelector('.plan-name').value;
+                const qty = parseFloat(tr.querySelector('.plan-qty').value) || 0;
+                const price = parseFloat(tr.querySelector('.plan-price').value) || 0;
+                const prio = parseInt(tr.querySelector('.plan-priority').value) || 1;
+                const notes = tr.querySelector('.plan-notes').value;
+                if (name) {
+                    const rowTotal = qty * price; totalAmount += rowTotal;
+                    items.push({ item_name: name, quantity: qty, unit_price: price, total_price: rowTotal, priority: prio, notes: notes });
+                }
+            });
+
+            // 🚨 ดึงรายชื่อ Co-Worker ที่ถูกเลือก
+            const coWorkerIds = [];
+            document.querySelectorAll('.plan-coworker-cb:checked').forEach(cb => coWorkerIds.push(cb.value));
+
+            const planData = {
+                department: dept || 'ไม่ระบุ',
+                purpose: purpose || 'แบบร่างไม่มีหัวข้อ',
+                date_needed: dateNeeded || null,
+                total_amount: totalAmount,
+                status: isDraft ? 'draft' : 'pending',
+                created_by: currentUser.id,
+                co_worker_ids: coWorkerIds.length > 0 ? coWorkerIds : null // 🚨 บันทึกลงตาราง
+            };
+
+            let finalPlanId = planId;
+            if (planId) {
+                await supabaseClient.from('budget_plans').update(planData).eq('id', planId);
+                await supabaseClient.from('budget_plan_items').delete().eq('plan_id', planId);
+            } else {
+                const { data: newPlan, error } = await supabaseClient.from('budget_plans').insert([planData]).select();
+                if (error) throw error;
+                finalPlanId = newPlan[0].id;
+            }
+
+            if (items.length > 0) {
+                const itemsToInsert = items.map(i => ({ ...i, plan_id: finalPlanId }));
+                await supabaseClient.from('budget_plan_items').insert(itemsToInsert);
+            }
+
+            msg.style.color = 'var(--success)'; msg.textContent = isDraft ? '💾 บันทึกแบบร่างเรียบร้อยแล้ว' : '✅ ส่งแผนงบประมาณสำเร็จ';
+            
+            budgetForm.reset(); document.getElementById('current-plan-id').value = '';
+            document.getElementById('plan-items-tbody').innerHTML = ''; document.getElementById('add-plan-item-btn').click();
+            window.calculatePlanTotal();
+            
+            // รีเซ็ต Co-worker
+            document.querySelectorAll('.plan-coworker-cb').forEach(cb => cb.checked = false);
+            window.confirmPlanCoWorker();
+            
+            window.loadBudgetPlans();
+            setTimeout(() => { msg.textContent = ''; }, 3000);
+        } catch (err) {
+            msg.style.color = 'var(--danger)'; msg.textContent = 'ผิดพลาด: ' + err.message;
+        } finally {
+            subBtn.disabled = false; draftBtn.disabled = false;
+        }
+    };
+
+    // 3. เขียนทับตอนดึงแบบร่าง ให้ติ๊ก Co-Worker คืนมา
+    window.editBudgetPlan = async function(id) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const msg = document.getElementById('plan-msg'); msg.textContent = 'กำลังดึงข้อมูลแบบร่าง...';
+        try {
+            const { data: plan } = await supabaseClient.from('budget_plans').select('*').eq('id', id).single();
+            const { data: items } = await supabaseClient.from('budget_plan_items').select('*').eq('plan_id', id);
+
+            document.getElementById('current-plan-id').value = plan.id;
+            document.getElementById('plan-dept').value = plan.department;
+            document.getElementById('plan-purpose').value = plan.purpose;
+            document.getElementById('plan-date-needed').value = plan.date_needed;
+
+            // 🚨 ติ๊ก Co-Worker คืนค่า
+            document.querySelectorAll('.plan-coworker-cb').forEach(cb => { 
+                cb.checked = plan.co_worker_ids && plan.co_worker_ids.includes(cb.value); 
+            }); 
+            window.confirmPlanCoWorker();
+
+            const tbody = document.getElementById('plan-items-tbody'); tbody.innerHTML = '';
+            if (items && items.length > 0) {
+                items.forEach(it => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="text" class="plan-name" value="${it.item_name}" required></td>
+                        <td><input type="number" class="plan-qty" min="1" value="${it.quantity}" required></td>
+                        <td><input type="number" class="plan-price" min="0" step="0.01" value="${it.unit_price}" required></td>
+                        <td><input type="number" class="plan-total" readonly style="background:#f1f5f9; color:var(--primary); font-weight:bold;"></td>
+                        <td>
+                            <select class="plan-priority" required>
+                                <option value="1" ${it.priority == 1 ? 'selected' : ''}>(1) จำเป็นที่สุด</option>
+                                <option value="2" ${it.priority == 2 ? 'selected' : ''}>(2) ค่อนข้างจำเป็น</option>
+                                <option value="3" ${it.priority == 3 ? 'selected' : ''}>(3) ควรมี</option>
+                                <option value="4" ${it.priority == 4 ? 'selected' : ''}>(4) ตัดได้หากจำเป็น</option>
+                                <option value="5" ${it.priority == 5 ? 'selected' : ''}>(5) ตัดได้</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="plan-notes" value="${it.notes || ''}"></td>
+                        <td style="text-align: center;"><button type="button" class="btn btn-danger plan-del-btn" style="padding: 6px 10px; font-size: 12px;">ลบ</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                    tr.querySelectorAll('.plan-qty, .plan-price').forEach(inp => inp.addEventListener('input', window.calculatePlanTotal));
+                    tr.querySelector('.plan-del-btn').addEventListener('click', () => { tr.remove(); window.calculatePlanTotal(); });
+                });
+            }
+            window.calculatePlanTotal(); msg.textContent = '✏️ กำลังแก้ไขแบบร่าง';
+        } catch (e) { msg.textContent = '❌ โหลดข้อมูลไม่สำเร็จ'; }
+    };
+
+    // 4. โหลดประวัติ (ดึงรายการที่เราเป็น Co-Worker และเพิ่มปุ่มจัดการ)
+    window.loadBudgetPlans = async function() {
+        if (!currentUser) return;
+        const currentDept = document.getElementById('plan-dept')?.value || savedDepartment;
+        if (currentDept) window.loadDeptCeiling(currentDept);
+
+        const tbody = document.querySelector('#plan-history-table tbody');
+        if (!tbody) return;
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('budget_plans')
+                .select('*')
+                .or(`created_by.eq.${currentUser.id},co_worker_ids.cs.{${currentUser.id}}`) // 🚨 โหลดของที่ตัวเองมีส่วนร่วม
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">ยังไม่มีประวัติการวางแผน</td></tr>`; return; }
+
+            tbody.innerHTML = data.map(plan => {
+                const createdDate = new Date(plan.created_at).toLocaleDateString('th-TH');
+                const neededDate = plan.date_needed ? new Date(plan.date_needed).toLocaleDateString('th-TH') : '-';
+                
+                let stat = ''; let actionBtn = ''; 
+                if (plan.status === 'draft') {
+                    stat = '<span class="status-badge" style="background:#e2e8f0; color:#475569;">💾 แบบร่าง</span>';
+                    actionBtn = `<button onclick="editBudgetPlan('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--primary); color:var(--primary); width:100%;">✏️ แก้ไขร่าง</button>`;
+                } else if (plan.status === 'pending') {
+                    stat = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">⏳ รอตรวจสอบ</span>';
+                } else if (plan.status === 'approved') {
+                    stat = '<span class="status-badge" style="background:#d1fae5; color:#059669;">✅ อนุมัติแล้ว</span>';
+                } else if (plan.status === 'rejected') {
+                    stat = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ปฏิเสธแผน</span>';
+                }
+
+                // ปุ่มจัดการรายชื่อ
+                const cwBtn = `<button onclick="openManagePlanCwModal('${plan.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--info); color:var(--info); width:100%;">👥 จัดการ Co-Worker</button>`;
+
+                return `
+                    <tr>
+                        <td>${createdDate}</td>
+                        <td>${plan.purpose}</td>
+                        <td>${neededDate}</td>
+                        <td style="font-weight:bold; color:var(--primary);">฿${parseFloat(plan.total_amount).toLocaleString()}</td>
+                        <td>${stat}</td>
+                        <td style="text-align:center;">
+                            <div style="display:flex; flex-direction:column; gap:5px;">
+                                ${actionBtn}
+                                ${cwBtn}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch(e) {}
+    };
+
+    // 5. ฟังก์ชันเปิด/บันทึก การจัดการ Co-worker ย้อนหลัง
+    window.openManagePlanCwModal = async function(id) {
+        document.getElementById('plan-manage-coworker-modal').style.display = 'flex';
+        document.getElementById('plan-cw-edit-id').value = id;
+        const listDiv = document.getElementById('plan-cw-edit-list');
+        listDiv.innerHTML = '⏳ กำลังโหลด...';
+        try {
+            const { data: plan } = await supabaseClient.from('budget_plans').select('co_worker_ids, created_by').eq('id', id).single();
+            const existingIds = plan.co_worker_ids || [];
+            const { data: users } = await supabaseClient.from('profiles').select('id, full_name, department').eq('status', 'approved').neq('id', plan.created_by);
+            
+            listDiv.innerHTML = '';
+            if (users && users.length > 0) {
+                users.forEach(user => {
+                    const isChecked = existingIds.includes(user.id) ? 'checked' : '';
+                    const lbl = document.createElement('label');
+                    lbl.style.display = 'block'; lbl.style.marginBottom = '8px'; lbl.style.cursor = 'pointer'; lbl.style.padding = '8px'; lbl.style.background = 'white'; lbl.style.border = '1px solid #e2e8f0'; lbl.style.borderRadius = '6px';
+                    lbl.innerHTML = `<input type="checkbox" class="plan-cw-quick-cb" value="${user.id}" ${isChecked} style="margin-right:8px; transform: scale(1.2);"> <strong>${user.full_name}</strong> <span style="color:gray; font-size:12px;">(${user.department || '-'})</span>`;
+                    listDiv.appendChild(lbl);
+                });
+            }
+        } catch(e) { listDiv.innerHTML = '❌ โหลดข้อมูลไม่สำเร็จ'; }
+    };
+
+    window.savePlanCoWorkersQuick = async function() {
+        const id = document.getElementById('plan-cw-edit-id').value;
+        const coWorkerIds = [];
+        document.querySelectorAll('.plan-cw-quick-cb:checked').forEach(cb => coWorkerIds.push(cb.value));
+        const btn = document.querySelector('#plan-manage-coworker-modal .btn-primary');
+        btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+        try {
+            await supabaseClient.from('budget_plans').update({ co_worker_ids: coWorkerIds }).eq('id', id);
+            showToast("อัปเดตรายชื่อ Co-Worker สำเร็จ", "success");
+            document.getElementById('plan-manage-coworker-modal').style.display = 'none';
+            window.loadBudgetPlans();
+        } catch(e) {
+            showToast("เกิดข้อผิดพลาด: " + e.message, "error");
+        } finally {
+            btn.disabled = false; btn.textContent = '💾 บันทึกรายชื่อ';
+        }
+    };
+
+    // บังคับให้โหลดข้อมูล Co-Worker ใหม่ทันที
+    setTimeout(() => { window.loadCoWorkers(); }, 500);
 });
