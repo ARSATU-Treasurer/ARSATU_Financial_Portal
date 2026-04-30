@@ -983,50 +983,47 @@ if (fundError) throw fundError;
     };
 
     // ==========================================
-    // 8. โหลดตารางประวัติแก้ไข (Audit Log)
+    // 🌟 8. โหลดประวัติการแก้ไข / ยกเลิก (Audit Logs)
     // ==========================================
     window.loadAuditLogs = async function() {
         const tbody = document.querySelector('#audit-log-table tbody');
         if (!tbody) return;
-        
+
         try {
-            const { data, error } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
+            // โหลดข้อมูลทั้งหมด (ดึงชื่อแอดมินที่ทำรายการด้วย)
+            const { data: audits, error } = await supabaseClient
+                .from('audit_logs')
+                .select('*, profiles(full_name)')
+                .order('created_at', { ascending: false });
+
             if (error) throw error;
-            
-            if (!data || data.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">ไม่มีประวัติการแก้ไข / ยกเลิก</td></tr>`; 
-                return; 
+
+            if (!audits || audits.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: gray;">ไม่มีประวัติการแก้ไขข้อมูล</td></tr>';
+                return;
             }
 
-            const pMap = await getProfileMap();
-            const { data: cData } = await supabaseClient.from('clearances').select('id, purpose');
-            const cMap = {};
-            if(cData) cData.forEach(c => cMap[c.id] = c.purpose);
-
-            tbody.innerHTML = data.map(log => {
-                const date = new Date(log.created_at).toLocaleString('th-TH');
-                const adminName = pMap[log.admin_id]?.full_name || 'Admin';
-                const purpose = cMap[log.clearance_id] || 'บิลถูกลบไปแล้ว';
+            tbody.innerHTML = audits.map(a => {
+                // 🚨 เปลี่ยนมาใช้ action_type อย่างเดียว
+                const actType = a.action_type || 'ดำเนินการ'; 
+                const adminName = a.profiles?.full_name || 'แอดมิน';
+                const recId = a.record_id || a.clearance_id || '-';
+                const reason = a.reason || a.edit_reason || '-';
                 
-                let actionBadge = '';
-                if (log.action_type === 'reject_clearance') actionBadge = '<span class="status-badge" style="background:#fee2e2; color:#ef4444;">❌ ยกเลิกบิล</span>';
-                else if (log.action_type === 'return_clearance') actionBadge = '<span class="status-badge" style="background:#ffedd5; color:#b45309;">🔙 ตีกลับบิล</span>';
-                else if (log.action_type === 'substitute_clearance') actionBadge = '<span class="status-badge" style="background:#e0e7ff; color:#4f46e5;">👑 เคลียร์แทน</span>';
-                else actionBadge = '<span class="status-badge" style="background:#fef3c7; color:#d97706;">✏️ แก้ไขข้อมูล</span>';
-
                 return `
                     <tr>
-                        <td style="font-size:12px;">${date}</td>
-                        <td style="font-weight:bold;">${adminName}</td>
-                        <td>${actionBadge}</td>
-                        <td>${purpose}</td>
-                        <td style="color:var(--danger); font-weight:500;">${log.edit_reason || '-'}</td>
-                        <td style="font-size:12px; color:gray;">${log.new_value || '-'}</td>
+                        <td>${new Date(a.created_at).toLocaleString('th-TH')}</td>
+                        <td>${adminName}</td>
+                        <td><span class="status-badge" style="background:#f1f5f9; color:var(--text-main); border:1px solid #cbd5e1;">${actType}</span></td>
+                        <td style="font-size: 13px;">รหัส: ${recId.substring(0,8)}...</td>
+                        <td style="color:var(--danger); font-weight:500;">${reason}</td>
+                        <td style="font-size:12px; color:gray;">${a.new_value || '-'}</td>
                     </tr>
                 `;
             }).join('');
-        } catch (e) { 
-            console.error(e); 
+
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">โหลดข้อมูลไม่ได้: ${err.message}</td></tr>`;
         }
     };
 

@@ -217,14 +217,17 @@
                 }
             } catch(e) { console.error("Clearance Error:", e); }
 
+            // โหลดประวัติการแก้ไขข้อมูล (Audit Logs)
             try {
                 const { data: audits, error: audErr } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
                 const tbody = document.querySelector('#audit-table tbody');
+                
                 if (audErr) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">โหลดข้อมูลไม่ได้ (ติดสิทธิ์ความปลอดภัย)</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">โหลดข้อมูลไม่ได้: ${audErr.message}</td></tr>`;
                 } else if (audits && audits.length > 0) {
                     tbody.innerHTML = audits.map(a => {
-                        const actType = a.action_type || a.action || 'แก้ไขข้อมูล';
+                        // 🚨 ดึงข้อมูลจาก action_type อย่างเดียว (ลบ a.action ที่ทำให้เกิดบั๊กออกแล้ว)
+                        const actType = a.action_type || 'แก้ไขข้อมูล';
                         const recId = String(a.record_id || a.clearance_id || 'ไม่ระบุ');
                         const reason = a.reason || a.edit_reason || '-';
                         return `
@@ -238,8 +241,9 @@
                 } else {
                     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:gray;">ไม่มีประวัติการแก้ไขข้อมูล</td></tr>';
                 }
-            } catch(e) { console.error("Audit Error:", e); }
-        }
+            } catch(e) { 
+                console.error("Audit Error:", e); 
+            }}
 
         function getStatusStyle(status) {
             if (status === 'cleared') return 'background:#d1fae5; color:#059669;';
