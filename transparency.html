@@ -283,6 +283,7 @@
                 let allMedia = '';
                 allMedia += renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
                 allMedia += renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+                allMedia += renderMedia(c.admin_transfer_slip, '💸 สลิปโอนเงินตั้งต้น (เหรัญญิกแนบ)', '#3b82f6');
                 allMedia += renderMedia(c.statement_url, '🏦 หลักฐานการโอนเงิน (เหรัญญิกแนบ)', '#10b981');
                 
                 if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
@@ -309,6 +310,43 @@
         }
 
         async function viewTxDetail(id) {
+            try {
+                const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
+                if (!tx) return;
+
+                let allMedia = '';
+                
+                if (tx.clearance_id) {
+                    const { data: c } = await supabaseClient.from('clearances').select('receipt_url, return_slip_url, statement_url, admin_transfer_slip').eq('id', tx.clearance_id).single();
+                    if (c) {
+                        allMedia += renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
+                        allMedia += renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+                        const adminSlip = c.statement_url || c.admin_transfer_slip || tx.slip_url;
+                        allMedia += renderMedia(adminSlip, '🏦 หลักฐานการทำธุรกรรม (เหรัญญิกแนบ)', '#10b981');
+                    }
+                } else {
+                    allMedia += renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
+                }
+
+                if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
+
+                document.getElementById('modal-body').innerHTML = `
+                    <h2 style="color:var(--primary); margin-top:0;">รายละเอียดสมุดบัญชี</h2>
+                    <div style="background:#f8fafc; padding:15px; border-radius:10px;">
+                        <p style="margin:8px 0;"><b>วันที่:</b> ${new Date(tx.created_at).toLocaleString('th-TH')}</p>
+                        <p style="margin:8px 0;"><b>รายการ:</b> ${tx.description}</p>
+                        <p style="margin:8px 0;"><b>ประเภท:</b> ${['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type) ? '<span style="color:green; font-weight:bold;">รายรับ</span>' : '<span style="color:red; font-weight:bold;">รายจ่าย</span>'}</p>
+                        <p style="margin:8px 0;"><b>ยอดเงิน:</b> <strong style="font-size:20px;">฿${parseFloat(tx.amount).toLocaleString()}</strong></p>
+                    </div>
+
+                    <div style="margin-top: 25px;">
+                        <h4 style="margin-bottom: 15px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">📸 ภาพหลักฐานอ้างอิง</h4>
+                        ${allMedia}
+                    </div>
+                `;
+                document.getElementById('detail-modal').style.display = 'flex';
+            } catch (e) { console.error('TX Error:', e); }
+        }
             try {
                 const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
                 if (!tx) return;
@@ -347,7 +385,6 @@
                 `;
                 document.getElementById('detail-modal').style.display = 'flex';
             } catch (e) { console.error('TX Error:', e); }
-        }
 
         function closeModal() { document.getElementById('detail-modal').style.display = 'none'; }
     </script>

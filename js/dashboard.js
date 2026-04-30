@@ -1196,125 +1196,92 @@ if (fundError) throw fundError;
                 </div>`;
     }
 
+    // -----------------------------------------
+    // 🌟 1. ฟังก์ชันดูรายละเอียดสมุดบัญชี
+    // -----------------------------------------
     window.viewTransaction = async function(id) {
-        document.getElementById('view-tx-modal').style.display = 'flex'; 
-        const content = document.getElementById('view-tx-content'); 
-        content.innerHTML = '<div style="text-align:center; padding:20px; color:gray;">กำลังโหลดข้อมูล...</div>';
-        
         try {
-            const { data: tx } = await supabaseClient.from('transactions').select(`*`).eq('id', id).single(); 
-            if (!tx) throw new Error("ไม่พบข้อมูล"); 
-            
-            const pMap = await getProfileMap();
-            const { data: bData } = await supabaseClient.from('bank_accounts').select('bank_name').eq('id', tx.bank_account_id).single(); 
-            const { data: fData } = await supabaseClient.from('funds').select('fund_name').eq('id', tx.fund_id).single();
+            const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
+            if (!tx) return;
 
-            const date = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString('th-TH') : new Date(tx.created_at).toLocaleDateString('th-TH');
-            
             let allMedia = '';
             
-            // 🌟 เช็กว่ารายการนี้มาจากการเบิกเงินหรือไม่
             if (tx.clearance_id) {
-                const { data: c } = await supabaseClient.from('clearances').select('receipt_url, return_slip_url, statement_url').eq('id', tx.clearance_id).single();
+                // 🚨 อัปเดต: เพิ่มการ select ดึง admin_transfer_slip
+                const { data: c } = await supabaseClient.from('clearances').select('receipt_url, return_slip_url, statement_url, admin_transfer_slip').eq('id', tx.clearance_id).single();
                 if (c) {
-                    allMedia += renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
-                    allMedia += renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
-                    // ใช้ statement_url จาก clearance หรือถ้าไม่มีก็ดึงจาก tx.slip_url
-                    allMedia += renderMedia(c.statement_url || tx.slip_url, '🏦 หลักฐานการทำธุรกรรม (เหรัญญิกแนบ)', '#10b981');
+                    allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
+                    allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+                    
+                    // 🚨 อัปเดต: ให้ระบบเช็กและดึงสลิปทั้งจากการ "เคลียร์บิล" และ "โอนตั้งต้น"
+                    const adminSlip = c.statement_url || c.admin_transfer_slip || tx.slip_url;
+                    allMedia += window.renderMedia(adminSlip, '🏦 หลักฐานการทำธุรกรรม (เหรัญญิกแนบ)', '#10b981');
                 }
             } else {
-                // รายการรับบริจาค หรือ รายจ่ายทั่วไป
-                allMedia += renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
+                allMedia += window.renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
             }
 
-            if (!allMedia) allMedia = '<div style="margin-top:15px; padding:20px; text-align:center; background:#f4f6f9; color:gray; border-radius:8px;">ไม่มีหลักฐานแนบในระบบ</div>';
+            if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
 
-            content.innerHTML = `
-                <table style="width:100%; font-size:14px;">
-                    <tr><td style="padding:5px 0; color:gray; width:30%;">วันที่:</td><td style="font-weight:bold;">${date}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">รายละเอียด:</td><td>${tx.description || '-'}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">ฝ่าย / แผนก:</td><td style="color:var(--primary);">${tx.department || 'ส่วนกลาง'}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">สถานที่:</td><td>${tx.location || '-'}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">ยอดเงิน:</td><td style="font-weight:bold; color:var(--primary);">฿${parseFloat(tx.amount).toLocaleString()}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">บัญชี / กองทุน:</td><td>🏦 ${bData?.bank_name||'-'} <br> 💼 ${fData?.fund_name||'-'}</td></tr>
-                    <tr><td style="padding:5px 0; color:gray;">ผู้บันทึก:</td><td>${pMap[tx.created_by]?.full_name || 'แอดมิน'}</td></tr>
-                </table>
-                
+            document.getElementById('view-tx-content').innerHTML = `
+                <div style="background:#f8fafc; padding:15px; border-radius:10px;">
+                    <p style="margin:8px 0;"><b>วันที่:</b> ${new Date(tx.created_at).toLocaleString('th-TH')}</p>
+                    <p style="margin:8px 0;"><b>รายการ:</b> ${tx.description}</p>
+                    <p style="margin:8px 0;"><b>ประเภท:</b> ${['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type) ? '<span style="color:green; font-weight:bold;">รายรับ</span>' : '<span style="color:red; font-weight:bold;">รายจ่าย</span>'}</p>
+                    <p style="margin:8px 0;"><b>ยอดเงิน:</b> <strong style="font-size:20px;">฿${parseFloat(tx.amount).toLocaleString()}</strong></p>
+                </div>
                 <div style="margin-top: 25px;">
                     <h4 style="margin-bottom: 15px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">📸 ภาพหลักฐานอ้างอิง</h4>
                     ${allMedia}
                 </div>
-                
-                <div style="margin-top:20px; padding-top:15px; border-top:1px dashed #ccc; display:flex; justify-content:center;">
-                    <button onclick="undoTransaction('${tx.id}')" class="btn btn-danger" style="width:100%; padding:10px; font-size:14px;">🗑️ ยกเลิกรายการนี้ (Undo & คืนเงิน)</button>
-                </div>
             `;
-        } catch (err) { 
-            content.innerHTML = '<span style="color:red;">โหลดข้อมูลไม่สำเร็จ</span>'; 
-        }
+            document.getElementById('view-tx-modal').style.display = 'flex';
+        } catch (e) { console.error('TX Error:', e); }
     };
 
-    window.viewClearance = async function(id) {
-        document.getElementById('view-clearance-modal').style.display = 'flex'; 
-        const content = document.getElementById('view-clearance-content'); 
-        content.innerHTML = 'กำลังโหลดข้อมูล...';
-        
+    // -----------------------------------------
+    // 🌟 2. ฟังก์ชันดูรายละเอียดรายการขอเบิก
+    // -----------------------------------------
+    window.viewClearanceDetail = async function(id) {
         try {
-            const { data: c } = await supabaseClient.from('clearances').select(`*, profiles!member_id(full_name)`).eq('id', id).single(); 
-            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id); 
-            const pMap = await getProfileMap();
-
-            let itemsHtml = '<div style="padding:15px; text-align:center; color:gray; background:#f4f6f9; border-radius:6px;">ไม่มีรายการย่อย</div>';
-            if (items && items.length > 0) {
-                itemsHtml = `
-                    <table style="width:100%; background:#f8fafc; border-radius:6px; margin-top:10px;">
-                        <thead>
-                            <tr><th style="padding:8px;">รายการ</th><th style="text-align:center;">จำนวน</th><th style="text-align:right; padding-right:8px;">ราคารวม</th></tr>
-                        </thead>
-                        <tbody>
-                            ${items.map(it => `<tr><td style="padding:8px; border-bottom:1px solid #eee;">${it.item_name}</td><td style="text-align:center; border-bottom:1px solid #eee;">${it.quantity}</td><td style="text-align:right; padding-right:8px; border-bottom:1px solid #eee;">฿${parseFloat(it.total_price).toLocaleString()}</td></tr>`).join('')}
-                        </tbody>
-                    </table>
-                `;
-            }
-
-            const imgList = []; 
-            let pwdHtml = c.statement_password ? `<p style="margin:5px 0 0 0; color:var(--danger); font-size:12px; font-weight:bold; background:#fee2e2; padding:3px 6px; border-radius:4px; display:inline-block;">🔑 รหัส: ${c.statement_password}</p>` : '';
+            const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
+            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
+            if (!c) return;
             
-            if(c.statement_url) {
-                if (c.statement_url.toLowerCase().includes('.pdf')) { 
-                    imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><a href="${c.statement_url}" target="_blank" class="btn btn-outline" style="display:inline-block; padding:10px 15px; text-decoration:none;">📄 ดู PDF</a><br>${pwdHtml}</div>`); 
-                } else { 
-                    imgList.push(`<div><p style="margin:0 0 5px 0; color:gray; font-size:12px;">ใบเสร็จรวม/สลิปจ่าย:</p><img src="${c.statement_url}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"><br>${pwdHtml}</div>`); 
-                }
-            }
-            if(c.member_return_slip) imgList.push(`<div><p style="margin:0 0 5px 0; color:var(--warning); font-size:12px;">สลิปเงินทอน (คืนค่าย):</p><img src="${c.member_return_slip}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
-            if(c.admin_transfer_slip) imgList.push(`<div><p style="margin:0 0 5px 0; color:var(--danger); font-size:12px;">สลิปโอนเงิน (ออกค่าย):</p><img src="${c.admin_transfer_slip}" style="max-width:100%; height:150px; border-radius:6px; cursor:pointer; object-fit:cover; border:1px solid #ccc;" onclick="window.open(this.src, '_blank')"></div>`);
+            let itemsHtml = items && items.length > 0 
+                ? items.map(i => `<li style="margin-bottom:8px; border-bottom:1px dashed #eee; padding-bottom:5px;">${i.item_name} <span style="float:right; font-weight:bold;">฿${parseFloat(i.total_price||0).toLocaleString()}</span></li>`).join('') 
+                : '<li style="color:gray;">ไม่มีรายการย่อย</li>';
             
-            const imgsHtml = imgList.length > 0 ? `<div style="display:flex; gap:10px; margin-top:15px; overflow-x:auto; padding-bottom:10px;">${imgList.join('')}</div>` : `<div style="margin-top:15px; padding:15px; text-align:center; background:#f4f6f9; color:gray; border-radius:8px;">ไม่มีรูปหลักฐานแนบไว้เลย</div>`;
+            let allMedia = '';
+            allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
+            allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+            
+            // 🚨 อัปเดต: เพิ่มการแสดงสลิป "โอนตั้งต้น" 
+            allMedia += window.renderMedia(c.admin_transfer_slip, '💸 สลิปโอนเงินตั้งต้น (เหรัญญิกแนบ)', '#3b82f6');
+            allMedia += window.renderMedia(c.statement_url, '🏦 หลักฐานการเคลียร์บิล (เหรัญญิกแนบ)', '#10b981');
+            
+            if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
 
-            content.innerHTML = `
-                <div style="display:flex; gap:20px; flex-wrap:wrap;">
-                    <div style="flex:1; min-width:300px;">
-                        <table style="width:100%; font-size:14px;">
-                            <tr><td style="padding:4px 0; color:gray; width:35%;">ผู้เบิก:</td><td style="font-weight:bold;">${pMap[c.member_id]?.full_name||'-'}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">ฝ่าย / แผนก:</td><td style="color:var(--primary);">${c.department || '-'}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">หัวข้อ:</td><td>${c.purpose}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">ยอดขอเบิกล่วงหน้า:</td><td>฿${parseFloat(c.requested_amount).toLocaleString()}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">ยอดใช้จ่ายจริง:</td><td style="font-weight:bold; color:var(--success);">฿${parseFloat(c.total_actual_amount).toLocaleString()}</td></tr>
-                            <tr><td style="padding:4px 0; color:gray;">บัญชีรับเงิน (Member):</td><td>${c.member_bank_details || '-'}</td></tr>
-                        </table>
-                        ${imgsHtml}
-                    </div>
-                    <div style="flex:1.2; min-width:300px;">
-                        <h4 style="margin:0 0 5px 0; color:var(--primary);">🛒 รายการสินค้า / บิลย่อย</h4>
-                        ${itemsHtml}
-                    </div>
+            document.getElementById('view-clearance-content').innerHTML = `
+                <div style="background:#f0f9ff; padding:15px; border-radius:8px; border:1px solid #bae6fd;">
+                    <p style="margin:0 0 5px 0;"><b>หัวข้อ:</b> ${c.purpose}</p>
+                    <p style="margin:0 0 5px 0;"><b>ฝ่าย:</b> ${c.department || '-'}</p>
+                    <p style="margin:0;"><b>วันที่ส่ง:</b> ${new Date(c.created_at).toLocaleString('th-TH')}</p>
+                </div>
+                
+                <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-top:15px;">
+                    <h4 style="margin-top:0; color: #475569;">รายการบิลย่อย</h4>
+                    <ul style="list-style:none; padding:0; margin:0;">${itemsHtml}</ul>
+                    <div style="text-align:right; margin-top:15px; font-size:18px;">ยอดรวมสุทธิ: <strong style="color:var(--primary); font-size:24px;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</strong></div>
+                </div>
+                
+                <div style="margin-top: 25px;">
+                    <h4 style="margin-bottom: 15px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">📸 หลักฐานทั้งหมด (รูปภาพ/PDF)</h4>
+                    ${allMedia}
                 </div>
             `;
-        } catch (err) { 
-            content.innerHTML = '<span style="color:red;">โหลดข้อมูลไม่สำเร็จ</span>'; 
-        }
+            document.getElementById('view-clearance-modal').style.display = 'flex';
+        } catch (e) { console.error('Detail Error:', e); }
     };
 
     // ==========================================
