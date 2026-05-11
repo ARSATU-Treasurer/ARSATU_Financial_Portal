@@ -1182,7 +1182,7 @@ if (fundError) throw fundError;
     // ==========================================
     
     // ฟังก์ชันช่วยจัดการสื่อ (รูปภาพ และ PDF)
-    function renderMedia(url, label, color) {
+    window.renderMedia = function(url, label, color) {
         if (!url) return '';
         const isPdf = url.toLowerCase().endsWith('.pdf');
         let mediaHtml = isPdf 
@@ -1199,58 +1199,48 @@ if (fundError) throw fundError;
     // -----------------------------------------
     // 🌟 1. ฟังก์ชันดูรายละเอียดสมุดบัญชี
     // -----------------------------------------
-    window.viewTransaction = async function(id) {
-        try {
-            const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
-            if (!tx) return;
+    // 1. แก้ไขการดูสมุดบัญชี (ดึงรูปได้ครบทุกประเภท)
+window.viewTransaction = async function(id) {
+    try {
+        const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
+        if (!tx) return;
 
-            let allMedia = '';
-            
-            if (tx.clearance_id) {
-                // 🚨 อัปเดต: เพิ่มการ select ดึง admin_transfer_slip
-                const { data: c } = await supabaseClient.from('clearances').select('receipt_url, return_slip_url, statement_url, admin_transfer_slip').eq('id', tx.clearance_id).single();
-                if (c) {
-                    allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
-                    allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
-                    
-                    // 🚨 อัปเดต: ให้ระบบเช็กและดึงสลิปทั้งจากการ "เคลียร์บิล" และ "โอนตั้งต้น"
-                    const adminSlip = c.statement_url || c.admin_transfer_slip || tx.slip_url;
-                    allMedia += window.renderMedia(adminSlip, '🏦 หลักฐานการทำธุรกรรม (เหรัญญิกแนบ)', '#10b981');
-                }
-            } else {
-                allMedia += window.renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
+        let allMedia = '';
+        if (tx.clearance_id) {
+            // ดึงข้อมูลบิล และสลิปทุกประเภทจาก clearances
+            const { data: c } = await supabaseClient.from('clearances').select('receipt_url, return_slip_url, statement_url, admin_transfer_slip').eq('id', tx.clearance_id).single();
+            if (c) {
+                allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิก)', '#64748b');
+                allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน', '#ef4444');
+                const adminSlip = c.statement_url || c.admin_transfer_slip || tx.slip_url;
+                allMedia += window.renderMedia(adminSlip, '🏦 หลักฐานเหรัญญิก', '#10b981');
             }
+        } else {
+            allMedia += window.renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
+        }
 
-            if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
-
-            document.getElementById('view-tx-content').innerHTML = `
-                <div style="background:#f8fafc; padding:15px; border-radius:10px;">
-                    <p style="margin:8px 0;"><b>วันที่:</b> ${new Date(tx.created_at).toLocaleString('th-TH')}</p>
-                    <p style="margin:8px 0;"><b>รายการ:</b> ${tx.description}</p>
-                    <p style="margin:8px 0;"><b>ประเภท:</b> ${['income', 'donation_cash', 'donation_transfer'].includes(tx.transaction_type) ? '<span style="color:green; font-weight:bold;">รายรับ</span>' : '<span style="color:red; font-weight:bold;">รายจ่าย</span>'}</p>
-                    <p style="margin:8px 0;"><b>ยอดเงิน:</b> <strong style="font-size:20px;">฿${parseFloat(tx.amount).toLocaleString()}</strong></p>
-                </div>
-                <div style="margin-top: 25px;">
-                    <h4 style="margin-bottom: 15px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">📸 ภาพหลักฐานอ้างอิง</h4>
-                    ${allMedia}
-                </div>
-            `;
-            document.getElementById('view-tx-modal').style.display = 'flex';
-        } catch (e) { console.error('TX Error:', e); }
-    };
+        document.getElementById('view-tx-content').innerHTML = `
+            <div style="background:#f8fafc; padding:15px; border-radius:10px;">
+                <p><b>รายการ:</b> ${tx.description}</p>
+                <p><b>ยอดเงิน:</b> ฿${parseFloat(tx.amount).toLocaleString()}</p>
+            </div>
+            <div style="margin-top: 20px;">${allMedia || '<p style="text-align:center;color:gray;">ไม่มีรูปแนบ</p>'}</div>
+        `;
+        document.getElementById('view-tx-modal').style.display = 'flex';
+    } catch (e) { console.error(e); }
+};
 
     // -----------------------------------------
     // 🌟 2. ฟังก์ชันดูรายละเอียดรายการขอเบิก
     // -----------------------------------------
-    window.viewClearanceDetail = async function(id) {
+    window.viewClearance = async function(id) {
         try {
-            const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
-            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
-            if (!c) return;
-            
-            let itemsHtml = items && items.length > 0 
-                ? items.map(i => `<li style="margin-bottom:8px; border-bottom:1px dashed #eee; padding-bottom:5px;">${i.item_name} <span style="float:right; font-weight:bold;">฿${parseFloat(i.total_price||0).toLocaleString()}</span></li>`).join('') 
-                : '<li style="color:gray;">ไม่มีรายการย่อย</li>';
+        const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
+        const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
+        
+        let itemsHtml = (items && items.length > 0) 
+            ? items.map(i => `<li style="border-bottom:1px dashed #eee; padding:5px 0;">${i.item_name} <span style="float:right;">฿${parseFloat(i.total_price||0).toLocaleString()}</span></li>`).join('')
+            : '<li style="color:gray;text-align:center;">ไม่มีรายการย่อยในระบบ</li>';
             
             let allMedia = '';
             allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
