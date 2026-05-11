@@ -1201,34 +1201,34 @@ if (fundError) throw fundError;
     // -----------------------------------------
     // 1. แก้ไขการดูสมุดบัญชี (ดึงรูปได้ครบทุกประเภท)
 window.viewTransaction = async function(id) {
-    try {
-        const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
-        if (!tx) return;
+        try {
+            const { data: tx } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
+            if (!tx) return;
 
-        let allMedia = '';
-        if (tx.clearance_id) {
-            // ดึงข้อมูลบิล และสลิปทุกประเภทจาก clearances
-            const { data: c } = await supabaseClient.from('clearances').select('receipt_url, return_slip_url, statement_url, admin_transfer_slip').eq('id', tx.clearance_id).single();
-            if (c) {
-                allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิก)', '#64748b');
-                allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน', '#ef4444');
-                const adminSlip = c.statement_url || c.admin_transfer_slip || tx.slip_url;
-                allMedia += window.renderMedia(adminSlip, '🏦 หลักฐานเหรัญญิก', '#10b981');
+            let allMedia = '';
+            if (tx.clearance_id) {
+                // ดึงข้อมูลบิล และสลิปทุกประเภทจาก clearances (แก้ชื่อคอลัมน์ให้ถูกต้อง)
+                const { data: c } = await supabaseClient.from('clearances').select('statement_url, member_return_slip, admin_transfer_slip').eq('id', tx.clearance_id).single();
+                if (c) {
+                    allMedia += window.renderMedia(c.statement_url, '📄 ใบเสร็จ/สลิป (ผู้เบิก)', '#64748b');
+                    allMedia += window.renderMedia(c.member_return_slip, '💸 สลิปเงินทอน', '#ef4444');
+                    const adminSlip = c.admin_transfer_slip || tx.slip_url;
+                    allMedia += window.renderMedia(adminSlip, '🏦 หลักฐานเหรัญญิก', '#10b981');
+                }
+            } else {
+                allMedia += window.renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
             }
-        } else {
-            allMedia += window.renderMedia(tx.slip_url, '📄 หลักฐานการทำรายการ', '#64748b');
-        }
 
-        document.getElementById('view-tx-content').innerHTML = `
-            <div style="background:#f8fafc; padding:15px; border-radius:10px;">
-                <p><b>รายการ:</b> ${tx.description}</p>
-                <p><b>ยอดเงิน:</b> ฿${parseFloat(tx.amount).toLocaleString()}</p>
-            </div>
-            <div style="margin-top: 20px;">${allMedia || '<p style="text-align:center;color:gray;">ไม่มีรูปแนบ</p>'}</div>
-        `;
-        document.getElementById('view-tx-modal').style.display = 'flex';
-    } catch (e) { console.error(e); }
-};
+            document.getElementById('view-tx-content').innerHTML = `
+                <div style="background:#f8fafc; padding:15px; border-radius:10px;">
+                    <p><b>รายการ:</b> ${tx.description}</p>
+                    <p><b>ยอดเงิน:</b> ฿${parseFloat(tx.amount).toLocaleString()}</p>
+                </div>
+                <div style="margin-top: 20px;">${allMedia || '<p style="text-align:center;color:gray;">ไม่มีรูปแนบ</p>'}</div>
+            `;
+            document.getElementById('view-tx-modal').style.display = 'flex';
+        } catch (e) { console.error(e); }
+    };
 
     // -----------------------------------------
     // 🌟 2. ฟังก์ชันดูรายละเอียดรายการขอเบิก
@@ -1243,12 +1243,9 @@ window.viewTransaction = async function(id) {
             : '<li style="color:gray;text-align:center;">ไม่มีรายการย่อยในระบบ</li>';
             
             let allMedia = '';
-            allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
-            allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
-            
-            // 🚨 อัปเดต: เพิ่มการแสดงสลิป "โอนตั้งต้น" 
-            allMedia += window.renderMedia(c.admin_transfer_slip, '💸 สลิปโอนเงินตั้งต้น (เหรัญญิกแนบ)', '#3b82f6');
-            allMedia += window.renderMedia(c.statement_url, '🏦 หลักฐานการเคลียร์บิล (เหรัญญิกแนบ)', '#10b981');
+            allMedia += window.renderMedia(c.statement_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
+            allMedia += window.renderMedia(c.member_return_slip, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+            allMedia += window.renderMedia(c.admin_transfer_slip, '🏦 สลิปโอนเงิน (เหรัญญิกแนบ)', '#3b82f6');
             
             if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
 
