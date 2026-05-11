@@ -1233,33 +1233,53 @@ window.viewTransaction = async function(id) {
     // -----------------------------------------
     // 🌟 2. ฟังก์ชันดูรายละเอียดรายการขอเบิก
     // -----------------------------------------
+   // -----------------------------------------
+    // 🌟 2. ฟังก์ชันดูรายละเอียดรายการขอเบิก (อัปเดตให้แสดงข้อมูลครบ 100%)
+    // -----------------------------------------
     window.viewClearance = async function(id) {
         try {
-        const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
-        const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
-        
-        let itemsHtml = (items && items.length > 0) 
-            ? items.map(i => `<li style="border-bottom:1px dashed #eee; padding:5px 0;">${i.item_name} <span style="float:right;">฿${parseFloat(i.total_price||0).toLocaleString()}</span></li>`).join('')
-            : '<li style="color:gray;text-align:center;">ไม่มีรายการย่อยในระบบ</li>';
+            // 1. แก้ไขให้ดึงชื่อผู้เบิก (profiles) มาด้วย
+            const { data: c } = await supabaseClient.from('clearances').select('*, profiles!member_id(full_name)').eq('id', id).single();
+            const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
             
+            // 2. จัดรูปแบบตารางบิลย่อย
+            let itemsHtml = (items && items.length > 0) 
+                ? items.map(i => `<li style="border-bottom:1px dashed #eee; padding:8px 0; display:flex; justify-content:space-between;">
+                    <span>${i.item_name} <small style="color:gray;">(x${i.quantity})</small></span>
+                    <span style="font-weight:bold;">฿${parseFloat(i.total_price||0).toLocaleString()}</span>
+                  </li>`).join('')
+                : '<li style="color:gray;text-align:center;">ไม่มีรายการย่อยในระบบ</li>';
+                
+            // 3. แสดงรูปภาพทั้งหมด (รองรับทั้งชื่อคอลัมน์เวอร์ชันใหม่และข้อมูลเก่า)
             let allMedia = '';
-            allMedia += window.renderMedia(c.statement_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b');
+            let pwdHtml = c.statement_password ? `<p style="margin:5px 0 0 0; color:var(--danger); font-size:13px; font-weight:bold; background:#fee2e2; padding:4px 8px; border-radius:4px; display:inline-block;">🔑 รหัสผ่าน PDF: ${c.statement_password}</p>` : '';
+            
+            // กวาดเช็กไฟล์ทุกคอลัมน์ที่มีโอกาสเก็บสลิปไว้
+            allMedia += window.renderMedia(c.statement_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b') + (c.statement_url?.includes('.pdf') ? pwdHtml : '');
+            allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ข้อมูลเก่า)', '#64748b'); // เผื่อข้อมูลเก่า
             allMedia += window.renderMedia(c.member_return_slip, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
+            allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ข้อมูลเก่า)', '#ef4444'); // เผื่อข้อมูลเก่า
             allMedia += window.renderMedia(c.admin_transfer_slip, '🏦 สลิปโอนเงิน (เหรัญญิกแนบ)', '#3b82f6');
             
             if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
 
+            // 4. แสดงข้อมูลรายละเอียดบิลให้ครบถ้วนเหมือนเดิม
             document.getElementById('view-clearance-content').innerHTML = `
-                <div style="background:#f0f9ff; padding:15px; border-radius:8px; border:1px solid #bae6fd;">
-                    <p style="margin:0 0 5px 0;"><b>หัวข้อ:</b> ${c.purpose}</p>
-                    <p style="margin:0 0 5px 0;"><b>ฝ่าย:</b> ${c.department || '-'}</p>
-                    <p style="margin:0;"><b>วันที่ส่ง:</b> ${new Date(c.created_at).toLocaleString('th-TH')}</p>
+                <div style="background:#f0f9ff; padding:15px; border-radius:8px; border:1px solid #bae6fd; margin-bottom: 15px;">
+                    <table style="width:100%; font-size:14px; line-height:1.8;">
+                        <tr><td style="color:var(--text-muted); width:35%;">👤 ผู้เบิก:</td><td style="font-weight:bold; color:var(--text-main); font-size:15px;">${c.profiles?.full_name || '<span style="color:red;">ไม่ระบุ</span>'}</td></tr>
+                        <tr><td style="color:var(--text-muted);">📂 ฝ่าย / แผนก:</td><td style="color:var(--primary); font-weight:bold;">${c.department || '-'}</td></tr>
+                        <tr><td style="color:var(--text-muted);">📌 หัวข้อ:</td><td>${c.purpose}</td></tr>
+                        <tr><td style="color:var(--text-muted);">📅 วันที่ส่งคำขอ:</td><td>${new Date(c.created_at).toLocaleString('th-TH')}</td></tr>
+                        <tr><td style="color:var(--text-muted);">💳 บัญชีรับเงิน:</td><td style="color:var(--success); font-weight:bold;">${c.member_bank_details || '<span style="color:gray; font-weight:normal;">- ไม่ได้ระบุ -</span>'}</td></tr>
+                    </table>
                 </div>
                 
-                <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-top:15px;">
-                    <h4 style="margin-top:0; color: #475569;">รายการบิลย่อย</h4>
+                <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
+                    <h4 style="margin-top:0; color: #475569; border-bottom:1px solid #cbd5e1; padding-bottom:8px;">🛒 รายการบิลย่อย</h4>
                     <ul style="list-style:none; padding:0; margin:0;">${itemsHtml}</ul>
-                    <div style="text-align:right; margin-top:15px; font-size:18px;">ยอดรวมสุทธิ: <strong style="color:var(--primary); font-size:24px;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</strong></div>
+                    <div style="text-align:right; margin-top:15px; font-size:14px; color:gray;">ยอดขอเบิกล่วงหน้า: ฿${parseFloat(c.requested_amount || 0).toLocaleString()}</div>
+                    <div style="text-align:right; margin-top:5px; font-size:18px;">ยอดรวมสุทธิ (ตามบิล): <strong style="color:var(--success); font-size:22px;">฿${parseFloat(c.total_actual_amount || c.requested_amount).toLocaleString()}</strong></div>
                 </div>
                 
                 <div style="margin-top: 25px;">
@@ -1268,7 +1288,10 @@ window.viewTransaction = async function(id) {
                 </div>
             `;
             document.getElementById('view-clearance-modal').style.display = 'flex';
-        } catch (e) { console.error('Detail Error:', e); }
+        } catch (e) { 
+            console.error('Detail Error:', e);
+            document.getElementById('view-clearance-content').innerHTML = '<div style="color:red; text-align:center; padding:20px;">โหลดข้อมูลไม่สำเร็จ กรุณาลองเปิดใหม่อีกครั้ง</div>';
+        }
     };
 
     // ==========================================
