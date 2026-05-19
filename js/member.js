@@ -938,7 +938,7 @@ if (items.length > 0) {
                     .insert([{
                         table_name: tableName,
                         record_id: recordId,
-                        action: 'CANCEL',
+                        action_type: 'CANCEL',
                         performed_by: currentUser.id,
                         reason: reason
                     }]);
