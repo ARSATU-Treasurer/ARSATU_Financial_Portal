@@ -695,6 +695,14 @@ if (fundError) throw fundError;
 
             if(msg) { msg.style.color = 'var(--info)'; msg.textContent = 'กำลังประมวลผล...'; }
 
+            // 🛡️ [เพิ่มใหม่] ด่านตรวจจับการเบิ้ล (ป้องกัน Double Submission)
+            const { data: currentReq } = await supabaseClient.from('clearances').select('status').eq('id', reqId).single();
+            if (!currentReq || currentReq.status !== window.currentClearance.status) {
+                throw new Error("รายการนี้ถูกประมวลผลไปแล้ว (อาจเกิดจากการกดปุ่มซ้ำ) กรุณารีเฟรชหน้าจอ");
+            }
+
+            // 2. อัปเดตราคาในตาราง items ย่อยก่อนเสมอ (กรณีแอดมินแก้ตัวเลข)
+            
             // 2. อัปเดตราคาในตาราง items ย่อยก่อนเสมอ (กรณีแอดมินแก้ตัวเลข)
             const inputs = document.querySelectorAll('.admin-edit-price');
             if (inputs.length > 0) {
