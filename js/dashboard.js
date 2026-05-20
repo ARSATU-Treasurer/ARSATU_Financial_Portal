@@ -1896,6 +1896,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     // 🌟 โมดูลดูรายชื่อและเลขบัญชีสมาชิกทั้งหมด (Member Directory)
     // ==========================================
+    // ==========================================
+    // 🌟 โมดูลดูรายชื่อและเลขบัญชีสมาชิกทั้งหมด (Member Directory)
+    // ==========================================
     window.loadMemberDirectory = async function() {
         const tbody = document.getElementById('member-directory-tbody');
         if (!tbody) return;
@@ -1911,21 +1914,65 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            tbody.innerHTML = profiles.map(p => `
+            tbody.innerHTML = profiles.map(p => {
+                // กำหนดสีตาม Role ปัจจุบัน
+                const bgColors = p.role === 'admin' ? 'background:#fee2e2; color:#ef4444; border-color:#fca5a5;' : 'background:#e0e7ff; color:#4f46e5; border-color:#a5b4fc;';
+                
+                return `
                 <tr>
                     <td style="font-weight:bold;">${p.full_name}</td>
-                    <td><span style="padding:3px 8px; border-radius:4px; font-size:12px; background:${p.role === 'admin' ? '#fee2e2; color:#ef4444;' : '#e0e7ff; color:#4f46e5;'}">${p.role.toUpperCase()}</span></td>
+                    <td>
+                        <select onchange="changeUserRole('${p.id}', this.value, '${p.full_name}')" 
+                                style="padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; border:1px solid transparent; cursor:pointer; outline:none; font-family:'Prompt'; ${bgColors}">
+                            <option value="admin" style="color:#1e293b; background:white;" ${p.role === 'admin' ? 'selected' : ''}>ADMIN</option>
+                            <option value="member" style="color:#1e293b; background:white;" ${p.role === 'member' ? 'selected' : ''}>MEMBER</option>
+                        </select>
+                    </td>
                     <td>
                         ${p.bank_details 
                             ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; border:1px solid #e2e8f0; font-family:monospace; user-select:all; cursor:pointer;" title="คลิกเพื่อคลุมดำก๊อปปี้">${p.bank_details}</div>` 
                             : `<span style="color:#ef4444; font-size:13px;"><i class="fas fa-exclamation-circle"></i> ยังไม่ได้ผูกบัญชี</span>`}
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
 
         } catch (e) {
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:red;">โหลดข้อมูลไม่สำเร็จ</td></tr>';
         }
+        // ฟังก์ชันอัปเดตสิทธิ์การใช้งานของสมาชิก
+    window.changeUserRole = async function(userId, newRole, userName) {
+        // 1. ระบบป้องกันแอดมินปลดสิทธิ์ตัวเอง
+        if (userId === currentUser.id && newRole === 'member') {
+            if (!confirm('⚠️ คำเตือน: คุณกำลังจะปลดตัวเองออกจากการเป็น "Admin" หากกดยืนยัน คุณจะหลุดจากหน้านี้ทันที ยืนยันหรือไม่?')) {
+                window.loadMemberDirectory(); // โหลดข้อมูลใหม่เพื่อรีเซ็ต dropdown ให้กลับมาเหมือนเดิม
+                return;
+            }
+        } else {
+            // 2. ถามความแน่ใจเวลาเปลี่ยนสิทธิ์ให้คนอื่น
+            if (!confirm(`ยืนยันการเปลี่ยนสิทธิ์ของ "${userName}" เป็น ${newRole.toUpperCase()} ใช่หรือไม่?`)) {
+                window.loadMemberDirectory();
+                return;
+            }
+        }
+
+        try {
+            // 3. ส่งข้อมูลไปอัปเดตบน Supabase
+            const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', userId);
+            if (error) throw error;
+            
+            showToast(`เปลี่ยนสิทธิ์ของ ${userName} เป็น ${newRole.toUpperCase()} สำเร็จ`, 'success');
+            
+            // 4. ถ้าปลดตัวเอง ให้เด้งไปหน้า member ทันที
+            if (userId === currentUser.id && newRole === 'member') {
+                setTimeout(() => window.location.replace('member.html'), 1500);
+            } else {
+                window.loadMemberDirectory(); // โหลดตารางใหม่เพื่อให้สี Dropdown เปลี่ยนตาม Role
+            }
+        } catch (err) {
+            showToast("แก้ไขสิทธิ์ไม่สำเร็จ: " + err.message, "error");
+            window.loadMemberDirectory();
+        }
+    };
     };
 
     // โหลดข้อมูลทั้งหมดเมื่อเข้าหน้าเว็บ
