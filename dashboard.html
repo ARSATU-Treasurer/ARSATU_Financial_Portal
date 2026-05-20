@@ -88,6 +88,7 @@
             <button class="tab-btn" onclick="switchTab(event, 'tab-history')">🕒 ประวัติคำขอเบิก</button>
             <button class="tab-btn" onclick="switchTab(event, 'tab-audit')">📜 ประวัติแก้ไข/ยกเลิก</button>
             <button class="tab-btn" onclick="switchTab(event, 'tab-settings')">⚙️ ตั้งค่าระบบ</button>
+            <button class="tab-btn" onclick="switchTab(event, 'members-tab')"><i class="fas fa-users"></i> ข้อมูลสมาชิกและบัญชี</button>
             <button class="tab-btn" onclick="switchTab(event, 'tab-budget-admin')">📋 ตรวจแผนงบประมาณ</button>
         </div>
 
@@ -245,6 +246,27 @@
                 </div>
             </div>
         </div>
+
+        <div id="members-tab" class="tab-content" style="display: none;">
+    <div class="card">
+        <h2 style="color: var(--primary);"><i class="fas fa-address-book"></i> สมุดรายชื่อและบัญชีสมาชิก</h2>
+        <p style="color: gray; font-size:14px; margin-bottom: 15px;">รายชื่อสมาชิกทั้งหมดในระบบและเลขบัญชีรับเงินที่สมาชิกผูกไว้</p>
+        
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">ชื่อ-นามสกุล</th>
+                        <th style="width: 20%;">บทบาท (Role)</th>
+                        <th style="width: 50%;">เลขบัญชี / พร้อมเพย์ที่ผูกไว้</th>
+                    </tr>
+                </thead>
+                <tbody id="member-directory-tbody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
         <div style="margin-top: 40px; border-top: 2px solid #e2e8f0; padding-top: 30px; margin-bottom: 20px;">
             <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
@@ -423,6 +445,13 @@
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             evt.currentTarget.classList.add('active');
+
+            // 🌟 เพิ่มคำสั่งให้ดึงข้อมูลเมื่อแอดมินคลิกแท็บสมุดรายชื่อ
+            if (tabId === 'members-tab') {
+                if (typeof window.loadMemberDirectory === 'function') {
+                    window.loadMemberDirectory();
+                }
+            }
         }
     </script>
 </body>

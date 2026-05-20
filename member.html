@@ -71,6 +71,9 @@
             <button class="btn btn-outline" style="padding: 6px 10px; font-size: 13px; border-color: #3b82f6; color: #3b82f6; background: #eff6ff;" onclick="window.location.href='transparency.html'">🏛️ Public</button>
             <button id="switch-role-btn" class="btn btn-outline" style="padding: 6px 10px; font-size: 13px; border-color: var(--success); color: var(--success); display: none;" onclick="window.location.href='dashboard.html'">👑 โหมด Admin</button>
             <button onclick="document.getElementById('howto-modal').style.display='flex'" class="btn btn-outline" style="padding: 6px 10px; font-size: 13px; border-color: var(--info); color: var(--info); background: #f0f9ff;">ℹ️ คู่มือการใช้งาน</button>
+            <button class="btn btn-secondary" onclick="openProfileModal()" style="margin-right: 10px;">
+    <i class="fas fa-wallet"></i> บัญชีรับเงินของฉัน
+</button>
             <button id="logout-btn" class="btn btn-outline" style="padding: 6px 10px; font-size: 13px; border-color: var(--danger); color: var(--danger);">ออก</button>
         </div>
     </header>
@@ -395,6 +398,19 @@
                 <button onclick="savePlanCoWorkersQuick()" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 15px;">💾 บันทึกรายชื่อ</button>
                 <button onclick="document.getElementById('plan-manage-coworker-modal').style.display='none'" class="btn btn-outline" style="width: 100%; margin-top: 10px; padding: 10px;">ยกเลิก</button>
             </div>
+        </div>
+    </div>
+
+    <div id="profile-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 2000; padding: 15px; box-sizing: border-box;">
+        <div style="background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; position: relative;">
+            <button onclick="closeProfileModal()" style="position: absolute; top: 15px; right: 15px; background: #f1f5f9; border: none; font-size: 18px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: gray;">✖</button>
+            <h3 style="margin-top: 0; color: var(--primary);">💳 บัญชีรับเงินของฉัน</h3>
+            <p style="font-size: 13px; color: gray; margin-bottom: 15px;">ข้อมูลนี้จะถูกดึงไปใช้อัตโนมัติเมื่อคุณไม่ได้ระบุเลขบัญชีในบิลขอเบิก</p>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 5px;">ธนาคาร / พร้อมเพย์ และเลขบัญชี</label>
+                <textarea id="profile-bank-details" rows="3" placeholder="เช่น กสิกรไทย 123-4-56789-0 นายสมชาย รักดี" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Prompt'; box-sizing: border-box;"></textarea>
+            </div>
+            <button onclick="saveProfileBank()" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 15px;">💾 บันทึกข้อมูล</button>
         </div>
     </div>
 </body>

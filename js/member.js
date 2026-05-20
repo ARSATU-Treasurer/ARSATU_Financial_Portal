@@ -1466,3 +1466,35 @@ if (items.length > 0) {
     // บังคับให้โหลดข้อมูล Co-Worker ใหม่ทันที
     setTimeout(() => { window.loadCoWorkers(); }, 500);
 });
+
+// ==========================================
+// 🌟 โมดูลจัดการบัญชีรับเงินส่วนตัว (Profile Bank Details)
+// ==========================================
+window.openProfileModal = async function() {
+    try {
+        const { data: profile } = await supabaseClient.from('profiles').select('bank_details').eq('id', currentUser.id).single();
+        document.getElementById('profile-bank-details').value = profile?.bank_details || '';
+        document.getElementById('profile-modal').style.display = 'flex';
+    } catch (e) {
+        console.error(e);
+        Swal.fire('ข้อผิดพลาด', 'ดึงข้อมูลบัญชีไม่สำเร็จ', 'error');
+    }
+};
+
+window.closeProfileModal = function() {
+    document.getElementById('profile-modal').style.display = 'none';
+};
+
+window.saveProfileBank = async function() {
+    const bankDetails = document.getElementById('profile-bank-details').value.trim();
+    try {
+        const { error } = await supabaseClient.from('profiles').update({ bank_details: bankDetails }).eq('id', currentUser.id);
+        if (error) throw error;
+        
+        Swal.fire('สำเร็จ', 'บันทึกข้อมูลบัญชีรับเงินเรียบร้อยแล้ว', 'success');
+        closeProfileModal();
+    } catch (e) {
+        console.error(e);
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+    }
+};
