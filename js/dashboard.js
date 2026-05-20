@@ -494,12 +494,20 @@ if (fundError) throw fundError;
         if(msg) { msg.style.color = 'var(--info)'; msg.textContent = 'กำลังดึงข้อมูล...'; }
 
         try {
-            const { data: c } = await supabaseClient.from('clearances').select('*').eq('id', id).single();
+            // แก้ไข select ให้ดึงข้อมูลโปรไฟล์ผู้เบิกหลักมาด้วย
+            const { data: c } = await supabaseClient.from('clearances').select('*, profiles!member_id(full_name, bank_details)').eq('id', id).single();
             const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
 
             document.getElementById('modal-req-id').value = c.id; 
             document.getElementById('modal-req-type').value = c.request_type; 
             window.currentClearance = c;
+
+            // 🌟 ดึงข้อมูลบัญชีของ Co-workers มารอไว้ในตัวแปรระบบ
+            window.currentCoworkersBank = [];
+            if (c.co_worker_ids && c.co_worker_ids.length > 0) {
+                const { data: cw } = await supabaseClient.from('profiles').select('full_name, bank_details').in('id', c.co_worker_ids);
+                if (cw) window.currentCoworkersBank = cw;
+            }
 
             const targetImg = c.statement_url || c.member_return_slip; 
             const previewDiv = document.getElementById('modal-statement-preview');
@@ -507,9 +515,7 @@ if (fundError) throw fundError;
             if (targetImg) {
                 previewDiv.style.display = 'block'; 
                 document.getElementById('modal-no-statement').style.display = 'none';
-                
                 let pwdText = c.statement_password ? `<div style="color:var(--danger); font-size:13px; font-weight:bold; margin-top:8px; padding:6px; background:#fee2e2; border-radius:6px;">🔑 รหัสผ่านไฟล์: ${c.statement_password}</div>` : '';
-                
                 if (targetImg.toLowerCase().includes('.pdf')) { 
                     previewDiv.innerHTML = `<label style="color: var(--text-muted); display: block; margin-bottom: 10px;">📎 ไฟล์หลักฐาน / Statement</label><a href="${targetImg}" target="_blank" class="btn btn-info" style="display:block; width:100%; text-align:center; padding:10px; box-sizing:border-box; text-decoration:none;">📄 คลิกเพื่อเปิดดูไฟล์ PDF</a>${pwdText}`; 
                 } else { 
@@ -554,7 +560,6 @@ if (fundError) throw fundError;
             if(msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'โหลดข้อมูลไม่สำเร็จ'; } 
         }
     };
-
     window.closeModal = function() {
         if(actionModal) actionModal.style.display = 'none';
         document.getElementById('admin-action-form')?.reset();
@@ -616,10 +621,37 @@ if (fundError) throw fundError;
         if (bankSel) bankSel.required = false;
         if (fundSel) fundSel.required = false;
 
-        if(bankDiv && bankText) {
-            if(actionDir === 'pay' && c.member_bank_details) { 
+        if (bankDiv && bankText) {
+            if (actionDir === 'pay') { 
                 bankDiv.style.display = 'block'; 
-                bankText.textContent = c.member_bank_details; 
+                
+                if (c.member_bank_details) {
+                    // หากในบิลกรอกมา ให้แสดงตามในบิลปกติ
+                    bankText.innerHTML = `<span style="font-size:12px;color:gray;font-weight:normal;display:block;">ข้อมูลระบุในบิล:</span> ${c.member_bank_details}`;
+                    bankDiv.style.background = "#eff6ff";
+                    bankDiv.style.borderColor = "#bfdbfe";
+                } else {
+                    // 🚨 กรณีไม่ได้กรอกมาในบิล ให้ดึงระบบคัดกรองโปรไฟล์สำรองมาทำงาน
+                    let cwText = '';
+                    if (window.currentCoworkersBank && window.currentCoworkersBank.length > 0) {
+                        cwText = window.currentCoworkersBank.map(cw => `
+                            <div style="margin-top:6px; font-size:13px; font-weight:normal; color:#475569; background:white; padding:4px 8px; border-radius:4px; border:1px solid #e2e8f0;">
+                                👥 บัญชีโปรไฟล์ Co-Worker (${cw.full_name}): <b style="color:var(--primary); user-select:all;">${cw.bank_details || 'ไม่ได้ผูกไว้'}</b>
+                            </div>
+                        `).join('');
+                    }
+
+                    bankText.innerHTML = `
+                        <span style="font-size:12px; color:var(--danger); font-weight:bold; display:block; margin-bottom:5px;">⚠️ ผู้เบิกไม่ได้กรอกเลขบัญชีมาในบิล! ดึงข้อมูลสำรองจากฐานข้อมูล:</span>
+                        <div style="font-size:14px; background:white; padding:4px 8px; border-radius:4px; border:1px solid #e2e8f0;">
+                            👤 บัญชีโปรไฟล์ผู้เบิกหลัก: <b style="color:var(--primary); user-select:all;">${c.profiles?.bank_details || 'ไม่ได้ผูกไว้'}</b>
+                        </div>
+                        ${cwText}
+                    `;
+                    // เปลี่ยนสีกรอบเป็นสีส้ม/แดงเตือนให้แอดมินรู้ตัวว่าใช้บัญชีโปรไฟล์
+                    bankDiv.style.background = "#fff7ed";
+                    bankDiv.style.borderColor = "#fed7aa";
+                }
             } else { 
                 bankDiv.style.display = 'none'; 
             }
@@ -1238,19 +1270,30 @@ window.viewTransaction = async function(id) {
         } catch (e) { console.error(e); }
     };
 
-    // -----------------------------------------
-    // 🌟 2. ฟังก์ชันดูรายละเอียดรายการขอเบิก
-    // -----------------------------------------
-   // -----------------------------------------
-    // 🌟 2. ฟังก์ชันดูรายละเอียดรายการขอเบิก (อัปเดตให้แสดงข้อมูลครบ 100%)
-    // -----------------------------------------
     window.viewClearance = async function(id) {
         try {
-            // 1. แก้ไขให้ดึงชื่อผู้เบิก (profiles) มาด้วย
-            const { data: c } = await supabaseClient.from('clearances').select('*, profiles!member_id(full_name)').eq('id', id).single();
+            // 1. ดึงข้อมูลใบเบิก ร่วมกับบัญชีของผู้เบิกหลัก (ดึง bank_details มาด้วย)
+            const { data: c } = await supabaseClient.from('clearances').select('*, profiles!member_id(full_name, bank_details)').eq('id', id).single();
             const { data: items } = await supabaseClient.from('clearance_items').select('*').eq('clearance_id', id);
             
-            // 2. จัดรูปแบบตารางบิลย่อย
+            if (!c) return;
+
+            // 2. ดึงข้อมูลชื่อและเลขบัญชีของ Co-Workers ทั้งหมดในระบบจากคอลัมน์ co_worker_ids
+            let coworkersBankHtml = '';
+            if (c.co_worker_ids && c.co_worker_ids.length > 0) {
+                const { data: cwProfiles } = await supabaseClient.from('profiles').select('full_name, bank_details').in('id', c.co_worker_ids);
+                if (cwProfiles && cwProfiles.length > 0) {
+                    coworkersBankHtml = cwProfiles.map(cw => `
+                        <div style="padding: 6px 0; border-bottom: 1px dashed #e2e8f0; display:flex; justify-content:space-between; font-size:13px;">
+                            <span>👤 ${cw.full_name}</span>
+                            <strong style="color:var(--info);">${cw.bank_details || '<span style="color:#94a3b8;font-weight:normal;">ไม่ได้ผูกบัญชี</span>'}</strong>
+                        </div>
+                    `).join('');
+                }
+            } else {
+                coworkersBankHtml = '<div style="color:gray; font-size:13px; text-align:center; padding:5px 0;">บิลนี้ไม่มีผู้ร่วมเบิก (Co-Worker)</div>';
+            }
+            
             let itemsHtml = (items && items.length > 0) 
                 ? items.map(i => `<li style="border-bottom:1px dashed #eee; padding:8px 0; display:flex; justify-content:space-between;">
                     <span>${i.item_name} <small style="color:gray;">(x${i.quantity})</small></span>
@@ -1258,29 +1301,38 @@ window.viewTransaction = async function(id) {
                   </li>`).join('')
                 : '<li style="color:gray;text-align:center;">ไม่มีรายการย่อยในระบบ</li>';
                 
-            // 3. แสดงรูปภาพทั้งหมด (รองรับทั้งชื่อคอลัมน์เวอร์ชันใหม่และข้อมูลเก่า)
             let allMedia = '';
             let pwdHtml = c.statement_password ? `<p style="margin:5px 0 0 0; color:var(--danger); font-size:13px; font-weight:bold; background:#fee2e2; padding:4px 8px; border-radius:4px; display:inline-block;">🔑 รหัสผ่าน PDF: ${c.statement_password}</p>` : '';
             
-            // กวาดเช็กไฟล์ทุกคอลัมน์ที่มีโอกาสเก็บสลิปไว้
             allMedia += window.renderMedia(c.statement_url, '📄 ใบเสร็จ/สลิป (ผู้เบิกแนบ)', '#64748b') + (c.statement_url?.includes('.pdf') ? pwdHtml : '');
-            allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ข้อมูลเก่า)', '#64748b'); // เผื่อข้อมูลเก่า
+            allMedia += window.renderMedia(c.receipt_url, '📄 ใบเสร็จ/สลิป (ข้อมูลเก่า)', '#64748b');
             allMedia += window.renderMedia(c.member_return_slip, '💸 สลิปเงินทอน (ผู้เบิกแนบ)', '#ef4444');
-            allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ข้อมูลเก่า)', '#ef4444'); // เผื่อข้อมูลเก่า
+            allMedia += window.renderMedia(c.return_slip_url, '💸 สลิปเงินทอน (ข้อมูลเก่า)', '#ef4444');
             allMedia += window.renderMedia(c.admin_transfer_slip, '🏦 สลิปโอนเงิน (เหรัญญิกแนบ)', '#3b82f6');
             
             if (!allMedia) allMedia = '<div style="padding:20px; text-align:center; background:#f1f5f9; border-radius:8px; color:gray;">ไม่มีหลักฐานแนบในระบบ</div>';
 
-            // 4. แสดงข้อมูลรายละเอียดบิลให้ครบถ้วนเหมือนเดิม
             document.getElementById('view-clearance-content').innerHTML = `
                 <div style="background:#f0f9ff; padding:15px; border-radius:8px; border:1px solid #bae6fd; margin-bottom: 15px;">
                     <table style="width:100%; font-size:14px; line-height:1.8;">
-                        <tr><td style="color:var(--text-muted); width:35%;">👤 ผู้เบิก:</td><td style="font-weight:bold; color:var(--text-main); font-size:15px;">${c.profiles?.full_name || '<span style="color:red;">ไม่ระบุ</span>'}</td></tr>
+                        <tr><td style="color:var(--text-muted); width:35%;">👤 ผู้เบิกหลัก:</td><td style="font-weight:bold; color:var(--text-main); font-size:15px;">${c.profiles?.full_name || '<span style="color:red;">ไม่ระบุ</span>'}</td></tr>
                         <tr><td style="color:var(--text-muted);">📂 ฝ่าย / แผนก:</td><td style="color:var(--primary); font-weight:bold;">${c.department || '-'}</td></tr>
                         <tr><td style="color:var(--text-muted);">📌 หัวข้อ:</td><td>${c.purpose}</td></tr>
                         <tr><td style="color:var(--text-muted);">📅 วันที่ส่งคำขอ:</td><td>${new Date(c.created_at).toLocaleString('th-TH')}</td></tr>
-                        <tr><td style="color:var(--text-muted);">💳 บัญชีรับเงิน:</td><td style="color:var(--success); font-weight:bold;">${c.member_bank_details || '<span style="color:gray; font-weight:normal;">- ไม่ได้ระบุ -</span>'}</td></tr>
+                        <tr><td style="color:var(--text-muted);">💳 บัญชีระบุในบิล:</td><td style="color:var(--success); font-weight:bold;">${c.member_bank_details || '<span style="color:var(--danger); font-weight:normal;">⚠️ ผู้เบิกไม่ได้กรอกข้อมูลมา</span>'}</td></tr>
                     </table>
+                </div>
+
+                <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:15px;">
+                    <h4 style="margin-top:0; color: #475569; border-bottom:1px solid #cbd5e1; padding-bottom:8px; font-size:14px;">📋 บัญชีสำรองในระบบ (กรณีบิลไม่ระบุเลขบัญชี)</h4>
+                    <div style="font-size:13px; margin-bottom: 10px;">
+                        <span>👤 บัญชีโปรไฟล์ผู้เบิกหลัก:</span>
+                        <strong style="color:var(--primary); float:right;">${c.profiles?.bank_details || '<span style="color:red;font-weight:normal;">ไม่ได้ผูกบัญชีไว้</span>'}</strong>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <span style="color:#64748b; font-size:12px; font-weight:600; display:block; margin-bottom:6px;">👥 เลขบัญชีของ Co-Workers ในบิลนี้:</span>
+                        ${coworkersBankHtml}
+                    </div>
                 </div>
                 
                 <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
@@ -1298,7 +1350,6 @@ window.viewTransaction = async function(id) {
             document.getElementById('view-clearance-modal').style.display = 'flex';
         } catch (e) { 
             console.error('Detail Error:', e);
-            document.getElementById('view-clearance-content').innerHTML = '<div style="color:red; text-align:center; padding:20px;">โหลดข้อมูลไม่สำเร็จ กรุณาลองเปิดใหม่อีกครั้ง</div>';
         }
     };
 
