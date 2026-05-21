@@ -1896,9 +1896,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     // 🌟 โมดูลดูรายชื่อและเลขบัญชีสมาชิกทั้งหมด (Member Directory)
     // ==========================================
-    // ==========================================
-    // 🌟 โมดูลดูรายชื่อและเลขบัญชีสมาชิกทั้งหมด (Member Directory)
-    // ==========================================
     window.loadMemberDirectory = async function() {
         const tbody = document.getElementById('member-directory-tbody');
         if (!tbody) return;
@@ -1915,23 +1912,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             tbody.innerHTML = profiles.map(p => {
-                // กำหนดสีตาม Role ปัจจุบัน
                 const bgColors = p.role === 'admin' ? 'background:#fee2e2; color:#ef4444; border-color:#fca5a5;' : 'background:#e0e7ff; color:#4f46e5; border-color:#a5b4fc;';
                 
+                // แปลงเครื่องหมายคำพูดเดี่ยวและคู่ให้ปลอดภัยเวลาส่งค่าเข้าฟังก์ชัน
+                const safeName = p.full_name ? p.full_name.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+                const safeBank = p.bank_details ? p.bank_details.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+
                 return `
                 <tr>
                     <td style="font-weight:bold;">${p.full_name}</td>
                     <td>
-                        <select onchange="changeUserRole('${p.id}', this.value, '${p.full_name}')" 
+                        <select onchange="changeUserRole('${p.id}', this.value, '${safeName}')" 
                                 style="padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; border:1px solid transparent; cursor:pointer; outline:none; font-family:'Prompt'; ${bgColors}">
                             <option value="admin" style="color:#1e293b; background:white;" ${p.role === 'admin' ? 'selected' : ''}>ADMIN</option>
                             <option value="member" style="color:#1e293b; background:white;" ${p.role === 'member' ? 'selected' : ''}>MEMBER</option>
                         </select>
                     </td>
                     <td>
-                        ${p.bank_details 
-                            ? `<div style="background:#f8fafc; padding:8px; border-radius:6px; border:1px solid #e2e8f0; font-family:monospace; user-select:all; cursor:pointer;" title="คลิกเพื่อคลุมดำก๊อปปี้">${p.bank_details}</div>` 
-                            : `<span style="color:#ef4444; font-size:13px;"><i class="fas fa-exclamation-circle"></i> ยังไม่ได้ผูกบัญชี</span>`}
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                            ${p.bank_details 
+                                ? `<div style="flex: 1; background:#f8fafc; padding:8px; border-radius:6px; border:1px solid #e2e8f0; font-family:monospace; user-select:all; cursor:pointer;" title="คลิกเพื่อคลุมดำก๊อปปี้">${p.bank_details}</div>` 
+                                : `<span style="flex: 1; color:#ef4444; font-size:13px;"><i class="fas fa-exclamation-circle"></i> ยังไม่ได้ผูกบัญชี</span>`}
+                            
+                            <button onclick="editUserBank('${p.id}', '${safeName}', '${safeBank}')" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; white-space: nowrap; border-color: var(--warning); color: var(--warning);">✏️ แก้ไข</button>
+                        </div>
                     </td>
                 </tr>
             `}).join('');
@@ -1939,40 +1943,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:red;">โหลดข้อมูลไม่สำเร็จ</td></tr>';
         }
-        // ฟังก์ชันอัปเดตสิทธิ์การใช้งานของสมาชิก
-    window.changeUserRole = async function(userId, newRole, userName) {
-        // 1. ระบบป้องกันแอดมินปลดสิทธิ์ตัวเอง
-        if (userId === currentUser.id && newRole === 'member') {
-            if (!confirm('⚠️ คำเตือน: คุณกำลังจะปลดตัวเองออกจากการเป็น "Admin" หากกดยืนยัน คุณจะหลุดจากหน้านี้ทันที ยืนยันหรือไม่?')) {
-                window.loadMemberDirectory(); // โหลดข้อมูลใหม่เพื่อรีเซ็ต dropdown ให้กลับมาเหมือนเดิม
-                return;
-            }
-        } else {
-            // 2. ถามความแน่ใจเวลาเปลี่ยนสิทธิ์ให้คนอื่น
-            if (!confirm(`ยืนยันการเปลี่ยนสิทธิ์ของ "${userName}" เป็น ${newRole.toUpperCase()} ใช่หรือไม่?`)) {
-                window.loadMemberDirectory();
-                return;
-            }
+    };
+
+    // ฟังก์ชันสำหรับให้แอดมินแก้ไขเลขบัญชีของสมาชิก (มีระบบป้องกัน)
+    window.editUserBank = async function(userId, userName, currentBank) {
+        // 1. เด้ง Popup ถามข้อมูลใหม่
+        const { value: newBank } = await Swal.fire({
+            title: `แก้ไขบัญชีของ ${userName}`,
+            text: 'กรุณากรอกธนาคาร และเลขบัญชี (ปล่อยว่างเพื่อลบข้อมูล)',
+            input: 'text',
+            inputValue: currentBank,
+            inputPlaceholder: 'เช่น กสิกรไทย 123-4-56789-0',
+            showCancelButton: true,
+            confirmButtonText: '💾 บันทึกข้อมูล',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#3b82f6'
+        });
+
+        // 2. ถ้ายกเลิก หรือค่าเหมือนเดิมเป๊ะ ให้หยุดทำงาน
+        if (newBank === undefined || newBank.trim() === currentBank.trim()) {
+            return;
         }
 
-        try {
-            // 3. ส่งข้อมูลไปอัปเดตบน Supabase
-            const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', userId);
-            if (error) throw error;
-            
-            showToast(`เปลี่ยนสิทธิ์ของ ${userName} เป็น ${newRole.toUpperCase()} สำเร็จ`, 'success');
-            
-            // 4. ถ้าปลดตัวเอง ให้เด้งไปหน้า member ทันที
-            if (userId === currentUser.id && newRole === 'member') {
-                setTimeout(() => window.location.replace('member.html'), 1500);
-            } else {
-                window.loadMemberDirectory(); // โหลดตารางใหม่เพื่อให้สี Dropdown เปลี่ยนตาม Role
+        // 3. ระบบป้องกันกดผิด: ต้องกดยืนยันการเปลี่ยนแปลงอีกรอบ
+        const confirmResult = await Swal.fire({
+            title: 'ยืนยันการเปลี่ยนแปลง?',
+            html: `คุณกำลังจะเปลี่ยนเลขบัญชีของ <b>${userName}</b><br><br>
+                   <span style="color:gray; font-size:14px;">จากเดิม: ${currentBank || 'ยังไม่ได้ผูกบัญชี'}</span><br>
+                   <strong style="color:var(--success); font-size:16px;">เปลี่ยนเป็น: ${newBank.trim() || 'ลบข้อมูลบัญชี'}</strong>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#d33',
+            confirmButtonText: '✅ ยืนยันการแก้ไข',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (confirmResult.isConfirmed) {
+            try {
+                Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+                // 4. บันทึกข้อมูลลงฐานข้อมูล
+                const { error } = await supabaseClient.from('profiles').update({ bank_details: newBank.trim() }).eq('id', userId);
+                if (error) throw error;
+                
+                showToast(`อัปเดตบัญชีของ ${userName} สำเร็จ`, 'success');
+                window.loadMemberDirectory(); // รีโหลดตาราง
+            } catch (err) {
+                showToast("แก้ไขไม่สำเร็จ: " + err.message, "error");
             }
-        } catch (err) {
-            showToast("แก้ไขสิทธิ์ไม่สำเร็จ: " + err.message, "error");
-            window.loadMemberDirectory();
         }
-    };
     };
 
     // โหลดข้อมูลทั้งหมดเมื่อเข้าหน้าเว็บ
