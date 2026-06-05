@@ -42,7 +42,7 @@
                     <option value="อุปกรณ์">อุปกรณ์</option>
                     <option value="โครงงาน">โครงงาน</option>
                     <option value="PR">PR</option>
-                    <option value="สัมพันธ์ชาวบ่้าน">สัมพันธ์ชาวบ้าน</option>
+                    <option value="สัมพันธ์ชาวบ้าน">สัมพันธ์ชาวบ้าน</option>
                     <option value="สปอนเซอร์">สปอนเซอร์</option>
                     <option value="เหรัญญิก">เหรัญญิก</option>
                     <option value="ส่วนกลาง">ส่วนกลาง / อื่นๆ</option>
@@ -153,12 +153,13 @@
                 // 2. อัปเดตข้อมูลโปรไฟล์ (หน่วงเวลาให้ Supabase สร้างโปรไฟล์ 1.5 วินาที)
                 setTimeout(async () => {
                     const { error: updateErr } = await supabaseClient.from('profiles').update({ 
+                        id: data.user.id,
                         full_name: name, 
                         department: dept, 
                         line_user_id: lineProfile.userId,
                         status: 'pending',
                         role: 'member'
-                    }).eq('id', data.user.id);
+                    })
                     
                     if (updateErr) throw updateErr;
                     
