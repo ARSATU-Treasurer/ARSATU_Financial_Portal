@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Redirect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --text-main: #000000;
+            --text-muted: #555555;
+            --bg-color: #ffffff;
+        }
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 40px 20px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 50px;
+            letter-spacing: 0.5px;
+        }
+
+        .logo-next {
+            width: 100%;
+            max-width: 280px;
+            height: auto;
+            margin-bottom: 40px;
+        }
+
+        .click-here {
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--text-main);
+            text-decoration: none;
+            margin-bottom: 15px;
+            transition: transform 0.2s ease;
+            display: inline-block;
+        }
+
+        .click-here:hover {
+            transform: scale(1.05);
+        }
+
+        .url-text {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin: 0;
+            font-weight: 300;
+        }
+
+        .url-link {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        .url-link:hover {
+            text-decoration: underline;
+        }
+
+        /* รูปประกอบด้านมุมล่างซ้ายและขวา */
+        .footer-images {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 50px;
+            padding: 0 40px;
+            box-sizing: border-box;
+        }
+
+        .img-left {
+            width: 160px;
+            height: auto;
+        }
+
+        .img-right {
+            width: 150px;
+            height: auto;
+        }
+
+        /* ปรับแต่งสำหรับหน้าจอมือถือ */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 20px;
+                margin-bottom: 40px;
+            }
+            .logo-next {
+                max-width: 220px;
+            }
+            .click-here {
+                font-size: 22px;
+            }
+            .footer-images {
+                flex-direction: column;
+                align-items: center;
+                gap: 30px;
+                margin-top: 40px;
+                padding: 0;
+            }
+            .img-left, .img-right {
+                width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <h1 class="title">ระบบการเงินของอาสาตู่ย้ายไปใช้</h1>
+
+        <a href="https://arsatu-next.netlify.app/">
+            <img class="logo-next" src="arsatu_next_logo.png" alt="ARSATU NEXT">
+        </a>
+
+        <a href="https://arsatu-next.netlify.app/" class="click-here">คลิกที่นี่</a>
+
+        <p class="url-text">หรือ <a href="https://arsatu-next.netlify.app/" class="url-link">https://arsatu-next.netlify.app/</a></p>
+
+        <div class="footer-images">
+            <img class="img-left" src="monkey_logo.png" alt="Monkey Icon">
+            
+            <img class="img-right" src="treasury_logo.png" alt="ARSATU Treasury Icon">
+        </div>
+
+    </div>
+
+</body>
+</html>
